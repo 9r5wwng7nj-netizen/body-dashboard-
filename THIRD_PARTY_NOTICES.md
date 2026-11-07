@@ -1,6 +1,6 @@
 # Third-party runtime assets
 
-Life Dashboard vendors these browser assets so application startup, spreadsheet imports and barcode scanning do not execute code from a third-party CDN.
+Body Dashboard vendors these browser assets so application startup, spreadsheet imports and barcode scanning do not execute code from a third-party CDN.
 
 | Component | Version | Repository path | License | SHA-256 |
 |---|---:|---|---|---|

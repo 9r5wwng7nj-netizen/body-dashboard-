@@ -9,7 +9,7 @@ async function open(page) {
   const errors = [];
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   await page.goto(APP);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.tasks));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
   await page.evaluate(() => { S.tour = 'done'; saveSettings(); Store.set('recipes', []); Store.set('mealPlan', {}); Store.set('grocery', []); ui.recTab = 'plan'; go('recipes'); });
   return errors;
 }

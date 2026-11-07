@@ -35,7 +35,7 @@ function fakeDrive() {
     if (req.headers().authorization !== `Bearer ${TOKEN}`) return json(route, { error: 'unauthorized' }, 401);
     const save = text => { drive.saves++; drive.file = { id: 'file-1', version: String(+(drive.file?.version || 0) + 1), body: text }; return json(route, { id: drive.file.id, version: drive.file.version }); };
     if (url.pathname === '/drive/v3/files') {
-      const sync = drive.file ? [{ id: drive.file.id, name: 'life-dashboard-sync.json', version: drive.file.version }] : [];
+      const sync = drive.file ? [{ id: drive.file.id, name: 'body-dashboard-sync.json', version: drive.file.version }] : [];
       return json(route, { files: (url.searchParams.get('q') || '').includes("name='") ? sync : [...sync, ...drive.copies.map(({ id, name, size, createdTime }) => ({ id, name, size, createdTime }))] });
     }
     if (url.pathname === '/upload/drive/v3/files' && method === 'POST') {
@@ -43,7 +43,7 @@ function fakeDrive() {
       const meta = JSON.parse(text.slice(first, text.indexOf('\r\n--', first))), bytes = buf.subarray(second, text.lastIndexOf('\r\n--'));
       if (meta.name.startsWith('photo-')) { const c = drive.copy(meta.name, bytes); return json(route, { id: c.id }); }
       const body = bytes.toString('utf8');
-      if (meta.name !== 'life-dashboard-sync.json') { const c = drive.copy(meta.name, body); return json(route, { id: c.id, version: '1' }); }
+      if (meta.name !== 'body-dashboard-sync.json') { const c = drive.copy(meta.name, body); return json(route, { id: c.id, version: '1' }); }
       return save(body);
     }
     const updated = drive.copies.find(c => url.pathname === '/upload/drive/v3/files/' + c.id);
@@ -64,12 +64,24 @@ async function tab(context, { connected = true, answer = () => true } = {}) {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   page.on('dialog', d => { asked.push(d.message()); return answer(d.message()) ? d.accept() : d.dismiss(); });
   await page.goto(`${base}/index.html`);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.tasks));
-  await page.evaluate(([token, on]) => { DRIVE.clientId = 'test-client'; if (on) localStorage.setItem('ld.sync', JSON.stringify({ on: true, token, exp: Date.now() + 3600e3, ...JSON.parse(localStorage.getItem('ld.sync') || '{}') })); }, [TOKEN, connected]);
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.evaluate(([token, on]) => { DRIVE.clientId = 'test-client'; if (on) localStorage.setItem('bd.sync', JSON.stringify({ on: true, token, exp: Date.now() + 3600e3, ...JSON.parse(localStorage.getItem('bd.sync') || '{}') })); }, [TOKEN, connected]);
   return { page, errors, asked, context };
 }
+// Each device starts empty (no sample routines or recipes), with addRecipe(title) for quick records.
+const quickRecords = () => {
+  try { localStorage.setItem('bd.seeded', '1'); } catch (e) {}
+  window.addRecipe = title => { const r = { id: uid(), title, ingredients: '', steps: '', created: new Date().toISOString() }; Store.get('recipes').push(r); Store.save('recipes'); return r; };
+};
 async function device(browser, drive, options) {
   const context = await browser.newContext();
+  await context.addInitScript(quickRecords);
+  // The app ships with no Google client ID until an account is chosen; these devices get a test one,
+  // also after a sign-in redirect reloads the page.
+  await context.route(url => url.pathname === '/index.html', async route => {
+    const res = await route.fetch(), body = (await res.text()).replace("const DRIVE = { clientId: ''", "const DRIVE = { clientId: 'test-client'");
+    return route.fulfill({ response: res, body });
+  });
   await drive.attach(context);
   return tab(context, options);
 }
@@ -78,7 +90,7 @@ const sync = async page => {
   await page.waitForFunction(() => !Sync.busy);
   return page.evaluate(async () => { await Store.flushDirty(); await Sync.run({ announce: true }); return syncMeta(); });
 };
-const titles = page => page.evaluate(() => Store.get('tasks').map(t => t.title).sort());
+const titles = page => page.evaluate(() => Store.get('recipes').map(t => t.title).sort());
 
 test('three-way merge keeps edits, additions and deletions from both sides', async ({ page }) => {
   await page.goto(pathToFileURL(path.resolve('index.html')).href);
@@ -111,10 +123,10 @@ test('three-way merge keeps edits, additions and deletions from both sides', asy
 test('two devices converge, including deletions, and private items stay on the device', async ({ browser }) => {
   const drive = fakeDrive(), laptop = await device(browser, drive), phone = await device(browser, drive);
 
-  await laptop.page.evaluate(() => { addTask('Buy milk'); addTask('Call Sam'); S.esvKey = 'secret-esv-key'; S.targets.cal = 2150; saveSettings(); });
+  await laptop.page.evaluate(() => { addRecipe('Buy milk'); addRecipe('Call Sam'); S.fdcKey = 'secret-usda-key'; S.targets.cal = 2150; saveSettings(); });
   expect((await sync(laptop.page)).error).toBe('');
   expect(drive.file.body).toContain('Buy milk');
-  expect(drive.file.body).not.toContain('secret-esv-key');
+  expect(drive.file.body).not.toContain('secret-usda-key');
   expect(JSON.parse(drive.file.body).data.photoMeta).toEqual([]); // progress photos' records sync now that photos do
 
   // A device with no shared history asks before touching anything.
@@ -123,10 +135,10 @@ test('two devices converge, including deletions, and private items stay on the d
   await phone.page.click('[data-action="syncFirst"][data-mode="theirs"]');
   await phone.page.waitForFunction(() => !Sync.busy && syncMeta().last);
   expect(await titles(phone.page)).toEqual(['Buy milk', 'Call Sam']);
-  expect(await phone.page.evaluate(() => [S.targets.cal, S.esvKey])).toEqual([2150, '']);
+  expect(await phone.page.evaluate(() => [S.targets.cal, S.fdcKey || ''])).toEqual([2150, '']);
 
-  await laptop.page.evaluate(() => { const t = Store.get('tasks'); t.splice(t.findIndex(x => x.title === 'Buy milk'), 1); Store.save('tasks'); addTask('From laptop'); });
-  await phone.page.evaluate(() => { Store.get('tasks').find(x => x.title === 'Call Sam').title = 'Call Sam today'; Store.save('tasks'); addTask('From phone'); });
+  await laptop.page.evaluate(() => { const t = Store.get('recipes'); t.splice(t.findIndex(x => x.title === 'Buy milk'), 1); Store.save('recipes'); addRecipe('From laptop'); });
+  await phone.page.evaluate(() => { Store.get('recipes').find(x => x.title === 'Call Sam').title = 'Call Sam today'; Store.save('recipes'); addRecipe('From phone'); });
   await sync(laptop.page); await sync(phone.page); await sync(laptop.page);
   const expected = ['Call Sam today', 'From laptop', 'From phone'];
   expect(await titles(laptop.page)).toEqual(expected);
@@ -139,7 +151,7 @@ test('two devices converge, including deletions, and private items stay on the d
 
   // The synced records are still there after a reload.
   await phone.page.reload();
-  await phone.page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.tasks));
+  await phone.page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
   expect(await titles(phone.page)).toEqual(expected);
   expect([...laptop.errors, ...phone.errors]).toEqual([]);
   await laptop.context.close(); await phone.context.close();
@@ -147,15 +159,15 @@ test('two devices converge, including deletions, and private items stay on the d
 
 test('a second tab that loaded before the data arrived cannot sync its old view over it', async ({ browser }) => {
   const drive = fakeDrive(), stale = await device(browser, drive), current = await tab(stale.context);
-  await current.page.evaluate(() => { for (let i = 1; i <= 15; i++) addTask('Task ' + i); });
+  await current.page.evaluate(() => { for (let i = 1; i <= 15; i++) addRecipe('Recipe ' + i); });
   await sync(current.page);
-  expect(JSON.parse(drive.file.body).data.tasks).toHaveLength(15);
+  expect(JSON.parse(drive.file.body).data.recipes).toHaveLength(15);
 
   // The first tab still holds the empty list it loaded with.
   expect(await titles(stale.page)).toEqual([]);
   expect((await sync(stale.page)).error).toBe('');
   expect(await titles(stale.page)).toHaveLength(15);
-  expect(JSON.parse(drive.file.body).data.tasks).toHaveLength(15);
+  expect(JSON.parse(drive.file.body).data.recipes).toHaveLength(15);
   expect(stale.asked).toEqual([]);
   await stale.context.close();
 });
@@ -163,9 +175,9 @@ test('a second tab that loaded before the data arrived cannot sync its old view 
 test('a sync that would remove many records pauses until it is confirmed', async ({ browser }) => {
   let allow = false;
   const drive = fakeDrive(), d = await device(browser, drive, { answer: () => allow });
-  await d.page.evaluate(() => { for (let i = 1; i <= 12; i++) addTask('Task ' + i); for (let i = 1; i <= 30; i++) Store.get('grocery').push({ id: 'g' + i, name: 'Item ' + i }); Store.save('grocery'); });
+  await d.page.evaluate(() => { for (let i = 1; i <= 12; i++) addRecipe('Recipe ' + i); for (let i = 1; i <= 30; i++) Store.get('grocery').push({ id: 'g' + i, name: 'Item ' + i }); Store.save('grocery'); });
   await sync(d.page);
-  expect(JSON.parse(drive.file.body).data.tasks).toHaveLength(12);
+  expect(JSON.parse(drive.file.body).data.recipes).toHaveLength(12);
 
   // Clearing a list that is routinely cleared goes through without a question.
   await d.page.evaluate(() => { Store.set('grocery', []); });
@@ -173,19 +185,19 @@ test('a sync that would remove many records pauses until it is confirmed', async
   expect(JSON.parse(drive.file.body).data.grocery).toHaveLength(0);
   expect(d.asked).toEqual([]);
 
-  await d.page.evaluate(() => { Store.set('tasks', []); });
+  await d.page.evaluate(() => { Store.set('recipes', []); });
   // In the background it only records why it stopped.
   const paused = await d.page.evaluate(async () => { await Store.flushDirty(); await Sync.run(); return syncMeta().error; });
-  expect(paused).toContain('remove 12 records from Google Drive and your other devices (12 from tasks)');
+  expect(paused).toContain('remove 12 records from Google Drive and your other devices (12 from recipes)');
   expect(d.asked).toEqual([]);
   // Asked directly and declined: Drive keeps everything.
   await sync(d.page);
   expect(d.asked).toHaveLength(1);
-  expect(JSON.parse(drive.file.body).data.tasks).toHaveLength(12);
+  expect(JSON.parse(drive.file.body).data.recipes).toHaveLength(12);
   // Confirmed: the removal goes through, and the permission does not linger.
   allow = true;
   expect((await sync(d.page)).error).toBe('');
-  expect(JSON.parse(drive.file.body).data.tasks).toHaveLength(0);
+  expect(JSON.parse(drive.file.body).data.recipes).toHaveLength(0);
   expect(await d.page.evaluate(() => Sync.allowLoss)).toBe(false);
   expect(d.errors).toEqual([]);
   await d.context.close();
@@ -193,8 +205,8 @@ test('a sync that would remove many records pauses until it is confirmed', async
 
 test('an unreadable Drive copy changes nothing on the device', async ({ browser }) => {
   const drive = fakeDrive(), d = await device(browser, drive);
-  drive.file = { id: 'file-1', version: '7', body: JSON.stringify({ app: 'life-dashboard', version: 1, data: { tasks: [{ id: 't1' }, { id: 't1' }] } }) };
-  await d.page.evaluate(() => { addTask('Keep me'); Sync.first = 'merge'; });
+  drive.file = { id: 'file-1', version: '7', body: JSON.stringify({ app: 'body-dashboard', version: 1, data: { recipes: [{ id: 't1' }, { id: 't1' }] } }) };
+  await d.page.evaluate(() => { addRecipe('Keep me'); Sync.first = 'merge'; });
   const meta = await sync(d.page);
   expect(meta.error).toContain('could not be read');
   expect(await titles(d.page)).toEqual(['Keep me']);
@@ -219,10 +231,10 @@ test('Google sign-in round trip stores the token and rejects an unexpected reply
   expect(asked.get('redirect_uri')).toBe(`${base}/index.html`);
   expect(await d.page.evaluate(() => syncMeta().token)).toBe(TOKEN);
 
-  await d.page.evaluate(() => localStorage.setItem('ld.sync', JSON.stringify({ on: true, state: 'expected' })));
+  await d.page.evaluate(() => localStorage.setItem('bd.sync', JSON.stringify({ on: true, state: 'expected' })));
   await d.page.goto('about:blank'); // a fresh load, as when arriving from a link
   await d.page.goto(`${base}/index.html#access_token=forged&expires_in=3599&state=other`);
-  await d.page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.tasks));
+  await d.page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
   expect(await d.page.evaluate(() => [syncMeta().token || '', location.hash])).toEqual(['', '']);
   await d.context.close();
 });
@@ -231,12 +243,12 @@ test('file copy offers no sync and makes no sync requests', async ({ page }) => 
   const requests = [];
   page.on('request', r => { if (/google/.test(r.url())) requests.push(r.url()); });
   await page.goto(pathToFileURL(path.resolve('index.html')).href);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.tasks));
-  await page.evaluate(() => { DRIVE.clientId = 'test-client'; addTask('Local only'); return Store.flushDirty(); });
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.evaluate(() => { DRIVE.clientId = 'test-client'; Store.get('recipes').push({ id: 'local-only', title: 'Local only', ingredients: '', steps: '' }); Store.save('recipes'); return Store.flushDirty(); });
   await page.evaluate(() => openSettings());
   await expect(page.locator('#sync-box')).toContainText('not in a copy opened as a file');
   await expect(page.locator('#sync-btn')).toBeHidden();
-  expect(await page.evaluate(() => localStorage.getItem('ld.sync'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('bd.sync'))).toBeNull();
   expect(requests).toEqual([]);
 });
 
@@ -250,46 +262,46 @@ test('daily copies: one per day for a week, then one a week, and nothing older',
   ], '2026-10-16').map(c => c.id));
   // b2 is a second copy of the same day, e shares d's week, and g is more than 8 weeks before the daily ones.
   expect(dropped).toEqual(['b2', 'e', 'g']);
-  expect(await page.evaluate(() => [copyDate('life-dashboard-copy-2026-10-16.json'), copyDate('life-dashboard-sync.json'), copyDate('life-dashboard-copy-2026-10-16.json.bak')])).toEqual(['2026-10-16', '', '']);
+  expect(await page.evaluate(() => [copyDate('body-dashboard-copy-2026-10-16.json'), copyDate('body-dashboard-sync.json'), copyDate('body-dashboard-copy-2026-10-16.json.bak')])).toEqual(['2026-10-16', '', '']);
 });
 
 test('adding back what is missing restores deleted records and leaves newer edits alone', async ({ page }) => {
   await page.goto(pathToFileURL(path.resolve('index.html')).href);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.tasks));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
   const r = await page.evaluate(() => {
-    Store.data.tasks = [{ id: 't1', title: 'Edited since' }, { id: 't3', title: 'Added since' }];
+    Store.data.recipes = [{ id: 't1', title: 'Edited since' }, { id: 't3', title: 'Added since' }];
     Store.data.nutrition = { '2026-10-01': { entries: [{ id: 'e1', name: 'Oats' }] } };
-    S.vaultName = 'My Vault'; S.unit = 'lbs';
-    const copy = { app: 'life-dashboard', version: 1, sync: 1, exportedAt: '2026-10-10T12:00:00Z', settings: { unit: 'kg' }, data: {
-      tasks: [{ id: 't1', title: 'Before the edit' }, { id: 't2', title: 'Deleted by mistake' }],
+    S.fdcKey = 'device-key'; S.unit = 'lbs';
+    const copy = { app: 'body-dashboard', version: 1, sync: 1, exportedAt: '2026-10-10T12:00:00Z', settings: { unit: 'kg' }, data: {
+      recipes: [{ id: 't1', title: 'Before the edit' }, { id: 't2', title: 'Deleted by mistake' }],
       nutrition: { '2026-10-01': { weight: 80, entries: [{ id: 'e1', name: 'Old oats' }, { id: 'e2', name: 'Eggs' }] }, '2026-09-30': { entries: [{ id: 'e0', name: 'Toast' }] } } } };
     const add = planBackupImport(copy, 'missing'), replace = planBackupImport(copy, 'replace');
-    return { tasks: add.data.tasks.map(t => t.title), day: add.data.nutrition['2026-10-01'], older: !!add.data.nutrition['2026-09-30'], added: add.added, unit: add.settings.unit,
-      replaced: replace.data.tasks.map(t => t.title), replaceKeeps: [replace.settings.vaultName, replace.settings.unit] };
+    return { tasks: add.data.recipes.map(t => t.title), day: add.data.nutrition['2026-10-01'], older: !!add.data.nutrition['2026-09-30'], added: add.added, unit: add.settings.unit,
+      replaced: replace.data.recipes.map(t => t.title), replaceKeeps: [replace.settings.fdcKey, replace.settings.unit] };
   });
   expect(r.tasks).toEqual(['Edited since', 'Added since', 'Deleted by mistake']);
   expect(r.day).toEqual({ weight: 80, entries: [{ id: 'e1', name: 'Oats' }, { id: 'e2', name: 'Eggs' }] });
   expect([r.older, r.added, r.unit]).toEqual([true, 4, 'lbs']);
-  // Replacing from a sync copy changes the synced settings only; the vault name was never in the copy.
+  // Replacing from a sync copy changes the synced settings only; the device's API key was never in the copy.
   expect(r.replaced).toEqual(['Before the edit', 'Deleted by mistake']);
-  expect(r.replaceKeeps).toEqual(['My Vault', 'kg']);
+  expect(r.replaceKeeps).toEqual(['device-key', 'kg']);
 });
 
-test('the first sync of the day keeps a dated copy, and a deleted task can be added back from it', async ({ browser }) => {
+test('the first sync of the day keeps a dated copy, and a deleted recipe can be added back from it', async ({ browser }) => {
   const drive = fakeDrive(), d = await device(browser, drive);
   const day = n => { const x = new Date(); x.setDate(x.getDate() - n); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
-  drive.copy(`life-dashboard-copy-${day(100)}.json`); drive.copy(`life-dashboard-copy-${day(1)}.json`);
-  await d.page.evaluate(() => { addTask('Keep me'); addTask('Delete me by mistake'); });
+  drive.copy(`body-dashboard-copy-${day(100)}.json`); drive.copy(`body-dashboard-copy-${day(1)}.json`);
+  await d.page.evaluate(() => { addRecipe('Keep me'); addRecipe('Delete me by mistake'); });
   expect((await sync(d.page)).error).toBe('');
-  expect(drive.copies.map(c => c.name).sort()).toEqual([`life-dashboard-copy-${day(1)}.json`, `life-dashboard-copy-${day(0)}.json`]);
+  expect(drive.copies.map(c => c.name).sort()).toEqual([`body-dashboard-copy-${day(1)}.json`, `body-dashboard-copy-${day(0)}.json`]);
   const today = drive.copies.find(c => c.name.includes(day(0)));
-  expect(JSON.parse(today.body).data.tasks.map(t => t.title).sort()).toEqual(['Delete me by mistake', 'Keep me']);
+  expect(JSON.parse(today.body).data.recipes.map(t => t.title).sort()).toEqual(['Delete me by mistake', 'Keep me']);
 
-  // Later the same day: the task is deleted and synced; no second copy is made.
-  await d.page.evaluate(() => { Store.set('tasks', Store.get('tasks').filter(t => t.title !== 'Delete me by mistake')); });
+  // Later the same day: the recipe is deleted and synced; no second copy is made.
+  await d.page.evaluate(() => { Store.set('recipes', Store.get('recipes').filter(t => t.title !== 'Delete me by mistake')); });
   expect((await sync(d.page)).error).toBe('');
   expect(drive.copies).toHaveLength(2);
-  expect(JSON.parse(drive.file.body).data.tasks.map(t => t.title)).toEqual(['Keep me']);
+  expect(JSON.parse(drive.file.body).data.recipes.map(t => t.title)).toEqual(['Keep me']);
 
   // Settings & Sync → Restore from a copy → today → Add back what's missing.
   await d.page.evaluate(() => openSettings());
@@ -297,10 +309,10 @@ test('the first sync of the day keeps a dated copy, and a deleted task can be ad
   await d.page.click(`[data-action="syncCopyOpen"][data-date="${day(0)}"]`);
   await expect(d.page.locator('#modal')).toContainText('Add back what’s missing');
   await d.page.click('[data-action="doImport"][data-mode="missing"]');
-  await d.page.waitForFunction(() => Store.get('tasks').length === 2);
+  await d.page.waitForFunction(() => Store.get('recipes').length === 2);
   expect(await titles(d.page)).toEqual(['Delete me by mistake', 'Keep me']);
   expect((await sync(d.page)).error).toBe('');
-  expect(JSON.parse(drive.file.body).data.tasks.map(t => t.title).sort()).toEqual(['Delete me by mistake', 'Keep me']);
+  expect(JSON.parse(drive.file.body).data.recipes.map(t => t.title).sort()).toEqual(['Delete me by mistake', 'Keep me']);
   expect(d.errors).toEqual([]);
   await d.context.close();
 });
@@ -314,7 +326,7 @@ test('with the Worker set up, sign-in lasts: the code is traded once, and an exp
     const back = `${asked.get('redirect_uri')}?state=${asked.get('state')}&code=one-time-code&scope=${encodeURIComponent(asked.get('scope'))}`;
     return route.fulfill({ status: 200, contentType: 'text/html', body: `<script>location.replace(${JSON.stringify(back)})</script>` });
   });
-  await d.page.evaluate(() => { addTask('Lasting'); openSettings(); });
+  await d.page.evaluate(() => { addRecipe('Lasting'); openSettings(); });
   await d.page.click('[data-action="syncConnect"]');
   await d.page.waitForFunction(() => typeof syncMeta === 'function' && syncMeta().refresh === 'refresh-1' && !location.search);
   expect([asked.get('response_type'), asked.get('access_type'), asked.get('prompt'), asked.get('code_challenge_method')]).toEqual(['code', 'offline', 'consent', 'S256']);
@@ -322,15 +334,15 @@ test('with the Worker set up, sign-in lasts: the code is traded once, and an exp
   expect([traded.body.code, traded.body.redirect_uri]).toEqual(['one-time-code', `${base}/index.html`]);
   expect(createHash('sha256').update(traded.body.verifier).digest('base64url')).toBe(asked.get('code_challenge')); // PKCE
   await d.page.waitForFunction(() => !Sync.busy && syncMeta().last);
-  expect(JSON.parse(drive.file.body).data.tasks.map(t => t.title)).toEqual(['Lasting']);
+  expect(JSON.parse(drive.file.body).data.recipes.map(t => t.title)).toEqual(['Lasting']);
   expect(await d.page.evaluate(() => [syncMeta().verifier, syncMeta().state])).toEqual(['', '']);
 
   // An hour later the token has run out: the next sync renews it without leaving the page.
-  await d.page.evaluate(() => { setSyncMeta({ token: 'expired', exp: 0 }); addTask('After an hour'); });
+  await d.page.evaluate(() => { setSyncMeta({ token: 'expired', exp: 0 }); addRecipe('After an hour'); });
   expect(await d.page.evaluate(() => [Sync.canSync(), Sync.status()])).toEqual([true, expect.not.stringContaining('Sign in')]);
   expect((await sync(d.page)).error).toBe('');
   expect(drive.gauth.calls.filter(c => c.path === '/google/refresh').map(c => c.body.refresh_token)).toEqual(['refresh-1']);
-  expect(JSON.parse(drive.file.body).data.tasks.map(t => t.title).sort()).toEqual(['After an hour', 'Lasting']);
+  expect(JSON.parse(drive.file.body).data.recipes.map(t => t.title).sort()).toEqual(['After an hour', 'Lasting']);
 
   // Google refuses the refresh token (for example, access was removed): it is dropped and sign-in is asked for.
   drive.gauth.refuse = true;
@@ -347,13 +359,13 @@ test('with the Worker set up, sign-in lasts: the code is traded once, and an exp
 
 test('photos travel with the records, a batch per sync, and progress photos come along', async ({ browser }) => {
   const drive = fakeDrive(), laptop = await device(browser, drive), phone = await device(browser, drive);
-  // 14 journal photos and one progress photo on the laptop.
+  // 14 recipe photos and one progress photo on the laptop.
   await laptop.page.evaluate(async () => {
     const png = n => new Blob([new Uint8Array([137, 80, 78, 71, n, 0, 255, 13, 10])], { type: 'image/png' });
-    const ids = Array.from({ length: 14 }, (_, i) => 'jp_photo' + i);
+    const ids = Array.from({ length: 14 }, (_, i) => 'rp_photo' + i);
     for (const [i, id] of ids.entries()) await Photos.put(id, png(i));
     await Photos.put('prog1', png(99));
-    Store.set('journal', [{ id: 'j1', type: 'journal', date: ymd(), title: 'Trip', body: 'x', photos: ids, created: new Date().toISOString() }]);
+    Store.set('recipes', ids.map((id, i) => ({ id: 'r' + i, title: 'Recipe ' + i, ingredients: '', steps: '', photo: id })));
     Store.set('photoMeta', [{ id: 'prog1', date: ymd(), pose: 'front' }]);
   });
   expect((await sync(laptop.page)).error).toBe('');
@@ -363,7 +375,7 @@ test('photos travel with the records, a batch per sync, and progress photos come
   expect((await sync(laptop.page)).error).toBe('');
   expect(photoFiles()).toHaveLength(15);
   expect(await laptop.page.evaluate(() => syncMeta().photosLeft)).toBe(0);
-  expect(Array.from(drive.copies.find(c => c.name === 'photo-jp_photo3').body)).toEqual([137, 80, 78, 71, 3, 0, 255, 13, 10]); // bytes intact
+  expect(Array.from(drive.copies.find(c => c.name === 'photo-rp_photo3').body)).toEqual([137, 80, 78, 71, 3, 0, 255, 13, 10]); // bytes intact
 
   // The phone takes the Drive copy, then the photos arrive over two syncs.
   await sync(phone.page);
@@ -373,7 +385,7 @@ test('photos travel with the records, a batch per sync, and progress photos come
   const have = () => phone.page.evaluate(async () => (await photoKeys()).sort());
   expect((await have()).length).toBeGreaterThanOrEqual(12);
   expect((await sync(phone.page)).error).toBe('');
-  expect(await have()).toEqual(['jp_photo0', 'jp_photo1', 'jp_photo10', 'jp_photo11', 'jp_photo12', 'jp_photo13', 'jp_photo2', 'jp_photo3', 'jp_photo4', 'jp_photo5', 'jp_photo6', 'jp_photo7', 'jp_photo8', 'jp_photo9', 'prog1']);
+  expect(await have()).toEqual(['prog1', 'rp_photo0', 'rp_photo1', 'rp_photo10', 'rp_photo11', 'rp_photo12', 'rp_photo13', 'rp_photo2', 'rp_photo3', 'rp_photo4', 'rp_photo5', 'rp_photo6', 'rp_photo7', 'rp_photo8', 'rp_photo9']);
   expect(await phone.page.evaluate(async () => [...new Uint8Array(await (await Photos.get('prog1')).arrayBuffer())])).toEqual([137, 80, 78, 71, 99, 0, 255, 13, 10]);
   expect(await phone.page.evaluate(() => Store.get('photoMeta').map(p => p.id))).toEqual(['prog1']);
   // Nothing left to move: another sync uploads and downloads nothing.
@@ -394,103 +406,4 @@ test('photo references are found wherever records keep them', async ({ page }) =
     nested: { deep: [{ photo: 'x_f' }] }, odd: [{ photos: ['bad id with spaces', 7] }]
   }).sort());
   expect(ids).toEqual(['fm_c', 'fm_d', 'jp_a', 'jp_b', 'plain1', 'rp_e', 'x_f']);
-});
-
-test('with Claude connected, each sync keeps Claude’s copy fresh and takes in what Claude added, once', async ({ browser }) => {
-  const drive = fakeDrive(), laptop = await device(browser, drive), phone = await device(browser, drive), { page } = laptop;
-  const claudeFiles = () => drive.copies.map(c => c.name).filter(n => n.startsWith('claude-')).sort(), body = name => drive.copies.find(c => c.name === name)?.body;
-  const year = String(new Date().getFullYear()), notes = `claude-notes-${year}.jsonl`;
-  await page.evaluate(() => { Store.set('tasks', [{ id: 't1', title: 'Call the plumber', notes: '', status: 'todo', priority: 'med', due: ymd(), tags: [], created: new Date().toISOString(), completedAt: null }]); });
-  expect((await sync(page)).error).toBe('');
-  expect(claudeFiles()).toEqual([]); // nothing is kept for Claude until it is connected
-  expect(await page.evaluate(() => claudeBox())).toContain('https://life-dashboard-reader.lifedashboard-9r5w.workers.dev/mcp');
-
-  drive.copy('claude-connected.json', '{"v":1}');
-  expect((await sync(page)).error).toBe('');
-  expect(claudeFiles()).toEqual(['claude-connected.json', 'claude-now.json']);
-  expect(JSON.parse(body('claude-now.json')).tasks.map(t => [t.id, t.title])).toEqual([['t1', 'Call the plumber']]);
-  expect(await page.evaluate(() => claudeBox())).toContain('Claude is connected');
-
-  // Claude adds a task and ticks off the plumber; one inbox file can't be read.
-  const at = new Date().toISOString(), tomorrow = await page.evaluate(() => addDays(ymd(), 1));
-  const added = JSON.stringify({ v: 1, id: 'k1aa', at, what: 'task', title: 'Email the elders', due: tomorrow });
-  drive.copy('claude-inbox-k1aa.json', added); drive.copy('claude-inbox-k2bb.json', JSON.stringify({ v: 1, id: 'k2bb', at, what: 'done', task: 't1' })); drive.copy('claude-inbox-k3cc.json', 'not json');
-  expect((await sync(page)).error).toBe('');
-  await expect(page.locator('#toasts')).toContainText('From Claude: 1 task, 1 task ticked off');
-  expect(await page.evaluate(() => Store.get('tasks').map(t => [t.id, t.title, t.status]).sort())).toEqual([['c-k1aa', 'Email the elders', 'todo'], ['t1', 'Call the plumber', 'done']]);
-  expect(claudeFiles()).toEqual(['claude-connected.json', `claude-notes-${year}.jsonl`, 'claude-now.json']); // the inbox is empty again
-  expect(JSON.parse(drive.file.body).data.tasks.map(t => t.id).sort()).toEqual(['c-k1aa', 't1']); // sent on to Drive in the same sync
-  expect(JSON.parse(body('claude-now.json')).tasks.map(t => t.id)).toEqual(['c-k1aa']);
-  expect(body(notes)).toContain('"id":"t1"');
-
-  // A sync with nothing new refreshes claude-now.json only.
-  const before = drive.copies.find(c => c.name === notes).updates || 0, nowBefore = drive.copies.find(c => c.name === 'claude-now.json').updates || 0;
-  expect((await sync(page)).error).toBe('');
-  expect([drive.copies.find(c => c.name === notes).updates || 0, (drive.copies.find(c => c.name === 'claude-now.json').updates || 0) - nowBefore]).toEqual([before, 1]);
-
-  // The phone takes the same addition in again (as if the first delete had failed): still one task.
-  drive.copy('claude-inbox-k1aa.json', added);
-  await phone.page.waitForFunction(() => !Sync.busy);
-  await phone.page.evaluate(() => { Sync.first = 'theirs'; });
-  expect((await sync(phone.page)).error).toBe('');
-  expect(await titles(phone.page)).toEqual(['Call the plumber', 'Email the elders']);
-  expect(claudeFiles().some(n => n.startsWith('claude-inbox-'))).toBe(false);
-
-  // Stop sharing removes Claude's copy and the mark, and syncing doesn't bring it back.
-  await page.evaluate(() => A.claudeStop());
-  expect(claudeFiles()).toEqual([]);
-  expect((await sync(page)).error).toBe('');
-  expect(claudeFiles()).toEqual([]);
-  expect(await page.evaluate(() => claudeBox())).toContain('Ask Claude about your dashboard');
-  expect([...laptop.errors, ...phone.errors]).toEqual([]);
-  await laptop.context.close(); await phone.context.close();
-});
-
-test('the Morning brief: while its file is in Drive each sync fills it in with only what the brief reads, and Turn off removes it for good', async ({ browser }) => {
-  const drive = fakeDrive(), laptop = await device(browser, drive), { page } = laptop;
-  const file = () => drive.copies.find(c => c.name === 'morning-brief.json');
-  await page.evaluate(() => { S.name = 'Sam'; Store.set('tasks', [{ id: 't1', title: 'Call the plumber', notes: 'SECRET-NOTES', status: 'todo', priority: 'med', due: ymd(), tags: [], created: new Date().toISOString(), completedAt: null }]); });
-  expect((await sync(page)).error).toBe('');
-  expect(file()).toBeUndefined(); // nothing is kept until a link has been set up
-  expect(await page.evaluate(() => briefBox())).toContain('Set up Morning brief');
-  expect(await page.evaluate(() => briefBox())).toContain('https://life-dashboard-reader.lifedashboard-9r5w.workers.dev/brief/setup');
-
-  // Setting a link up on the Worker makes the file, with an id. The next sync fills it in and keeps that id.
-  drive.copy('morning-brief.json', JSON.stringify({ v: 1, mid: 'm1', created: new Date().toISOString() }));
-  expect((await sync(page)).error).toBe('');
-  const first = JSON.parse(file().body);
-  expect([first.v, first.mid, first.name, typeof first.made, first.tasks.map(t => t.title)]).toEqual([1, 'm1', 'Sam', 'string', ['Call the plumber']]);
-  expect(file().body).not.toContain('SECRET-NOTES');
-  const box = await page.evaluate(() => briefBox());
-  expect(box).toContain('Morning brief is on');
-  expect(box).toContain('shortcuts://import-shortcut?url=https%3A%2F%2F9r5wwng7nj-netizen.github.io%2FLife-Dashboard%2Fassets%2Fshortcuts%2FMorning-brief.shortcut&amp;name=Morning+brief');
-  expect(box).toContain('Run Immediately');
-
-  // Nothing new inside the hour: not rewritten. A change is.
-  const updates = file().updates || 0;
-  expect((await sync(page)).error).toBe('');
-  expect(file().updates || 0).toBe(updates);
-  await page.evaluate(() => { Store.get('tasks').push({ id: 't2', title: 'Email the elders', notes: '', status: 'todo', priority: 'high', due: ymd(), time: '09:30', tags: [], created: new Date().toISOString(), completedAt: null }); Store.save('tasks'); });
-  expect((await sync(page)).error).toBe('');
-  expect(JSON.parse(file().body).tasks.map(t => [t.title, t.time, t.priority])).toEqual([['Email the elders', '09:30', 'high'], ['Call the plumber', undefined, undefined]]);
-  expect(file().updates || 0).toBe(updates + 1);
-
-  // Turned off and set up again: a new file with a new id is taken up with its own id.
-  await page.evaluate(() => A.briefStop());
-  expect(file()).toBeUndefined();
-  expect(await page.evaluate(() => briefBox())).toContain('Set up Morning brief');
-  expect((await sync(page)).error).toBe('');
-  expect(file()).toBeUndefined(); // syncing doesn't bring it back
-  drive.copy('morning-brief.json', JSON.stringify({ v: 1, mid: 'm2' }));
-  expect((await sync(page)).error).toBe('');
-  expect(JSON.parse(file().body).mid).toBe('m2');
-
-  // A file with no id yet is reported, not guessed, and the sync itself still succeeds.
-  drive.copies = drive.copies.filter(c => c.name !== 'morning-brief.json'); drive.copy('morning-brief.json', '{"v":1}');
-  await page.evaluate(() => setBriefMeta({ fileId: '' }));
-  expect((await sync(page)).error).toBe('');
-  expect(await page.evaluate(() => briefMeta().error)).toContain('no id yet');
-  expect(await page.evaluate(() => briefBox())).toContain('The last update stopped');
-  expect(laptop.errors).toEqual([]);
-  await laptop.context.close();
 });

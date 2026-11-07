@@ -5,10 +5,10 @@ import path from 'node:path';
 
 async function prepare(page, theme) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  if (theme) await page.addInitScript(theme => localStorage.setItem('ld.settings', JSON.stringify({ theme })), theme);
+  if (theme) await page.addInitScript(theme => localStorage.setItem('bd.settings', JSON.stringify({ theme })), theme);
   await page.route('**/*', route => /^(file|data|blob):/.test(route.request().url()) ? route.continue() : route.abort());
   await page.goto(pathToFileURL(path.resolve('index.html')).href);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.db && Array.isArray(Store.data.tasks));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.db && Array.isArray(Store.data.recipes));
   await page.addScriptTag({ content: axe.source });
 }
 async function violations(page) {
@@ -98,12 +98,12 @@ test('view sections retain keyboard focus and notices are announced', async ({ p
 test('custom actions and hidden file pickers can be used by keyboard', async ({ page }) => {
   await prepare(page);
   await page.evaluate(() => {
-    const el = document.createElement('span'); el.dataset.action = 'go'; el.dataset.view = 'tasks'; el.textContent = 'Open Tasks';
+    const el = document.createElement('span'); el.dataset.action = 'go'; el.dataset.view = 'recipes'; el.textContent = 'Open Recipes';
     document.querySelector('#view').appendChild(el); enhanceAccessibility();
   });
-  await page.getByRole('button', { name: 'Open Tasks', exact: true }).focus();
+  await page.getByRole('button', { name: 'Open Recipes', exact: true }).focus();
   await page.keyboard.press('Space');
-  await expect(page.locator('#view-title')).toHaveText('Tasks');
+  await expect(page.locator('#view-title')).toHaveText('Recipes & Meals');
   const chooser = page.waitForEvent('filechooser'); // listen well before Enter: turning on file-chooser capture is not instant
   await page.evaluate(() => Modal.open(modalShell('Photo upload', '<label class="btn">Choose photo<input type="file" class="hidden"></label>')));
   const picker = page.getByRole('button', { name: 'Choose photo', exact: true });
@@ -116,12 +116,11 @@ test('custom actions and hidden file pickers can be used by keyboard', async ({ 
 test('common editing dialogs have accessible controls', async ({ page }) => {
   await prepare(page);
   const failures = [];
-  for (const kind of ['exercise', 'recipe', 'task', 'article']) {
+  for (const kind of ['exercise', 'recipe', 'food']) {
     await page.evaluate(kind => {
       if (kind === 'exercise') libModal(null);
       if (kind === 'recipe') recEditor(null);
-      if (kind === 'task') taskModal({ id: 'test', title: 'Example task', notes: '', status: 'todo', tags: [], subtasks: [{ id: 'step', text: 'A checklist step', done: false }] });
-      if (kind === 'article') articleModal();
+      if (kind === 'food') foodEditor(null);
     }, kind);
     const found = await violations(page); if (found.length) failures.push({ kind, found });
     await page.keyboard.press('Escape');

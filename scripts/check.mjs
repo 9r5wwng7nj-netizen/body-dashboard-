@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Static safety check for index.html — no browser needed.
+// Static safety check for Body Dashboard's index.html — no browser needed.
 //  1. Every inline <script> parses (catches syntax errors and duplicate let/const names).
 //  2. No top-level function is declared twice (the later one silently wins).
 //  3. No action name is defined in two action tables (A_*) unless it is a known, intentional override.
@@ -26,12 +26,7 @@ if (dupFns.length) fail(`functions declared more than once: ${dupFns.join(', ')}
 
 // 3. Action-name collisions across action tables. Tables are merged with
 //    Object.assign(A, A_FIT, A_NUT, …) so a later table overrides an earlier one.
-const INTENTIONAL = new Set([
-  'mediaNew', 'mediaOpen',                                     // A_MEDIA replaces the original Faith media modal
-  'diDone',                                                    // A_FAMILY: "We did this" opens the date-night log
-  'recSave', 'recToPlan', 'planPick', 'groceryBuild', 'grocAdd', 'grocCopy', // A_RECIPES upgrades A_HOME
-  'taskAdd', 'taskSave'                                        // A_TASKS upgrades A_HOME
-]);
+const INTENTIONAL = new Set([]); // none: A_MEALS, A_RECIPES and A_MPW name different actions
 const lines = html.split('\n'), owner = {}; let cur = null;
 lines.forEach((l, i) => {
   const m = l.match(/^const (A_[A-Z_]+|A) = \{/); if (m) { cur = m[1]; return; }
@@ -43,6 +38,20 @@ lines.forEach((l, i) => {
 const clashes = Object.entries(owner).filter(([k, v]) => new Set(v.map(x => x.split(':')[0])).size > 1);
 const bad = clashes.filter(([k]) => !INTENTIONAL.has(k));
 bad.forEach(([k, v]) => fail(`action "${k}" is defined in more than one table: ${v.join(', ')}`));
+// Every action name the markup uses has a handler, so no button points at removed code.
+const used = new Set([...html.matchAll(/data-(?:action|change|input|submit)="([A-Za-z_$][\w$]*)"/g)].map(m => m[1]));
+for (const m of html.matchAll(/`, '([a-z][A-Za-z]+)'\)/g)) used.add(m[1]); // modalShell(title, body, footer, 'submitAction')
+const handled = new Set(Object.keys(owner));
+{ let inTable = false; // every key whose value is a function, anywhere in an action table, plus shorthand entries
+  for (const l of lines) {
+    if (/^const (A_[A-Z_]+|A) = \{/.test(l)) { inTable = true; continue; }
+    if (inTable && l.startsWith('};')) { inTable = false; continue; }
+    if (!inTable) continue;
+    for (const m of l.matchAll(/(?:^|[,{]\s*)\s*([A-Za-z_$][\w$]*)\s*:\s*(?:async\s*)?(?:\(|[A-Za-z_$][\w$]*\s*=>)/g)) handled.add(m[1]);
+    for (const m of l.matchAll(/(?:^\s{2}|,\s*)([A-Za-z_$][\w$]*)\s*(?=,|$)/g)) handled.add(m[1]); // shorthand: openSettings, exportAll,
+  } }
+const missing = [...used].filter(n => !handled.has(n)).sort();
+if (missing.length) fail(`actions used but not defined: ${missing.join(', ')}`); else ok(`${used.size} action names in use, all defined`);
 if (!bad.length) ok(`${Object.keys(owner).length} actions, ${clashes.length} intentional overrides, no accidental collisions`);
 
 // 4. Remote web services are allowed, but executable dependencies must be vendored.

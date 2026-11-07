@@ -5,7 +5,7 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 
 const APP = pathToFileURL(path.resolve('index.html')).href;
-const ready = page => page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.tasks));
+const ready = page => page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
 async function open(page) {
   const errors = [];
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
@@ -43,7 +43,7 @@ test('a new user is offered the tour, can walk through it, and is not shown old 
 });
 
 test('an existing user is told about the newest update once', async ({ page }) => {
-  await page.addInitScript(() => { if (!localStorage.getItem('ld.settings')) localStorage.setItem('ld.settings', JSON.stringify({ name: 'Sam' })); });
+  await page.addInitScript(() => { if (!localStorage.getItem('bd.settings')) localStorage.setItem('bd.settings', JSON.stringify({ name: 'Sam' })); });
   const errors = await open(page);
   const latest = await page.evaluate(() => RELEASES[0]);
   await expect(page.locator('#view')).toContainText(latest.title);

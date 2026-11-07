@@ -12,7 +12,7 @@ test('hosted copy is installable and reopens offline', async ({ page }) => {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   try {
     await page.goto(`${base}/index.html?pwa`);
-    await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.tasks));
+    await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
 
     const manifest = await (await page.request.get(`${base}/manifest.webmanifest`)).json();
     expect(manifest.display).toBe('standalone');
@@ -23,22 +23,22 @@ test('hosted copy is installable and reopens offline', async ({ page }) => {
     await page.evaluate(() => navigator.serviceWorker.ready);
     await page.waitForFunction(() => navigator.serviceWorker.controller);
 
-    await page.evaluate(() => { addTask('Saved before going offline'); Store.flushDirty(); });
+    await page.evaluate(() => { Store.get('recipes').push({ id: 'offline-recipe', title: 'Saved before going offline', ingredients: '', steps: '' }); Store.save('recipes'); Store.flushDirty(); });
     await page.waitForTimeout(300);
   } finally {
     await stopServer(server);
   }
 
   await page.reload();
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.tasks));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
   await expect(page.locator('#view-title')).toHaveText('Dashboard');
-  expect(await page.evaluate(() => Store.get('tasks').some(t => t.title === 'Saved before going offline'))).toBe(true);
+  expect(await page.evaluate(() => Store.get('recipes').some(r => r.title === 'Saved before going offline'))).toBe(true);
   expect(await page.evaluate(() => fetch(XLSX_SCRIPT).then(r => r.ok))).toBe(true); // spreadsheet import still loads
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
 test('file copy never registers a service worker', async ({ page }) => {
   await page.goto(pathToFileURL(path.resolve('index.html')).href);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.tasks));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
   expect(await page.evaluate(async () => (await navigator.serviceWorker?.getRegistrations?.().catch(() => []) || []).length)).toBe(0);
 });

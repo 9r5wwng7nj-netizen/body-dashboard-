@@ -10,7 +10,6 @@ output/playwright/
 # Personal data — never commit your backups
 life-dashboard-backup-*.json
 *backup*.json
-journal-*.zip
 
 # OS / editor
 .DS_Store
@@ -19,5 +18,3 @@ Thumbs.db
 .idea/
 *.swp
 
-# Cloudflare deploy tool scratch files
-.wrangler/

@@ -17,7 +17,7 @@ async function prepare(page) {
     return route.abort(); // Bible downloads, APIs, embeds: not needed for a smoke test
   });
   await page.goto(APP);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.tasks));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
   return errors;
 }
 
@@ -38,19 +38,18 @@ async function visitEverything(page, perTab) {
 test('every view and tab renders without errors', async ({ page }) => {
   const errors = await prepare(page);
   const views = await visitEverything(page, async () => { await expect(page.locator('#view')).not.toBeEmpty(); });
-  expect(views).toEqual(expect.arrayContaining(['dashboard', 'fitness', 'nutrition', 'scripture', 'journal', 'media', 'family', 'recipes', 'tasks']));
+  expect(views).toEqual(['dashboard', 'fitness', 'nutrition', 'recipes']);
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
 test('data is saved and survives a reload', async ({ page }) => {
   const errors = await prepare(page);
-  await page.evaluate(() => { addTask('Smoke test task tomorrow at 3pm #home'); Store.flushDirty(); });
+  await page.evaluate(() => { ensureDay(ymd()).weight = 80; Store.save('nutrition'); Store.get('recipes').push({ id: 'smoke-recipe', title: 'Smoke test chili', ingredients: '', steps: '' }); Store.save('recipes'); Store.flushDirty(); });
   await page.waitForTimeout(300);
   await page.reload();
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.tasks));
-  const t = await page.evaluate(() => Store.get('tasks').find(x => x.title === 'Smoke test task'));
-  expect(t).toBeTruthy();
-  expect(t.time).toBe('15:00');
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  const got = await page.evaluate(() => ({ weight: day(ymd()).weight, recipe: Store.get('recipes').some(r => r.title === 'Smoke test chili') }));
+  expect(got).toEqual({ weight: 80, recipe: true });
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
@@ -86,15 +85,15 @@ test('full reset clears personal stores, libraries, settings and API keys', asyn
   const errors = await prepare(page);
   const got = await page.evaluate(async () => {
     await Photos.put('secret-photo', new Blob(['x']));
-    await BibleDb.put('test-library', { private: true });
-    localStorage.setItem('ld.test-secret', 'present');
-    S.esvKey = 'secret'; saveSettings();
+    await LocalDb.put('test-library', { private: true });
+    localStorage.setItem('bd.test-secret', 'present');
+    S.fdcKey = 'secret'; saveSettings();
     await resetAllData();
     return {
       photoMissing: !(await Photos.get('secret-photo')),
-      libraryMissing: !(await BibleDb.get('test-library')),
-      secret: localStorage.getItem('ld.test-secret'),
-      key: S.esvKey
+      libraryMissing: !(await LocalDb.get('test-library')),
+      secret: localStorage.getItem('bd.test-secret'),
+      key: S.fdcKey || ''
     };
   });
   expect(got).toEqual({ photoMissing: true, libraryMissing: true, secret: null, key: '' });
@@ -120,16 +119,15 @@ test('runtime libraries are local and work with the network blocked', async ({ p
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
-test('family exports are generic until a family name is set in Settings', async ({ page }) => {
+// Body Dashboard and Life Dashboard are hosted on the same origin, so they must never share a storage name.
+test('every storage name is Body Dashboard’s own, never Life Dashboard’s', async ({ page }) => {
   const errors = await prepare(page);
-  const review = { id: 'r1', week: '2026-10-12' };
-  expect(await page.evaluate(r => [ruleTitle(), frMarkdown(r).includes('[[Family Rule of Life]]')], review)).toEqual(['Family Rule of Life', true]);
-  await page.locator('[data-action="openSettings"]').click();
-  await page.getByRole('textbox', { name: 'Family name (optional)' }).fill('Smith');
-  await page.getByRole('button', { name: 'Save settings' }).click();
-  const [rule, weekly] = await page.evaluate(r => [ruleMarkdown(), frMarkdown(r)], review);
-  expect(rule).toContain('Smith Family Rule of Life');
-  expect(weekly).toContain('[[Smith Family Rule of Life]]');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('ld.settings')).familyName)).toBe('Smith');
+  await page.evaluate(async () => { ensureDay(ymd()).weight = 80; Store.save('nutrition'); await Store.flushDirty(); saveSettings(); Timer.start(5); Timer.stop(); });
+  const got = await page.evaluate(async () => ({
+    keys: Object.keys(localStorage).filter(k => !k.startsWith('bd.')),
+    dbs: (await indexedDB.databases()).map(d => d.name).sort(),
+    backup: (await buildBackupPayload()).app
+  }));
+  expect(got).toEqual({ keys: [], dbs: ['body-dashboard'], backup: 'body-dashboard' });
   expect(errors, errors.join('\n')).toEqual([]);
 });

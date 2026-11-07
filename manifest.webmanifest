@@ -1,7 +1,7 @@
 {
-  "name": "Life Dashboard",
-  "short_name": "Dashboard",
-  "description": "Offline-first personal dashboard for fitness, nutrition, faith and home.",
+  "name": "Body Dashboard",
+  "short_name": "Body",
+  "description": "Offline-first training and diet tracker: workouts, nutrition and meals.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
