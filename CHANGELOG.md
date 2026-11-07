@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 — Faster logging (refresh step 2)
+
+- On phones, dialogs open as sheets from the bottom; drag the handle or title bar down to close.
+- Log food: the meal at the top; Recent and Usual-for-this-meal lists; tick several saved foods and add them together at their last amounts; portion chips (½, 1, 1½, 2 of the usual amount).
+- Same as yesterday on an empty meal in the daily log.
+- +/− under each exercise for the next set's weight and reps, starting from last time.
+- The rest timer spans the screen above the bottom bar on phones; the screen stays on while a workout is on screen.
+
 ## 2026-11-07 — Easier to use on a phone (refresh step 1)
 
 - Set logger: wider, 44px weight and reps fields; Previous on one line ("82.5×8"); the RPE column hidden unless turned on in Settings or a set already has one; move, superset and remove behind ⋯; notes behind Add note.

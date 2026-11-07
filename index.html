@@ -26,7 +26,9 @@
   @media (max-width: 767px) {
     #app-shell { padding-bottom: 0; }
     #bottom-bar { padding-bottom: env(safe-area-inset-bottom); }
-    #timer { bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
+    #timer { bottom: calc(4.75rem + env(safe-area-inset-bottom)); left: .75rem; right: .75rem; }
+    #timer > .card { width: 100%; }
+    #timer-text { flex: 1; font-size: 1.75rem; }
     #toasts { bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
   }
   #sidebar { transform: translateX(-100%); transition: transform .2s ease, width .2s ease; }
@@ -369,7 +371,7 @@ const Modal = {
     const m = $('#modal'), replacing = this.isOpen(), focused = replacing && m.contains(document.activeElement) ? focusSnapshot() : null;
     if (!replacing) this.origin = focusSnapshot();
     m.innerHTML = `<div class="absolute inset-0 bg-black/50" data-action="closeModal"></div>
-      <div class="relative mx-auto mt-4 sm:mt-12 ${wide ? 'max-w-3xl' : 'max-w-lg'} w-[calc(100%-1.5rem)] max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-6rem)] overflow-y-auto scroll-thin card p-0" role="dialog" aria-modal="true">${html}</div>`;
+      <div class="relative mx-auto mt-4 sm:mt-12 ${wide ? 'max-w-3xl' : 'max-w-lg'} w-[calc(100%-1.5rem)] max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-6rem)] overflow-y-auto scroll-thin card p-0 ${replacing ? '' : 'sheet-in'}" role="dialog" aria-modal="true"><div class="sheet-grab" aria-hidden="true"></div>${html}</div>`;
     m.classList.remove('hidden'); this.onClose = onClose; refreshIcons();
     const dialog = $('[role="dialog"]', m), heading = $('h2, h3', dialog);
     dialog.tabIndex = -1;
@@ -394,7 +396,7 @@ const Modal = {
   }
 };
 function modalShell(title, body, footer = '', formAction = '') {
-  const inner = `<div class="flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10 rounded-t-2xl">
+  const inner = `<div class="sheet-head flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10 rounded-t-2xl">
       <h3 class="font-semibold">${title}</h3><button type="button" class="btn btn-ghost btn-sm" data-action="closeModal" aria-label="Close">${icon('x')}</button></div>
     <div class="p-5 space-y-4">${body}</div>
     ${footer ? `<div class="px-5 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap justify-end gap-2 sticky bottom-0 bg-white dark:bg-slate-900 rounded-b-2xl">${footer}</div>` : ''}`;
@@ -590,11 +592,22 @@ function rerender() { // re-render while keeping focus/caret in the active field
   render();
   if (id) { const n = document.getElementById(id); if (n) { n.focus(); try { if (pos != null) n.setSelectionRange(pos, pos); } catch (e) {} } }
 }
+// Keep the screen on while a workout in progress is on screen; the browser lets go when the app is hidden
+const WK = { lock: null, busy: false };
+async function workoutWake() {
+  const want = !!Store.get('activeWorkout') && S.view === 'fitness' && document.visibilityState === 'visible';
+  if (WK.busy || !navigator.wakeLock || want === !!WK.lock) return; WK.busy = true; let ok = true;
+  try { if (want) { WK.lock = await navigator.wakeLock.request('screen'); WK.lock.addEventListener('release', () => { WK.lock = null; }); } else { const l = WK.lock; WK.lock = null; await l.release(); } }
+  catch (e) { WK.lock = null; ok = false; } finally { WK.busy = false; }
+  if (ok) workoutWake(); // the view may have changed while the browser answered
+}
+document.addEventListener('visibilitychange', () => workoutWake());
 function afterRender(focused) {
   clearInterval(tickIv);
   const aw = Store.get('activeWorkout');
   if (aw && $('#elapsed')) { const upd = () => { const e = $('#elapsed'); if (e) e.textContent = fmtClock((Date.now() - new Date(aw.start)) / 1000); }; upd(); tickIv = setInterval(upd, 1000); }
   if (ui.after) { const f = ui.after; ui.after = null; setTimeout(f, 0); }
+  workoutWake();
   document.querySelectorAll('#view .tabs-row').forEach(g => { const a = g.querySelector('.tab-active'); if (a && a.offsetLeft + a.offsetWidth > g.clientWidth) g.scrollLeft = a.offsetLeft - 8; tabFade(g); });
   hydratePhotos();
 }
@@ -1030,14 +1043,28 @@ function exerciseCard(ex, i, w, ctx, grp) {
     </div>
     ${ex.notes || ui.noteOpen.has(ex) ? `<input class="input py-1.5 text-xs mb-2" placeholder="Exercise notes…" value="${esc(ex.notes)}" data-input="awExNote" data-i="${i}" aria-label="Notes for ${esc(ex.name)}">` : `<button class="text-xs text-brand-700 dark:text-brand-300 mb-1 min-h-[2.25rem] inline-flex items-center gap-1" data-action="awNoteOpen" data-i="${i}">${icon('plus', 'w-3 h-3')} Add note</button>`}
     <div class="overflow-x-auto"><table class="w-full max-w-3xl text-sm"><thead><tr class="text-xs muted text-left"><th class="font-medium pl-1 w-9">Set</th><th class="font-medium">Previous</th>${cols.map(c => `<th class="font-medium text-center">${head(c)}</th>`).join('')}${showRpe ? '<th class="font-medium text-center">RPE</th>' : ''}${ctx === 'edit' ? '' : '<th class="w-10"></th>'}<th class="w-7"></th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${ctx === 'edit' ? '' : setStepper(ex, i, type, prevSets)}
     <button class="btn btn-sm w-full mt-2" data-action="awAddSet" data-i="${i}">${icon('plus', 'w-3.5 h-3.5')} Add set</button>
   </div>`;
+}
+// +/− for the next set to do (the first one not ticked), starting from what the row shows: typed, last time, or the set above
+const STEP_W = () => S.unit === 'lbs' ? 5 : 2.5;
+function stepStart(ex, j, f, p) { const s = ex.sets[j], a = ex.sets[j - 1]; return s[f] ?? p?.[f] ?? a?.[f] ?? (f === 'reps' ? parseInt(ex.targetReps) || null : null); }
+function setStepper(ex, i, type, prevSets) {
+  const j = ex.sets.findIndex(s => !s.done), cols = typeCols(type); if (j < 0 || !(cols.includes('weight') || cols.includes('reps'))) return '';
+  const n = ex.sets.slice(0, j + 1).filter(x => x.type !== 'warmup').length, [lab] = setBadge(ex.sets[j], n), p = prevSets[j], st = STEP_W();
+  const w = stepStart(ex, j, 'weight', p), r = stepStart(ex, j, 'reps', p);
+  const b = (f, d, label, aria) => `<button type="button" class="btn btn-sm w-11 shrink-0 tabular-nums" data-action="awStep" data-i="${i}" data-j="${j}" data-f="${f}" data-d="${d}" aria-label="${aria}">${label}</button>`;
+  return `<div class="mt-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 p-1.5" role="group" aria-label="Adjust set ${lab}">
+    <div class="text-xs muted px-1 pb-1">Next: set ${lab}</div><div class="flex items-center gap-1.5">
+    ${cols.includes('weight') ? `${b('weight', -st, `−${st}`, `${st} ${S.unit} less`)}<span class="flex-1 min-w-0 text-center font-semibold tabular-nums">${w != null ? wDisp(w) : '–'}</span>${b('weight', st, `+${st}`, `${st} ${S.unit} more`)}` : ''}
+    ${cols.includes('reps') ? `<span class="w-2"></span>${b('reps', -1, '−1', 'One rep fewer')}<span class="${cols.includes('weight') ? 'w-8' : 'flex-1'} text-center font-semibold tabular-nums">${r ?? '–'}</span>${b('reps', 1, '+1', 'One rep more')}` : ''}</div></div>`;
 }
 function fitActive(aw) {
   let done = 0, vol = 0;
   const bwNow = bodyweightOn(ymd()); aw.exercises.forEach(e => { const info = exInfo(e.name), t = info.type; e.sets.forEach(s => { if (s.done) { done++; if (s.type !== 'warmup') vol += setVolume(s, t, info.countBW ? bwNow : null, info); } }); });
   const g = supersetGroups(aw.exercises);
-  return `<div data-wctx="active">
+  return `<div data-wctx="active" class="pb-20 md:pb-0">
   <div class="card p-2.5 sm:p-4 mb-4 sticky top-0 z-10"><div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
     <input class="input text-base font-semibold flex-1 min-w-0 sm:min-w-[12rem]" value="${esc(aw.name)}" data-input="awField" data-f="name" aria-label="Workout name">
     <button class="btn btn-primary sm:order-last" data-action="awFinish">${icon('check')} Finish</button>
@@ -1342,6 +1369,12 @@ const A_FIT = {
       if (!ex.ss && +ex.rest > 0) Timer.start(+ex.rest);
     } else s.pr = [];
     Store.save('activeWorkout'); render();
+  },
+  awStep: el => {
+    const w = wObj(el), ex = w.exercises[+el.dataset.i], j = +el.dataset.j, s = ex.sets[j], f = el.dataset.f, d = +el.dataset.d; if (!s) return;
+    const p = exerciseHistory(ex.name)[0]?.ex.sets[j], cur = stepStart(ex, j, f, p) ?? 0;
+    if (f === 'weight') s.weight = fromUnit(Math.max(0, round(toUnit(cur) + d, 2))); else s.reps = Math.max(0, cur + d);
+    wSave(el); render();
   },
   awFillPrev: el => {
     const w = wObj(el), ctx = wctx(el), i = +el.dataset.i, j = +el.dataset.j, ex = w.exercises[i], s = ex.sets[j];
@@ -1683,6 +1716,18 @@ function saveFoodUse(f, qty, unitLabel) {
   if (i >= 0) foods[i] = rec; else foods.push(rec); Store.save('foods'); return rec;
 }
 const recentFoods = (n = 8) => Store.get('foods').filter(f => f.lastUsed).sort((a, b) => b.lastUsed.localeCompare(a.lastUsed)).slice(0, n);
+// What you most often log for a meal over the last 60 days; foods you use a lot fill any gap
+function usualFoods(meal, n = 15) {
+  const count = {}, from = addDays(ymd(), -60);
+  for (const [d, v] of Object.entries(N())) if (d >= from) for (const e of v?.entries || []) if (e.foodId && mealOf(e) === meal) count[e.foodId] = (count[e.foodId] || 0) + 1;
+  return Store.get('foods').filter(f => count[f.id] || f.uses).sort((a, b) => ((count[b.id] || 0) - (count[a.id] || 0)) || ((b.uses || 0) - (a.uses || 0))).slice(0, n);
+}
+// Log a saved food again at its last amount and unit
+function logFoodAgain(f, date, meal) {
+  const us = unitsOf(f), i = Math.max(0, us.findIndex(u => u.label === f.lastUnit)), qty = f.lastQty || defaultQty(us[i]);
+  ensureDay(date).entries.push({ id: uid(), name: f.name, ...foodNutr(f, i, qty), meal, foodId: f.id, qty, unit: us[i].label, time: nowTime() });
+  saveFoodUse(f, qty, us[i].label);
+}
 const mealTotals = m => m.items ? Object.fromEntries(NUTR.map(k => [k, sum(m.items.map(x => x[k]))])) : { cal: m.cal || 0, p: m.p || 0, c: m.c || 0, f: m.f || 0 };
 const mealItems = m => m.items || [{ name: m.name, cal: m.cal || 0, p: m.p || 0, c: m.c || 0, f: m.f || 0 }];
 const stripEntry = e => { const { id, time, meal, ...r } = e; return r; };
@@ -1771,11 +1816,15 @@ function checkinBanner() {
   if (last && last.date === ymd() && p.mode === 'coached') return `<div class="card mb-4 flex flex-wrap items-center gap-3">${icon('sparkles', 'w-5 h-5 text-brand-600')}<div class="flex-1 text-sm"><strong>Weekly check-in applied.</strong> ${last.applied && last.final.cal !== last.old.cal ? `Calories ${fmtNum(last.old.cal)} → ${fmtNum(last.final.cal)}.` : 'Targets unchanged.'}</div><button class="btn btn-sm" data-action="checkinView" data-id="${last.id}">Details</button></div>`;
   return '';
 }
+// The day before's entries for one meal, and how to name that day on the button
+const prevMeal = (d, key) => day(addDays(d, -1)).entries.filter(e => mealOf(e) === key);
+const samePrevLabel = d => d === ymd() ? 'Same as yesterday' : `Same as ${fmtDate(addDays(d, -1), { weekday: 'short' })}`;
 function mealCard(d, key, label, ic, entries) {
   const t = { cal: sum(entries.map(e => e.cal)), p: sum(entries.map(e => e.p)) };
   return `<div class="card p-0">
     <div class="flex flex-wrap items-center gap-2 px-4 py-3"><span class="text-brand-600 dark:text-brand-400">${icon(ic, 'w-4 h-4')}</span><h3 class="font-semibold">${label}</h3><span class="text-xs muted tabular-nums">${fmtNum(t.cal)} kcal · P ${fmtNum(t.p)}g</span>
       <div class="ml-auto flex items-center gap-1">${ui.clip ? `<button class="btn btn-sm" data-action="clipPaste" data-meal="${key}" title="Paste ${ui.clip.items.length} item(s) here">${icon('clipboard-paste', 'w-3.5 h-3.5')} ${ui.clip.items.length}</button>` : ''}
+      ${!entries.length && !ui.clip && prevMeal(d, key).length ? `<button class="btn btn-sm" data-action="mealSamePrev" data-meal="${key}" aria-label="${esc(samePrevLabel(d))}: ${prevMeal(d, key).length} item${prevMeal(d, key).length === 1 ? '' : 's'}">${icon('history', 'w-3.5 h-3.5')} ${esc(samePrevLabel(d))}</button>` : ''}
       ${entries.length ? `<button class="btn btn-ghost btn-sm" data-action="mealCopy" data-meal="${key}" title="Copy this meal">${icon('copy', 'w-3.5 h-3.5')}</button><button class="btn btn-ghost btn-sm" data-action="mealSaveTpl" data-meal="${key}" title="Save as a saved meal">${icon('bookmark-plus', 'w-3.5 h-3.5')}</button>` : ''}
       <button class="btn btn-sm btn-primary" data-action="lfOpen" data-meal="${key}">${icon('plus', 'w-3.5 h-3.5')} Add</button></div></div>
     ${entries.map(e => `<div class="flex items-center gap-2 px-4 py-2 border-t border-slate-100 dark:border-slate-800">
@@ -1826,27 +1875,39 @@ function nutToday() {
 }
 
 // --- Log-food modal ---
-function lfOpen(meal, opts = {}) { ui.lf = { date: ui.nutDate, meal: meal || ($('#quick-meal') && $('#quick-meal').value) || (ui.nutDate === ymd() ? defaultMeal() : 'snacks'), tab: 'search', q: '', online: { off: null, usda: null }, loading: {}, sel: null, qty: 1, unitIdx: 0, editId: null, code: '', bcMsg: '', ...opts }; lfDraw(); }
+function lfOpen(meal, opts = {}) { ui.lf = { date: ui.nutDate, meal: meal || ($('#quick-meal') && $('#quick-meal').value) || (ui.nutDate === ymd() ? defaultMeal() : 'snacks'), tab: 'search', q: '', online: { off: null, usda: null }, loading: {}, sel: null, qty: 1, unitIdx: 0, editId: null, code: '', bcMsg: '', list: 'recent', picked: [], ...opts }; lfDraw(); }
+// The footer's "Add 2 to Lunch" follows the ticked foods without redrawing the dialog (which would reopen the keyboard)
+function lfFooterSync() {
+  const L = ui.lf, b = $('#lf-addn'), done = $('#lf-done'); if (!L || !b) return;
+  const n = L.sel ? 0 : (L.picked || []).length; b.classList.toggle('hidden', !n); b.textContent = `Add ${n} to ${mealLabel(L.meal)}`;
+  if (done) done.classList.toggle('btn-primary', !n);
+}
 function lfDraw() {
   const L = ui.lf; if (!L) return;
   const tabsH = [['search', 'Search', 'search'], ['barcode', 'Barcode', 'scan-barcode'], ['quick', 'Quick add', 'zap'], ['meals', 'Saved meals', 'bookmark'], ['recipes', 'Recipes', 'chef-hat']].map(([k, l, ic]) => `<button type="button" class="tab ${L.tab === k ? 'tab-active' : ''}" data-action="lfTab" data-v="${k}">${icon(ic, 'w-4 h-4 inline -mt-0.5 mr-1')}${l}</button>`).join('');
   const body = L.sel ? lfAmountHtml() : ({ search: lfSearchHtml, barcode: lfBarcodeHtml, quick: lfQuickHtml, meals: lfMealsHtml, recipes: lfRecipesHtml }[L.tab] || lfSearchHtml)();
   Modal.open(modalShell(`${L.editId ? 'Edit' : 'Add to'} ${mealLabel(L.meal)} · ${fmtDate(L.date, { month: 'short', day: 'numeric' })}`,
     `${L.sel ? '' : `<div class="flex gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/60 overflow-x-auto scroll-thin">${tabsH}</div>`}${body}`,
-    `<button type="button" class="btn btn-sm mr-auto" data-action="foodNew">${icon('plus', 'w-3.5 h-3.5')} Create custom food</button><button type="button" class="btn btn-primary" data-action="closeModal">Done</button>`),
+    `<button type="button" class="btn btn-sm mr-auto" data-action="foodNew">${icon('plus', 'w-3.5 h-3.5')} <span class="sm:hidden">New food</span><span class="hidden sm:inline">Create custom food</span></button><button type="button" id="lf-done" class="btn ${(L.picked || []).length && !L.sel ? '' : 'btn-primary'}" data-action="closeModal">Done</button><button type="button" id="lf-addn" class="btn btn-primary ${(L.picked || []).length && !L.sel ? '' : 'hidden'}" data-action="lfAddPicked">Add ${(L.picked || []).length} to ${mealLabel(L.meal)}</button>`),
     { wide: true, onClose: () => { stopScan(); ui.lf = null; render(); } });
   if (!L.sel && L.tab === 'search') setTimeout(() => { const q = $('#lf-q'); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }, 30);
-  if (L.sel) setTimeout(() => { const q = $('#lf-qty'); if (q) q.select(); }, 30);
+  if (L.sel) { lfPortionSync(); setTimeout(() => { const q = $('#lf-qty'); if (q) q.select(); }, 30); }
 }
 function foodRow(f, src, i) {
   const us = unitsOf(f), ui_ = Math.max(0, us.findIndex(u => u.label === f.lastUnit)), qty = f.lastQty && f.lastUnit ? f.lastQty : defaultQty(us[ui_] || us[0]), n = foodNutr(f, ui_, qty);
-  return `<button type="button" class="w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" data-action="lfPick" data-src="${src}" data-id="${esc(f.id)}" data-i="${i ?? ''}">
-    <div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">${esc(f.name)}</div><div class="text-xs muted truncate">${f.brand ? esc(f.brand) + ' · ' : ''}${esc(amtLabel(qty, us[ui_] ? us[ui_].label : ''))}: ${fmtNum(n.cal)} kcal · P ${fmtNum(n.p)} C ${fmtNum(n.c)} F ${fmtNum(n.f)}</div></div>${icon('chevron-right', 'w-4 h-4 muted shrink-0')}</button>`;
+  const row = `<button type="button" class="${src === 'local' ? 'flex-1 min-w-0' : 'w-full'} text-left flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800" data-action="lfPick" data-src="${src}" data-id="${esc(f.id)}" data-i="${i ?? ''}">
+    <div class="flex-1 min-w-0"><div class="text-sm font-medium truncate">${esc(f.name)}</div><div class="text-xs muted truncate">${f.brand ? esc(f.brand) + ' · ' : ''}${esc(amtLabel(qty, us[ui_] ? us[ui_].label : ''))}: ${fmtNum(n.cal)} kcal · P ${fmtNum(n.p)} C ${fmtNum(n.c)} F ${fmtNum(n.f)}</div></div>${src === 'local' ? '' : icon('chevron-right', 'w-4 h-4 muted shrink-0')}</button>`;
+  if (src !== 'local') return row;
+  // Saved foods get a tick: tick several, then "Add 3 to Breakfast" logs each at its last amount
+  const on = (ui.lf?.picked || []).includes(f.id);
+  return `<div class="flex items-center gap-1">${row}<button type="button" class="w-11 h-11 shrink-0 rounded-xl border grid place-items-center ${on ? 'bg-brand-700 border-brand-700 text-white' : 'border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-brand-500'}" data-action="lfTick" data-id="${esc(f.id)}" aria-pressed="${on}" aria-label="${on ? 'Selected' : 'Select'}: ${esc(f.name)}, ${esc(amtLabel(qty, us[ui_] ? us[ui_].label : ''))}">${icon(on ? 'check' : 'plus', 'w-5 h-5')}</button></div>`;
 }
 function lfResultsHtml() {
   const L = ui.lf, q = L.q.trim().toLowerCase(), foods = Store.get('foods');
-  const local = (q ? foods.filter(f => (f.name + ' ' + (f.brand || '')).toLowerCase().includes(q)).sort((a, b) => (b.uses || 0) - (a.uses || 0)) : foods.filter(f => f.lastUsed).sort((a, b) => b.lastUsed.localeCompare(a.lastUsed))).slice(0, 15);
-  let h = `<div class="label mt-3">${q ? 'My foods' : 'Recent foods'}</div>` + (local.length ? local.map(f => foodRow(f, 'local')).join('') : `<p class="text-sm muted px-1">${q ? 'No saved foods match — press Enter or “Search online”.' : 'Search above. Foods you log are saved here for instant, offline re-use.'}</p>`);
+  const usual = !q && L.list === 'usual';
+  const local = (q ? foods.filter(f => (f.name + ' ' + (f.brand || '')).toLowerCase().includes(q)).sort((a, b) => (b.uses || 0) - (a.uses || 0)) : usual ? usualFoods(L.meal) : foods.filter(f => f.lastUsed).sort((a, b) => b.lastUsed.localeCompare(a.lastUsed))).slice(0, 15);
+  const lists = !q && foods.some(f => f.lastUsed) ? `<div class="flex gap-1.5 mt-3" role="group" aria-label="Which foods to show">${[['recent', 'Recent'], ['usual', `Usual for ${mealLabel(L.meal).toLowerCase()}`]].map(([k, l]) => `<button type="button" class="chip ${(L.list || 'recent') === k ? 'chip-on' : ''}" data-action="lfList" data-v="${k}" aria-pressed="${(L.list || 'recent') === k}">${l}</button>`).join('')}</div>` : `<div class="label mt-3">${q ? 'My foods' : 'Recent foods'}</div>`;
+  let h = lists + (local.length ? `<div class="mt-1">${local.map(f => foodRow(f, 'local')).join('')}</div>` : `<p class="text-sm muted px-1">${q ? 'No saved foods match — press Enter or “Search online”.' : 'Search above. Foods you log are saved here for instant, offline re-use.'}</p>`);
   const recs = q ? Store.get('recipes').filter(r => r.cal && String(r.title || '').toLowerCase().includes(q)).slice(0, 8) : [];
   if (recs.length) h += `<div class="label mt-4">My recipes</div>` + recs.map(r => `<button type="button" class="w-full text-left flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-100 dark:hover:bg-slate-800" data-action="lfRecipe" data-id="${r.id}"><span class="flex-1 min-w-0"><span class="block text-sm font-medium truncate">${esc(r.title)}</span><span class="block text-xs muted">1 serving · ${fmtNum(r.cal)} kcal · P${fmtNum(r.p || 0)}</span></span>${icon('plus', 'w-4 h-4 muted shrink-0')}</button>`).join('');
   for (const [src, label] of [['usda', 'USDA FoodData Central'], ['off', 'Open Food Facts']]) {
@@ -1859,7 +1920,8 @@ function lfResultsHtml() {
   return h;
 }
 const lfDrawResults = () => { const el = $('#lf-results'); if (el) { el.innerHTML = lfResultsHtml(); refreshIcons(); } };
-const lfSearchHtml = () => `<form class="flex gap-2" data-submit="lfSearchOnline"><input id="lf-q" class="input" placeholder="Search foods — e.g. chicken breast, greek yogurt" value="${esc(ui.lf.q)}" data-input="lfQuery" autocomplete="off"><button class="btn btn-primary shrink-0">${icon('globe')} <span class="hidden sm:inline">Search online</span></button></form><div id="lf-results" class="max-h-[50vh] overflow-y-auto scroll-thin">${lfResultsHtml()}</div>`;
+const lfMealSeg = () => `<div class="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/60" role="group" aria-label="Meal">${MEALS.map(([k, l]) => `<button type="button" class="rounded-lg py-2 text-sm font-medium min-h-[2.5rem] ${ui.lf.meal === k ? 'bg-white dark:bg-slate-900 shadow-sm text-brand-700 dark:text-brand-300' : 'text-slate-600 dark:text-slate-400'}" data-action="lfMeal" data-v="${k}" aria-pressed="${ui.lf.meal === k}">${l}</button>`).join('')}</div>`;
+const lfSearchHtml = () => `${ui.lf.editId ? '' : lfMealSeg()}<form class="flex gap-2" data-submit="lfSearchOnline"><input id="lf-q" class="input" placeholder="Search foods" aria-label="Search foods, for example chicken breast or greek yogurt" value="${esc(ui.lf.q)}" data-input="lfQuery" autocomplete="off" enterkeyhint="search"><button class="btn btn-primary shrink-0" aria-label="Search online">${icon('globe')} <span class="hidden sm:inline">Search online</span></button></form><div id="lf-results" class="max-h-[50vh] overflow-y-auto scroll-thin">${lfResultsHtml()}</div>`;
 function lfPreview(n) {
   return `<div class="grid grid-cols-4 gap-2">${[['kcal', n.cal, ''], ['Protein', n.p, 'g'], ['Carbs', n.c, 'g'], ['Fat', n.f, 'g']].map(([l, v, u]) => `<div class="stat text-center"><div class="text-xs muted">${l}</div><div class="font-bold tabular-nums">${fmtNum(v, u ? 1 : 0)}${u}</div></div>`).join('')}</div>
     ${[n.fiber, n.sugar, n.sodium, n.satfat].some(x => x != null) ? `<p class="text-xs muted mt-2">${[['Fiber', n.fiber, 'g'], ['Sugar', n.sugar, 'g'], ['Sat. fat', n.satfat, 'g'], ['Sodium', n.sodium, 'mg']].filter(x => x[1] != null).map(([l, v, u]) => `${l} ${fmtNum(v, u === 'mg' ? 0 : 1)}${u}`).join(' · ')}</p>` : ''}`;
@@ -1870,6 +1932,7 @@ function lfAmountHtml() {
     <div><div class="text-lg font-semibold leading-tight">${esc(f.name)}</div><div class="text-sm muted">${f.brand ? esc(f.brand) + ' · ' : ''}${{ off: 'Open Food Facts', usda: 'USDA', custom: 'My food' }[f.source] || 'My food'}${f.basis === '100g' ? ` · ${fmtNum(f.base.cal)} kcal per 100 g` : ''}</div></div>
     <div class="grid grid-cols-3 gap-2"><div><label class="label">Amount</label><input id="lf-qty" type="number" step="any" min="0" inputmode="decimal" class="input text-lg font-semibold" value="${L.qty}" data-input="lfQty"></div>
       <div class="col-span-2"><label class="label">Unit</label><select class="input text-base" data-change="lfUnit">${us.map((u, i) => `<option value="${i}" ${i === L.unitIdx ? 'selected' : ''}>${esc(u.label)}</option>`).join('')}</select></div></div>
+    ${lfPortionsHtml()}
     ${!us.some(u => /\bcups?\b/i.test(u.label)) && (f.basis === '100g' || num(f.servingG)) ? `<details class="rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm"><summary class="cursor-pointer font-medium">Measure in cups instead</summary>
       <p class="muted text-xs mt-1">This food doesn’t say what a cup weighs. Pick what it’s like and cups, tablespoons and teaspoons appear; it’s an estimate, remembered for this food.</p>
       <div class="grid gap-1.5 mt-2">${CUP_LIKE.map(([g, l]) => `<button type="button" class="btn btn-sm justify-between text-left h-auto" data-action="lfCupSet" data-g="${g}"><span class="min-w-0 whitespace-normal">${esc(l)}</span><span class="muted shrink-0">${g} g</span></button>`).join('')}</div>
@@ -1941,7 +2004,17 @@ function lfSelect(f, opts = {}) {
   const L = ui.lf, us = unitsOf(f); L.sel = structuredClone(f);
   L.unitIdx = Math.max(0, us.findIndex(u => u.label === (opts.unit || f.lastUnit)));
   L.qty = opts.qty ?? (f.lastQty && f.lastUnit === us[L.unitIdx].label ? f.lastQty : defaultQty(us[L.unitIdx]));
+  L.base = { qty: L.qty, unitIdx: L.unitIdx }; // the portion chips (½, 1, 1½, 2) are multiples of this
   lfDraw();
+}
+const PORTIONS = [['½', 0.5], ['1', 1], ['1½', 1.5], ['2', 2]];
+function lfPortionsHtml() {
+  const L = ui.lf, b = L.base; if (!b) return ''; const u = unitsOf(L.sel)[b.unitIdx]; if (!u) return '';
+  return `<div class="flex flex-wrap items-center gap-1.5" id="lf-portions" role="group" aria-label="Portions of ${esc(amtLabel(b.qty, u.label))}"><span class="text-xs muted mr-1">Portions of ${esc(amtLabel(b.qty, u.label))}</span>${PORTIONS.map(([l, m]) => `<button type="button" class="chip tabular-nums" data-action="lfPortion" data-m="${m}">${l}</button>`).join('')}</div>`;
+}
+function lfPortionSync() {
+  const L = ui.lf; if (!L?.base) return;
+  $$('#lf-portions [data-action="lfPortion"]').forEach(c => { const on = L.unitIdx === L.base.unitIdx && Math.abs(L.qty - round(L.base.qty * +c.dataset.m, 2)) < 1e-9; c.classList.toggle('chip-on', on); c.setAttribute('aria-pressed', on); });
 }
 function foodEditor(f, opts = {}) {
   const x = f || { id: '', name: '', brand: '', barcode: opts.barcode || '', source: 'custom', basis: 'serving', servingLabel: '1 serving', servingG: '', extra: [], base: {} };
@@ -2260,6 +2333,7 @@ const A_NUT = {
   nutDate: el => { if (el.value) { ui.nutDate = el.value; render(); } },
   nutWeight: el => { const v = num(el.value), d = ensureDay(ui.nutDate); d.weight = v == null ? null : fromUnit(v); Store.save('nutrition'); toast(v == null ? 'Weight cleared' : 'Weight saved'); render(); },
   nutWeightToday: el => { const v = num(el.value), d = ensureDay(ymd()); d.weight = v == null ? null : fromUnit(v); Store.save('nutrition'); toast('Weight saved'); render(); },
+  mealSamePrev: el => { const key = el.dataset.meal, items = prevMeal(ui.nutDate, key); if (!items.length) return; addEntries(ui.nutDate, key, items); toast(`Added ${items.length} item${items.length === 1 ? '' : 's'} to ${mealLabel(key)}`); render(); },
   nutCopyPrev: () => { const prev = day(addDays(ui.nutDate, -1)); if (!prev.entries.length) return toast('Nothing logged the previous day', 'error'); addEntries(ui.nutDate, null, prev.entries.map(e => ({ ...e, meal: mealOf(e) }))); toast(`Copied ${prev.entries.length} items`); render(); },
   trendRange: el => { ui.trendRange = +el.dataset.v; render(); },
   adhN: el => { ui.adhN = +el.dataset.v; render(); },
@@ -2275,7 +2349,7 @@ const A_NUT = {
   },
   lfPick: el => { const L = ui.lf, src = el.dataset.src; const f = src === 'local' ? Store.get('foods').find(x => x.id === el.dataset.id) : (L.online[src] || { items: [] }).items[+el.dataset.i]; if (f) lfSelect(f); },
   lfBack: () => { ui.lf.sel = null; ui.lf.editId = null; lfDraw(); },
-  lfQty: el => { const L = ui.lf; L.qty = num(el.value) || 0; const pv = $('#lf-preview'); if (pv) pv.innerHTML = lfPreview(foodNutr(L.sel, L.unitIdx, L.qty)); },
+  lfQty: el => { const L = ui.lf; L.qty = num(el.value) || 0; const pv = $('#lf-preview'); if (pv) pv.innerHTML = lfPreview(foodNutr(L.sel, L.unitIdx, L.qty)); lfPortionSync(); },
   lfCupSet: el => {
     const L = ui.lf, g = num(el.dataset.g) || num($('#lf-cupg')?.value); if (!L || !L.sel || !(g > 0)) return toast('Enter what a cup weighs in grams', 'error');
     L.sel.cupG = round(g, 0); const saved = Store.get('foods').find(x => x.id === L.sel.id); if (saved) { saved.cupG = L.sel.cupG; Store.save('foods'); }
@@ -2288,6 +2362,24 @@ const A_NUT = {
   },
   lfUnit: el => { const L = ui.lf, us = unitsOf(L.sel), o = us[L.unitIdx], n = us[+el.value]; L.qty = round(L.qty * o.factor / n.factor, n.label === 'g' ? 0 : 2) || defaultQty(n); L.unitIdx = +el.value; lfDraw(); },
   lfMeal: el => { ui.lf.meal = el.dataset.v; lfDraw(); },
+  lfList: el => { ui.lf.list = el.dataset.v; lfDrawResults(); $(`#lf-results [data-action="lfList"][data-v="${el.dataset.v}"]`)?.focus(); },
+  lfTick: el => {
+    const L = ui.lf, id = el.dataset.id, P = L.picked || (L.picked = []), k = P.indexOf(id);
+    if (k >= 0) P.splice(k, 1); else P.push(id);
+    lfDrawResults(); lfFooterSync(); $(`#lf-results [data-action="lfTick"][data-id="${CSS.escape(id)}"]`)?.focus();
+  },
+  lfAddPicked: () => {
+    const L = ui.lf, foods = Store.get('foods'), picked = (L.picked || []).map(id => foods.find(f => f.id === id)).filter(Boolean); if (!picked.length) return;
+    picked.forEach(f => logFoodAgain(f, L.date, L.meal)); Store.save('nutrition');
+    toast(picked.length === 1 ? `Added ${picked[0].name} to ${mealLabel(L.meal)}` : `Added ${picked.length} foods to ${mealLabel(L.meal)}`);
+    L.picked = []; Modal.close();
+  },
+  lfPortion: el => {
+    const L = ui.lf; if (!L?.sel || !L.base) return; const m = +el.dataset.m;
+    L.unitIdx = L.base.unitIdx; L.qty = round(L.base.qty * m, 2);
+    const q = $('#lf-qty'), u = $('#modal [data-change="lfUnit"]'); if (q) q.value = L.qty; if (u) u.value = L.unitIdx;
+    const pv = $('#lf-preview'); if (pv) pv.innerHTML = lfPreview(foodNutr(L.sel, L.unitIdx, L.qty)); lfPortionSync();
+  },
   lfAdd: () => {
     const L = ui.lf, f = L.sel, us = unitsOf(f), unit = us[L.unitIdx].label, n = foodNutr(f, L.unitIdx, L.qty);
     if (!(L.qty > 0)) return toast('Enter an amount', 'error');
@@ -2320,7 +2412,7 @@ const A_NUT = {
     if (ui.lf && ui.lf.returnFood) { ui.lf.returnFood = false; lfSelect(f); } else { Modal.close(); }
   },
   foodDelete: el => { if (!confirm('Delete this food? Past log entries keep their numbers.')) return; Store.set('foods', Store.get('foods').filter(f => f.id !== el.dataset.id)); if (ui.lf) { ui.lf.sel = null; ui.lf.returnFood = false; lfDraw(); } else Modal.close(); },
-  quickFood: el => { const f = Store.get('foods').find(x => x.id === el.dataset.id); if (!f) return; const us = unitsOf(f), i = Math.max(0, us.findIndex(u => u.label === f.lastUnit)), qty = f.lastQty || defaultQty(us[i]), meal = $('#quick-meal')?.value || defaultMeal(); ensureDay(ui.nutDate).entries.push({ id: uid(), name: f.name, ...foodNutr(f, i, qty), meal, foodId: f.id, qty, unit: us[i].label, time: nowTime() }); saveFoodUse(f, qty, us[i].label); Store.save('nutrition'); toast(`Added ${f.name} to ${mealLabel(meal)}`); render(); },
+  quickFood: el => { const f = Store.get('foods').find(x => x.id === el.dataset.id); if (!f) return; const meal = $('#quick-meal')?.value || defaultMeal(); logFoodAgain(f, ui.nutDate, meal); Store.save('nutrition'); toast(`Added ${f.name} to ${mealLabel(meal)}`); render(); },
   // entries, meals, clipboard
   entryEdit: el => { const e = findEntry(el.dataset.id); if (!e) return; const f = e.foodId && Store.get('foods').find(x => x.id === e.foodId); if (f) { ui.lf = { date: ui.nutDate, meal: mealOf(e), tab: 'search', q: '', online: {}, loading: {}, editId: e.id, code: '', bcMsg: '' }; lfSelect(f, { qty: e.qty, unit: e.unit }); } else macroModal('Edit entry', e, 'entrySave', e.id, true); },
   entrySave: f => { const v = fd(f), e = findEntry(v.id); if (e) { Object.assign(e, readMacros(v)); if (v.meal) e.meal = v.meal; delete e.qty; } Store.save('nutrition'); Modal.close(); render(); },
@@ -3649,6 +3741,12 @@ const A_SHARE = {
 // would notice; each device shows the newest one once, as a card on the dashboard. A slide can show
 // a picture from assets/whatsnew/ (give it alt text) and a `go` shortcut: [view, ui key, tab, label].
 const RELEASES = [
+  { id: '2026-11-07c', title: 'Faster logging', slides: [
+    { title: 'Log food in fewer taps', body: '<p>The meal is now at the top of <strong>Log food</strong>, one tap to change.</p><p>Your own foods come first: <strong>Recent</strong>, or <strong>Usual</strong> for the meal you’re logging. Tap <strong>+</strong> on several foods, then <strong>Add 3 to Breakfast</strong> to log them all at their usual amounts.</p><p>When you pick one food, <strong>Portions</strong> sets ½, 1, 1½ or 2 of your usual amount.</p>', go: ['nutrition', '', '', 'Open Nutrition'] },
+    { title: 'Same as yesterday', body: '<p>An empty meal in your daily log offers <strong>Same as yesterday</strong> when you logged that meal the day before. One tap copies it.</p>' },
+    { title: 'Sets and rest', body: '<p>Under each exercise, <strong>−</strong> and <strong>+</strong> change the next set’s weight and reps, starting from last time.</p><p>On a phone the rest timer runs across the bottom of the screen, and the screen stays on while a workout is open.</p>', go: ['fitness', '', '', 'Open Workouts'] },
+    { title: 'Windows from the bottom', body: '<p>On a phone, windows now open from the bottom of the screen, within reach of your thumb. Drag the handle at the top down to close one.</p>' }
+  ] },
   { id: '2026-11-07b', title: 'Easier to use on a phone', slides: [
     { title: 'Logging sets', body: '<p>The weight and reps boxes are wider and taller, so a weight like 182.5 shows in full. <strong>Previous</strong> fits on one line, and tapping it still copies last time’s numbers.</p><p>Moving, supersetting and removing an exercise are under <strong>⋯</strong> beside its rest time. Notes open from <strong>Add note</strong>.</p><p>The <strong>RPE</strong> column is hidden unless you turn it on in <strong>Settings → Workouts</strong>. Sets that already have an RPE still show it.</p>', go: ['fitness', '', '', 'Open Workouts'] },
     { title: 'Calories left', body: '<p>The calorie ring and the Today card now lead with what’s <strong>left</strong> for the day, and how much protein is still to go.</p><p>To see calories eaten instead, open <strong>Settings → Nutrition → Big calorie number</strong>.</p>', go: ['nutrition', '', '', 'Open Nutrition'] },
@@ -4209,6 +4307,17 @@ document.addEventListener('click', e => {
   e.preventDefault(); fn(el, e);
 });
 document.addEventListener('scroll', e => { if (e.target.classList?.contains('tabs-row')) tabFade(e.target); }, true);
+// Phones: drag a bottom sheet down by its handle or title bar to close it
+const SHEET = { el: null, y0: 0, dy: 0 };
+document.addEventListener('touchstart', e => {
+  const h = e.target.closest('#modal .sheet-grab, #modal .sheet-head'); if (!h || e.target.closest('button, input, select, textarea, a')) return;
+  const d = h.closest('[role="dialog"]'); if (!d || d.scrollTop > 0 || !matchMedia('(max-width: 639.98px)').matches) return;
+  Object.assign(SHEET, { el: d, y0: e.touches[0].clientY, dy: 0 }); d.style.transition = 'none';
+}, { passive: true });
+document.addEventListener('touchmove', e => { if (!SHEET.el) return; SHEET.dy = Math.max(0, e.touches[0].clientY - SHEET.y0); SHEET.el.style.transform = `translateY(${SHEET.dy}px)`; }, { passive: true });
+const sheetEnd = close => { const d = SHEET.el; if (!d) return; SHEET.el = null; d.style.transition = 'transform .15s ease-out'; if (close && SHEET.dy > 90) Modal.close(); else d.style.transform = ''; };
+document.addEventListener('touchend', () => sheetEnd(true), { passive: true });
+document.addEventListener('touchcancel', () => sheetEnd(false), { passive: true });
 document.addEventListener('input', e => { const el = e.target.closest('[data-input]'); if (el && A[el.dataset.input]) A[el.dataset.input](el, e); });
 document.addEventListener('change', e => { const el = e.target.closest('[data-change]'); if (el && A[el.dataset.change]) A[el.dataset.change](el, e); });
 document.addEventListener('submit', e => { const f = e.target.closest('[data-submit]'); if (!f) return; e.preventDefault(); const fn = A[f.dataset.submit]; if (fn) fn(f, e); });

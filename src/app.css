@@ -85,6 +85,17 @@ label:has(input:focus-visible) { outline: 2px solid #0f766e; outline-offset: 3px
   .bg-brand-600.text-white { background-color: #0f766e; }
 }
 
+/* Phones: dialogs rise from the bottom as sheets, within thumb reach; drag the handle or title down to close. */
+.sheet-grab { display: none; }
+@media (max-width: 639.98px) {
+  #modal > [role="dialog"] { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; width: 100%; max-height: calc(100dvh - 2.5rem - env(safe-area-inset-top)); border-radius: 1.25rem 1.25rem 0 0; border-bottom-width: 0; padding-bottom: env(safe-area-inset-bottom); }
+  #modal > [role="dialog"].sheet-in { animation: sheet-up .22s ease-out; }
+  #modal .sheet-grab { display: block; width: 2.5rem; height: .3rem; border-radius: 9999px; background: #cbd5e1; margin: .5rem auto 0; }
+  .dark #modal .sheet-grab { background: #475569; }
+}
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { #modal > [role="dialog"].sheet-in { animation: none; } }
+
 /* Touch screens: larger tap targets and no text under 12px. Unlayered, so these win over utilities. */
 @media (pointer: coarse) {
   .btn, .tab { min-height: 44px; }
