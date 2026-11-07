@@ -9,7 +9,7 @@ All personal data stays in the browser. **Backward compatibility is the #1 rule.
 | IndexedDB `body-dashboard` (v1), store `kv` | one entry per collection key below | All records | ✅ |
 | IndexedDB store `photos` | photo id → Blob | Progress photos (plain id) and recipe photos (`rp_…`) | ✅ (backup v2) |
 | IndexedDB store `local` | `sync.base` | The last snapshot this device and Google Drive agreed on (`LocalDb`) | ❌ (rebuilt by the next sync) |
-| localStorage | `bd.settings` | Settings object `S`: name, theme, units, rest timer, macro targets, `bar`, `hiddenTabs`, `hiddenCards`, `cardOrder`, `tour`, `newsSeen`, `bwFallback`, `fdcKey` (USDA key, never in backups) | ✅ (keys excluded) |
+| localStorage | `bd.settings` | Settings object `S`: name, theme, units, rest timer, macro targets, `bar`, `hiddenTabs`, `hiddenCards`, `cardOrder`, `tour`, `newsSeen`, `bwFallback`, `rpe` (show the RPE column), `calBig` (`left` or `eaten`), `backupLater` (day the backup reminder was put off), `fdcKey` (USDA key, never in backups) | ✅ (keys excluded) |
 | localStorage | `bd.data.<key>` | Fallback copy of collections when IndexedDB is unavailable | — |
 | localStorage | `bd.sync` | Sync state for this device (on/off, Google token, refresh token, last sync, errors, photos left, last daily copy) | ❌ |
 | localStorage | `bd.timer`, `bd.seeded`, `bd.libv` | Rest timer, and one-time seed flags | ❌ |

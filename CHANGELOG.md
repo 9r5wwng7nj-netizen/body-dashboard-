@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-07 — Easier to use on a phone (refresh step 1)
+
+- Set logger: wider, 44px weight and reps fields; Previous on one line ("82.5×8"); the RPE column hidden unless turned on in Settings or a set already has one; move, superset and remove behind ⋯; notes behind Add note.
+- Calories left is the big number in the calorie rings and on the Today card, with protein still to go; Settings can switch it to calories eaten.
+- Nutrition day bar: "Today · Sat, Nov 7", tap to pick a day; copying a day lives under ⋯.
+- Every number field opens the right keypad (checked by `npm run check`); buttons and fields are 44px on touch screens.
+- Short tab names on phones; a tab row that still doesn't fit fades at the edge.
+- Recipe filters in one row that scrolls sideways, beside the sort menu.
+- The backup reminder is one line, with Later to put it off for a week.
+
 ## 2026-11-07 — Body Dashboard begins
 
 - Started from Life Dashboard at commit `718c52f`, keeping Workouts, Nutrition, Recipes & Meals and the Dashboard.

@@ -115,6 +115,10 @@ test('the Today card gathers the workout, food so far, the weigh-in and dinner',
   });
   const card = page.locator('#view .card').filter({ has: page.locator('h3', { hasText: /^Today$/ }) });
   await expect(card).toContainText('Push ✓');
+  // Calories left is the default; Settings can switch to calories eaten.
+  await expect(card).toContainText('1,900 kcal left');
+  await expect(card).toContainText('150 g protein to go');
+  await page.evaluate(() => { S.calBig = 'eaten'; render(); });
   await expect(card).toContainText('500 of');
   await expect(card).toContainText('30 of');
   await expect(card).toContainText('✓', { useInnerText: true });

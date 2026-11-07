@@ -57,6 +57,10 @@ label:has(input:focus-visible) { outline: 2px solid #0f766e; outline-offset: 3px
   .bar-badge:empty { @apply min-w-0 w-2 h-2 p-0 ml-3 top-1.5; }
   .bar-late { @apply bg-rose-600; }
   .muted { @apply text-slate-600 dark:text-slate-400; }
+  /* A date field laid invisibly over a button (the Nutrition day bar): tapping anywhere opens the date picker. */
+  .day-pick { @apply absolute inset-0 w-full h-full opacity-0 cursor-pointer; }
+  .tabs-fade { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent); }
+  .day-pick::-webkit-calendar-picker-indicator { @apply absolute inset-0 w-full h-full cursor-pointer; }
   .stat { @apply rounded-xl bg-slate-100/80 dark:bg-slate-800/60 p-3; }
   .md h1 { @apply text-xl font-bold mt-4 mb-2; }
   .md h2 { @apply text-lg font-bold mt-4 mb-2; }
@@ -83,9 +87,11 @@ label:has(input:focus-visible) { outline: 2px solid #0f766e; outline-offset: 3px
 
 /* Touch screens: larger tap targets and no text under 12px. Unlayered, so these win over utilities. */
 @media (pointer: coarse) {
-  .btn, .tab { min-height: 40px; }
-  .btn-sm { min-height: 36px; padding-left: .625rem; padding-right: .625rem; }
-  button.chip, a.chip, label.chip { min-height: 34px; padding-left: .75rem; padding-right: .75rem; }
+  .btn, .tab { min-height: 44px; }
+  .btn-sm { min-height: 44px; padding-left: .625rem; padding-right: .625rem; }
+  button.chip, a.chip, label.chip { min-height: 40px; padding-left: .75rem; padding-right: .75rem; }
+  /* Fields are 44px tall like buttons (their 16px text is set in index.html so the iPhone doesn't zoom). */
+  input.input:not([type=checkbox]):not([type=radio]):not([type=range]), select.input { min-height: 44px; }
   input[type=checkbox], input[type=radio] { width: 1.25rem; height: 1.25rem; }
   .text-\[10px\], .text-\[11px\] { font-size: 12px; }
 }

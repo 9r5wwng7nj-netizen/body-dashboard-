@@ -78,3 +78,14 @@ See `docs/ARCHITECTURE.md` for the patterns and `docs/DATA_MODEL.md` for every s
 - "Science" in the original request meant diet; the focus is fitness and diet.
 - Which Google account syncs it is not decided yet, so Drive sync stays off (`DRIVE.clientId` empty). If it ends up using the same Google Cloud project as Life Dashboard, the app folder would be shared, so the sync file names here (`body-dashboard-sync.json`, `body-dashboard-copy-*`) must stay different from Life Dashboard's.
 - Next: expand and refine the fitness and diet side.
+
+## Refresh plan (Seth, 2026-11-07)
+
+From the "Body Dashboard Refresh" research page: four steps, each shipped with a What's new note, keeping familiar paths working.
+
+1. **Fixes (built):** number fields name their keypad (`npm run check` enforces it), 44px buttons and fields on touch screens, a set row that fits a phone (`setShort()` for Previous), the RPE column hidden unless `S.rpe` is on or a set already has one, exercise tools behind ⋯ (`awExMenu`), notes behind Add note (`ui.noteOpen`), short tab labels on phones (4th item in `tabs()`) with a fade on rows that still scroll (`tabFade`), the Nutrition day bar (`dayName()`, `nutDayMenu`), one row of recipe filters, and a one-line backup reminder with Later (`S.backupLater`).
+2. **Speed:** bottom sheets on phones, Recent and Frequent first in Log food, multi-add, serving chips, Same as yesterday per meal, +/− steppers, a rest timer bar, the screen kept awake during a workout.
+3. **Look:** one Today card that leads, the weight trend drawn bold over faint weigh-ins, the week counted instead of a streak, a number type style, photo recipe cards, dark mode tuned for the gym.
+4. **Extras:** plate math and warm-ups, a finish summary, "fits today" on recipes, cook-mode timers, a muscle map.
+
+Decisions: the big calorie number is **calories left** by default (`S.calBig`, switchable in Settings, drawn by `calCenter()` and `foodSoFar()`); RPE is hidden by default; **photo or "describe a meal" logging is planned for later through ChatGPT (the OpenAI API)**. When it is built, the request goes through the reader Worker or another server with the user's own key entered in Settings (never in the repo or a backup), and the result only fills in database foods the person can edit before saving.

@@ -168,6 +168,9 @@ function pickFile(accept, cb, maxBytes = Infinity) {
    ===================================================================== */
 const SETTINGS_DEFAULT = {
   name: '', theme: 'system', unit: 'lbs', restSeconds: 90, timerSound: true,
+  rpe: false, // show the RPE column in the set logger (sets that already have RPE always show it)
+  calBig: 'left', // the big calorie number: 'left' for the day, or 'eaten'
+  backupLater: '', // the day the backup reminder was put off; it comes back a week later
   targets: { cal: 2400, p: 180, c: 240, f: 75 },
   collapsed: false, view: 'dashboard', lastExport: null, tour: '', newsSeen: '',
   hiddenTabs: {}, // section tabs the person chose to hide, by section; see tabs()
@@ -400,12 +403,14 @@ function modalShell(title, body, footer = '', formAction = '') {
 // Section tabs. Tabs the person hid (S.hiddenTabs) are left out, and the last button opens Edit tabs.
 const TAB_LISTS = {};
 const hiddenTabsFor = key => ((S.hiddenTabs || {})[key] || []);
-function tabs(key, items) {
+function tabs(key, items) { // items: [id, label, icon, short label for phones (optional)]
   TAB_LISTS[key] = items.map(([id, label, ic]) => [id, String(label).replace(/\s*\(\d+\)$/, ''), ic]);
   const shown = items.filter(([id]) => !hiddenTabsFor(key).includes(id)), active = shown.some(([id]) => id === ui[key]) ? ui[key] : (shown[0] || [])[0];
-  return `<div role="group" aria-label="View sections" class="flex gap-1 p-1 rounded-xl bg-slate-200/60 dark:bg-slate-900 overflow-x-auto scroll-thin mb-5 w-full sm:w-fit max-w-full">${shown.map(([id, label, ic]) =>
-    `<button class="tab ${active === id ? 'tab-active' : ''}" aria-pressed="${active === id}" data-action="setTab" data-key="${key}" data-val="${id}">${ic ? icon(ic, 'w-4 h-4 inline -mt-0.5 mr-1') : ''}${label}</button>`).join('')}<button class="tab shrink-0" data-action="tabsEdit" data-key="${key}" title="Show or hide tabs" aria-label="Show or hide tabs">${icon('sliders-horizontal', 'w-4 h-4')}</button></div>`;
+  return `<div role="group" aria-label="View sections" class="tabs-row flex gap-1 p-1 rounded-xl bg-slate-200/60 dark:bg-slate-900 overflow-x-auto scroll-thin mb-5 w-full sm:w-fit max-w-full">${shown.map(([id, label, ic, short]) =>
+    `<button class="tab ${active === id ? 'tab-active' : ''}" aria-pressed="${active === id}" data-action="setTab" data-key="${key}" data-val="${id}">${short ? `<span class="sm:hidden">${short}</span><span class="hidden sm:inline">${ic ? icon(ic, 'w-4 h-4 inline -mt-0.5 mr-1') : ''}${label}</span>` : `${ic ? icon(ic, 'w-4 h-4 inline -mt-0.5 mr-1') : ''}${label}`}</button>`).join('')}<button class="tab shrink-0" data-action="tabsEdit" data-key="${key}" title="Show or hide tabs" aria-label="Show or hide tabs">${icon('sliders-horizontal', 'w-4 h-4')}</button></div>`;
 }
+// A tab row wider than the screen fades at the right edge until it is scrolled to the end
+function tabFade(g) { g.classList.toggle('tabs-fade', g.scrollLeft + g.clientWidth < g.scrollWidth - 2); }
 function tabsEditModal(key) {
   const list = TAB_LISTS[key] || [], hidden = hiddenTabsFor(key);
   Modal.open(modalShell('Show or hide tabs', `<p class="text-sm muted">Hidden tabs keep everything in them. Show them again here at any time.</p>
@@ -590,6 +595,7 @@ function afterRender(focused) {
   const aw = Store.get('activeWorkout');
   if (aw && $('#elapsed')) { const upd = () => { const e = $('#elapsed'); if (e) e.textContent = fmtClock((Date.now() - new Date(aw.start)) / 1000); }; upd(); tickIv = setInterval(upd, 1000); }
   if (ui.after) { const f = ui.after; ui.after = null; setTimeout(f, 0); }
+  document.querySelectorAll('#view .tabs-row').forEach(g => { const a = g.querySelector('.tab-active'); if (a && a.offsetLeft + a.offsetWidth > g.clientWidth) g.scrollLeft = a.offsetLeft - 8; tabFade(g); });
   hydratePhotos();
 }
 function go(view) { S.view = view; saveSettings(); closeSidebar(); lastRendered = null; render(); if (!Modal.isOpen()) $('#view-title').focus({ preventScroll: true }); }
@@ -676,6 +682,17 @@ function dashCardsModal(focus) {
   if (focus) { const b = $(`[data-action="dashCardMove"][data-val="${focus[0]}"][data-d="${focus[1]}"]`); (b && !b.disabled ? b : $(`[data-action="dashCardMove"][data-val="${focus[0]}"]:not([disabled])`))?.focus(); }
 }
 // Today at a glance: the workout, food so far against the target, the weigh-in and dinner. Each line opens its section.
+// The middle of a calorie ring: calories left by default, or calories eaten (S.calBig). Small rings get two lines.
+function calCenter(tot, T, small) {
+  const left = Math.round(T.cal - tot.cal), over = left < 0;
+  if (S.calBig === 'eaten') return `<div class="${small ? 'text-xl' : 'text-3xl'} font-bold tabular-nums">${fmtNum(tot.cal)}</div><div class="${small ? 'text-[11px]' : 'text-xs'} muted">of ${fmtNum(T.cal)} kcal</div>${small ? '' : `<div class="text-xs font-medium ${over ? 'text-rose-500' : 'text-brand-600'}">${over ? `${fmtNum(-left)} over` : `${fmtNum(left)} left`}</div>`}`;
+  return `<div class="${small ? 'text-xl' : 'text-3xl'} font-bold tabular-nums ${over ? 'text-rose-600 dark:text-rose-400' : ''}">${fmtNum(Math.abs(left))}</div><div class="${small ? 'text-[11px]' : 'text-xs'} muted">${over ? 'kcal over' : 'kcal left'}</div>${small ? '' : `<div class="text-xs muted">${fmtNum(tot.cal)} eaten</div>`}`;
+}
+function foodSoFar(tot, T) {
+  if (S.calBig === 'eaten') return `${fmtNum(tot.cal)} of ${fmtNum(T.cal)} kcal · ${fmtNum(tot.p)} of ${fmtNum(T.p)} g protein`;
+  const left = Math.round(T.cal - tot.cal), pLeft = Math.round(T.p - tot.p);
+  return `${left < 0 ? `${fmtNum(-left)} kcal over` : `${fmtNum(left)} kcal left`} · ${pLeft > 0 ? `${fmtNum(pLeft)} g protein to go` : 'protein target reached'}`;
+}
 function dashToday() {
   const t = ymd(), rows = [];
   const row = (ic, label, text, attrs, done) => rows.push(`<button type="button" class="w-full flex items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800" ${attrs}>${icon(ic, 'w-4 h-4 shrink-0 ' + (done ? 'text-emerald-600 dark:text-emerald-400' : 'text-brand-700 dark:text-brand-300'))}<span class="min-w-0 flex-1"><span class="block text-xs muted">${label}</span><span class="block text-sm font-medium truncate">${text}</span></span></button>`);
@@ -688,7 +705,7 @@ function dashToday() {
     else if (lw) row('dumbbell', 'Workout', `Last: ${esc(lw.name || 'Workout')}, ${fmtDate(wDate(lw), { weekday: 'short', month: 'short', day: 'numeric' })}`, 'data-action="go" data-view="fitness"');
   }
   const tot = dayTotals(t), T = targetsFor(t), logged = (day(t).entries || []).length;
-  row('apple', 'Food', logged ? `${fmtNum(tot.cal)} of ${fmtNum(T.cal)} kcal · ${fmtNum(tot.p)} of ${fmtNum(T.p)} g protein` : 'Nothing logged yet', 'data-action="go" data-view="nutrition"', logged && tot.cal >= T.cal * 0.9);
+  row('apple', 'Food', logged ? foodSoFar(tot, T) : 'Nothing logged yet', 'data-action="go" data-view="nutrition"', logged && tot.cal >= T.cal * 0.9);
   const wt = day(t).weight;
   row('scale', 'Weigh-in', wt != null ? `${wFmt(wt)} ✓` : 'Not yet today', 'data-action="goNutTab" data-tab="trend"', wt != null);
   const din = tonightMeals();
@@ -704,11 +721,12 @@ function renderDashboard() {
   const hr = new Date().getHours(), greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
   const hasData = ws.length || Object.keys(N()).length;
   const sm = syncMeta(), copied = sm.on && sm.copied && daysBetween(sm.copied, t) <= 7; // a recent daily copy in Drive counts as a backup
-  const needBackup = hasData && !copied && (!S.lastExport || Date.now() - new Date(S.lastExport) > 7 * 864e5);
+  const later = S.backupLater && daysBetween(S.backupLater, t) < 7; // "Later" puts the reminder off for a week
+  const needBackup = hasData && !copied && !later && (!S.lastExport || Date.now() - new Date(S.lastExport) > 7 * 864e5);
   const cards = {
     today: () => dashToday(),
     nutrition: () => `<div class="card">${cardHead('apple', 'Nutrition today', `<button class="btn btn-sm btn-ghost" data-action="go" data-view="nutrition">Log ${icon('chevron-right', 'w-3.5 h-3.5')}</button>`)}
-      <div class="flex items-center gap-4"><div class="relative shrink-0">${ring(tot.cal / T.cal, '#0d9488', 108, 11)}<div class="absolute inset-0 grid place-items-center text-center"><div><div class="text-xl font-bold tabular-nums">${fmtNum(tot.cal)}</div><div class="text-[11px] muted">of ${fmtNum(T.cal)} kcal</div></div></div></div>
+      <div class="flex items-center gap-4"><div class="relative shrink-0">${ring(tot.cal / T.cal, '#0d9488', 108, 11)}<div class="absolute inset-0 grid place-items-center text-center"><div>${calCenter(tot, T, true)}</div></div></div>
       <div class="flex-1 space-y-2">${miniBar('Protein', tot.p, T.p, '#e11d48')}${miniBar('Carbs', tot.c, T.c, '#f59e0b')}${miniBar('Fat', tot.f, T.f, '#6366f1')}</div></div>
     </div>`,
     weight: () => `<div class="card">${cardHead('scale', 'Body weight', `<button class="btn btn-sm btn-ghost" data-action="goNutTab" data-tab="trend">Trend ${icon('chevron-right', 'w-3.5 h-3.5')}</button>`)}
@@ -727,7 +745,7 @@ function renderDashboard() {
   return `
   <div class="mb-6 flex items-start gap-2"><div class="flex-1 min-w-0"><h2 class="text-2xl font-bold tracking-tight">${greet}${S.name ? `, ${esc(S.name)}` : ''}</h2><p class="muted">${new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p></div><button class="btn btn-sm btn-ghost" data-action="dashCardsEdit" aria-label="Show, hide or reorder cards" title="Show, hide or reorder cards">${icon('sliders-horizontal', 'w-4 h-4')}</button></div>
   ${dashNotices()}
-  ${needBackup ? `<div class="card mb-4 flex flex-wrap items-center gap-3 border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40">${icon('hard-drive-download', 'w-5 h-5 text-amber-600')}<div class="flex-1 text-sm min-w-[12rem]">${S.lastExport ? `Last backup: ${fmtDate(ymd(new Date(S.lastExport)))}.` : "You haven't exported a backup yet."} ${sm.on ? 'Sync copies mistakes to every device too, so keep a backup of your own.' : 'Your data lives only in this browser.'}</div><button class="btn btn-sm btn-primary" data-action="exportAll">Back up now</button></div>` : ''}
+  ${needBackup ? `<div class="mb-4 flex items-center gap-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 pl-3 pr-1.5 py-1 text-sm" role="note">${icon('hard-drive-download', 'w-4 h-4 shrink-0 text-amber-700 dark:text-amber-300')}<span class="flex-1 min-w-0">${S.lastExport ? `Last backup ${fmtDate(ymd(new Date(S.lastExport)), { month: 'short', day: 'numeric' })}` : 'No backup yet'} · ${sm.on ? 'keep one of your own' : 'only on this device'}</span><button class="btn btn-sm btn-ghost shrink-0" data-action="backupLater">Later</button><button class="btn btn-sm btn-primary shrink-0" data-action="exportAll">Back up</button></div>` : ''}
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
     ${dashOrder().filter(dashShow).map(id => cards[id]()).join('')}
   </div>${DASH_CARDS.every(([id]) => !dashShow(id)) ? `<p class="text-sm muted text-center mt-6">Every card is hidden. Tap <button class="underline" data-action="dashCardsEdit">Show, hide or reorder cards</button> to bring some back.</p>` : ''}`;
@@ -869,6 +887,12 @@ function setLabel(s, type = 'weight_reps') {
   if (s.rpe) p.push(`@${s.rpe}`);
   return p.join(' ') || '—';
 }
+// Previous column: "175×8" on one line; other set types fall back to setLabel without RPE
+function setShort(s, type = 'weight_reps') {
+  if (!s) return '—';
+  const w = s.weight != null && type !== 'bodyweight' ? `${type === 'assisted_bw' ? '−' : type === 'weighted_bw' ? '+' : ''}${wDisp(s.weight)}` : '';
+  return w && s.reps != null ? `${w}×${s.reps}` : setLabel({ ...s, rpe: null }, type);
+}
 function addToLibrary(names) { const lib = Store.get('exercises'), low = new Set(lib.map(x => x.toLowerCase())); let ch = false; for (const n of names) if (n && !low.has(n.toLowerCase())) { lib.push(n); low.add(n.toLowerCase()); ch = true; } if (ch) { lib.sort((a, b) => a.localeCompare(b)); Store.save('exercises'); } }
 const exDatalist = id => `<datalist id="${id}">${Store.get('exercises').map(e => `<option value="${esc(e)}">`).join('')}</datalist>`;
 const REST_OPTS = [0, 30, 45, 60, 75, 90, 120, 150, 180, 240, 300];
@@ -946,7 +970,7 @@ function renderFitness() {
   if (ui.editW) return fitEditor(ui.editW);
   const aw = Store.get('activeWorkout');
   ui.fitTab = { stats: 'history', data: 'history' }[ui.fitTab] || ui.fitTab; // tabs merged into History in 2026-10
-  const t = tabs('fitTab', [['workout', aw ? 'Active workout' : 'Workout', aw ? 'activity' : 'play'], ['history', 'History', 'history'], ['routines', 'Routines', 'folder'], ['library', 'Exercises', 'library'], ['progress', 'Progress', 'trending-up']]);
+  const t = tabs('fitTab', [['workout', aw ? 'Active workout' : 'Workout', aw ? 'activity' : 'play', 'Workout'], ['history', 'History', 'history', 'History'], ['routines', 'Routines', 'folder', 'Routines'], ['library', 'Exercises', 'library', 'Exercises'], ['progress', 'Progress', 'trending-up', 'Progress']]);
   return t + ({ workout: fitWorkoutTab, history: fitHistoryAll, routines: fitRoutinesTab, library: fitLibraryTab, progress: fitProgressTab }[ui.fitTab] || fitWorkoutTab)();
 }
 function routineCard(r, isNext) {
@@ -977,8 +1001,9 @@ function exerciseCard(ex, i, w, ctx, grp) {
   const count = w.exercises.length, info = exInfo(ex.name), type = EX_TYPES[info.type] ? info.type : 'weight_reps', cols = typeCols(type);
   const prev = exerciseHistory(ex.name, ctx === 'edit' ? { before: w.start, exclude: w.id } : {})[0], prevSets = prev ? prev.ex.sets : [];
   const head = c => c === 'weight' ? (type === 'assisted_bw' ? `−${S.unit}` : type === 'weighted_bw' ? `+${S.unit}` : S.unit) : c === 'reps' ? 'Reps' : c === 'duration' ? 'Time' : distUnit();
+  const showRpe = S.rpe || ex.sets.some(s => s.rpe != null && s.rpe !== '');
   const cell = (c, s, p, j) => {
-    const base = `class="input px-1.5 sm:px-2 py-1.5 text-center tabular-nums" data-input="awSet" data-i="${i}" data-j="${j}" data-f="${c}" aria-label="${head(c)}"`;
+    const base = `class="input h-11 px-1 sm:px-2 py-1.5 text-center tabular-nums" data-input="awSet" data-i="${i}" data-j="${j}" data-f="${c}" aria-label="${head(c)}"`;
     if (c === 'weight') return `<input type="number" inputmode="decimal" step="any" ${base} value="${wDisp(s.weight)}" placeholder="${p && p.weight != null ? wDisp(p.weight) : S.unit}">`;
     if (c === 'reps') return `<input type="number" inputmode="numeric" step="1" ${base} value="${s.reps ?? ''}" placeholder="${esc(p?.reps ?? (ex.targetReps || 'reps'))}">`;
     if (c === 'duration') return `<input type="text" inputmode="numeric" ${base} value="${s.duration ? fmtClock(s.duration) : ''}" placeholder="${p?.duration ? fmtClock(p.duration) : esc(ex.targetReps || 'm:ss')}">`;
@@ -988,11 +1013,11 @@ function exerciseCard(ex, i, w, ctx, grp) {
   const rows = ex.sets.map((s, j) => {
     if (s.type !== 'warmup') n++; const p = prevSets[j], [lab, cls] = setBadge(s, n);
     return `<tr class="${s.done && ctx !== 'edit' ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}">
-      <td class="py-1 pl-1 whitespace-nowrap"><button class="w-7 h-7 rounded-md text-xs font-bold ${cls}" data-action="awSetType" data-i="${i}" data-j="${j}" title="Tap to change set type (warm-up, drop, failure)">${lab}</button>${s.pr && s.pr.length ? `<span class="ml-0.5" title="${s.pr.map(k => PR_LABELS[k]).join(', ')}">🏆</span>` : ''}</td>
-      <td class="py-1 pr-1">${p ? `<button class="text-[11px] sm:text-xs muted hover:text-brand-600 text-left leading-tight" data-action="awFillPrev" data-i="${i}" data-j="${j}" title="Tap to copy into this set">${setLabel(p, type)}</button>` : '<span class="text-xs muted">—</span>'}</td>
+      <td class="py-1 pl-1 whitespace-nowrap"><button class="w-8 h-8 rounded-md text-xs font-bold ${cls}" data-action="awSetType" data-i="${i}" data-j="${j}" title="Tap to change set type (warm-up, drop, failure)">${lab}</button>${s.pr && s.pr.length ? `<span class="ml-0.5" title="${s.pr.map(k => PR_LABELS[k]).join(', ')}">🏆</span>` : ''}</td>
+      <td class="py-1 pr-1">${p ? `<button class="text-xs muted hover:text-brand-600 text-left whitespace-nowrap tabular-nums min-h-[2.75rem]" data-action="awFillPrev" data-i="${i}" data-j="${j}" title="Tap to copy into this set" aria-label="Previous: ${esc(setLabel(p, type))}. Copy into this set">${setShort(p, type)}</button>` : '<span class="text-xs muted">—</span>'}</td>
       ${cols.map(c => `<td class="py-1 px-0.5 sm:px-1">${cell(c, s, p, j)}</td>`).join('')}
-      <td class="py-1 px-0.5 sm:px-1 w-12 sm:w-16"><input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="input px-1 py-1.5 text-center tabular-nums" value="${s.rpe ?? ''}" placeholder="RPE" data-input="awSet" data-i="${i}" data-j="${j}" data-f="rpe" aria-label="RPE"></td>
-      ${ctx === 'edit' ? '' : `<td class="py-1 px-0.5 sm:px-1"><button class="w-9 h-9 rounded-lg grid place-items-center ${s.done ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-600'}" data-action="awSetDone" data-i="${i}" data-j="${j}" aria-label="Complete set">${icon('check')}</button></td>`}
+      ${showRpe ? `<td class="py-1 px-0.5 sm:px-1 w-12 sm:w-16"><input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="input h-11 px-1 py-1.5 text-center tabular-nums" value="${s.rpe ?? ''}" placeholder="RPE" data-input="awSet" data-i="${i}" data-j="${j}" data-f="rpe" aria-label="RPE"></td>` : ''}
+      ${ctx === 'edit' ? '' : `<td class="py-1 px-0.5 sm:px-1"><button class="w-11 h-11 rounded-lg grid place-items-center ${s.done ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-600'}" data-action="awSetDone" data-i="${i}" data-j="${j}" aria-label="Complete set">${icon('check')}</button></td>`}
       <td class="py-1 pr-0.5"><button class="btn btn-ghost btn-sm px-1 text-slate-400" data-action="awDelSet" data-i="${i}" data-j="${j}" aria-label="Delete set">${icon('x', 'w-3.5 h-3.5')}</button></td></tr>`;
   }).join('');
   return `<div class="card p-3 sm:p-4 ${grp ? 'border-l-4 border-l-violet-400 dark:border-l-violet-500' : ''}">
@@ -1000,14 +1025,11 @@ function exerciseCard(ex, i, w, ctx, grp) {
     <div class="flex flex-wrap items-center gap-1.5 mb-2">
       <div class="flex-1 min-w-[10rem]"><button class="font-semibold text-brand-700 dark:text-brand-300 hover:underline text-left" data-action="libEdit" data-name="${esc(ex.name)}" title="Exercise settings">${esc(ex.name)}</button>
         <div class="text-xs muted flex flex-wrap gap-x-2"><span>${esc(info.primary)} · ${typeLabel(type)}${info.countBW && BW_TYPES.has(type) ? ' · body weight counts' : ''}</span>${prev ? `<span>Last ${fmtDate(wDate(prev.w), { month: 'short', day: 'numeric' })}: ${setLabel(bestSet(prev.ex, type), type)}</span>` : '<span>First time logging this</span>'}${info.howto ? `<a href="${esc(webUrl(info.howto))}" target="_blank" rel="noopener" class="text-brand-600 dark:text-brand-400 underline">How-to</a>` : ''}</div></div>
-      <label class="flex items-center gap-1 text-xs muted" title="Rest after each set">${icon('timer', 'w-3.5 h-3.5')}<select class="input py-1 px-1.5 w-auto text-xs" data-change="awRest" data-i="${i}">${restOptions(ex.rest)}</select></label>
-      ${i < count - 1 ? `<button class="btn btn-ghost btn-sm ${ex.ss ? 'text-violet-600 dark:text-violet-300' : ''}" data-action="awLink" data-i="${i}" title="${ex.ss ? 'Remove from superset' : 'Superset with the next exercise'}">${icon(ex.ss ? 'unlink' : 'link', 'w-3.5 h-3.5')}</button>` : ''}
-      <button class="btn btn-ghost btn-sm" data-action="awMoveEx" data-i="${i}" data-d="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">${icon('arrow-up', 'w-3.5 h-3.5')}</button>
-      <button class="btn btn-ghost btn-sm" data-action="awMoveEx" data-i="${i}" data-d="1" ${i === count - 1 ? 'disabled' : ''} aria-label="Move down">${icon('arrow-down', 'w-3.5 h-3.5')}</button>
-      <button class="btn btn-ghost btn-sm btn-danger" data-action="awDelEx" data-i="${i}" aria-label="Remove exercise">${icon('trash-2', 'w-3.5 h-3.5')}</button>
+      <label class="flex items-center gap-1 text-xs muted" title="Rest after each set">${icon('timer', 'w-3.5 h-3.5')}<select class="input py-1 px-1.5 w-auto text-xs" data-change="awRest" data-i="${i}" aria-label="Rest after each set">${restOptions(ex.rest)}</select></label>
+      <button class="btn btn-ghost btn-sm" data-action="awExMenu" data-i="${i}" aria-label="More for ${esc(ex.name)}" title="Move, superset or remove">${icon('ellipsis', 'w-4 h-4')}</button>
     </div>
-    <input class="input py-1.5 text-xs mb-2" placeholder="Exercise notes…" value="${esc(ex.notes)}" data-input="awExNote" data-i="${i}">
-    <div class="overflow-x-auto"><table class="w-full max-w-3xl text-sm"><thead><tr class="text-xs muted text-left"><th class="font-medium pl-1 w-9">Set</th><th class="font-medium">Previous</th>${cols.map(c => `<th class="font-medium text-center">${head(c)}</th>`).join('')}<th class="font-medium text-center">RPE</th>${ctx === 'edit' ? '' : '<th class="w-10"></th>'}<th class="w-7"></th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${ex.notes || ui.noteOpen.has(ex) ? `<input class="input py-1.5 text-xs mb-2" placeholder="Exercise notes…" value="${esc(ex.notes)}" data-input="awExNote" data-i="${i}" aria-label="Notes for ${esc(ex.name)}">` : `<button class="text-xs text-brand-700 dark:text-brand-300 mb-1 min-h-[2.25rem] inline-flex items-center gap-1" data-action="awNoteOpen" data-i="${i}">${icon('plus', 'w-3 h-3')} Add note</button>`}
+    <div class="overflow-x-auto"><table class="w-full max-w-3xl text-sm"><thead><tr class="text-xs muted text-left"><th class="font-medium pl-1 w-9">Set</th><th class="font-medium">Previous</th>${cols.map(c => `<th class="font-medium text-center">${head(c)}</th>`).join('')}${showRpe ? '<th class="font-medium text-center">RPE</th>' : ''}${ctx === 'edit' ? '' : '<th class="w-10"></th>'}<th class="w-7"></th></tr></thead><tbody>${rows}</tbody></table></div>
     <button class="btn btn-sm w-full mt-2" data-action="awAddSet" data-i="${i}">${icon('plus', 'w-3.5 h-3.5')} Add set</button>
   </div>`;
 }
@@ -1022,10 +1044,10 @@ function fitActive(aw) {
     <div class="w-full sm:w-auto flex items-center gap-x-3 sm:gap-4 text-sm tabular-nums"><span><span class="muted sm:block sm:text-xs">Time </span><span id="elapsed" class="font-semibold">0:00</span></span><span><span class="muted sm:block sm:text-xs">Volume </span><span class="font-semibold">${fmtNum(toUnit(vol))} ${S.unit}</span></span><span><span class="muted sm:block sm:text-xs">Sets </span><span class="font-semibold">${done}</span></span>
       <button class="btn btn-sm btn-ghost btn-danger ml-auto sm:hidden" data-action="awDiscard" aria-label="Discard workout">${icon('trash-2', 'w-4 h-4')}</button></div>
     <button class="btn btn-danger hidden sm:inline-flex sm:ml-auto" data-action="awDiscard">${icon('trash-2')} Discard</button></div></div>
-  <textarea class="input mb-4" rows="2" placeholder="Workout notes…" data-input="awField" data-f="notes">${esc(aw.notes)}</textarea>
+  ${aw.notes || ui.noteOpen.has(aw) ? `<textarea class="input mb-4" rows="2" placeholder="Workout notes…" data-input="awField" data-f="notes" aria-label="Workout notes">${esc(aw.notes)}</textarea>` : `<button class="text-sm text-brand-700 dark:text-brand-300 mb-3 min-h-[2.75rem] inline-flex items-center gap-1" data-action="awNoteOpen">${icon('plus', 'w-3.5 h-3.5')} Add workout note</button>`}
   <div class="space-y-4">${aw.exercises.map((ex, i) => exerciseCard(ex, i, aw, 'active', g[i])).join('')}</div>
   <form data-submit="awAddExercise" class="card mt-4 flex gap-2"><input name="name" list="ex-list" class="input" placeholder="Add exercise (type to search)…" autocomplete="off" required><button class="btn btn-primary">${icon('plus')} Add</button></form>
-  <p class="text-xs muted mt-2">Tip: for a time, type 130 for 1:30 or 45 for 0:45; tap a “Previous” value to copy it; tap ${icon('link', 'w-3 h-3 inline')} to superset an exercise with the next one; tap an exercise name to set its type and muscles.</p>
+  <p class="text-xs muted mt-2">Tip: for a time, type 130 for 1:30 or 45 for 0:45; tap a “Previous” value to copy it; tap ${icon('ellipsis', 'w-3 h-3 inline')} to move an exercise or superset it with the next one; tap an exercise name to set its type and muscles. Turn on the RPE column in Settings.</p>
   ${exDatalist('ex-list')}</div>`;
 }
 function fitEditor(w) {
@@ -1033,7 +1055,7 @@ function fitEditor(w) {
   return `<div data-wctx="edit">
   <div class="card mb-4"><div class="flex flex-wrap items-center gap-2 mb-3"><h3 class="font-semibold text-lg">${w._new ? 'Log a past workout' : 'Edit workout'}</h3><div class="ml-auto flex gap-2"><button class="btn" data-action="editCancel">Cancel</button><button class="btn btn-primary" data-action="editSave">${icon('save')} Save</button></div></div>
     <div class="grid sm:grid-cols-6 gap-3"><div class="sm:col-span-3"><label class="label">Name</label><input class="input" value="${esc(w.name)}" data-input="awField" data-f="name"></div>
-    <div><label class="label">Date</label><input type="date" class="input" value="${w._date}" data-input="editWhen" data-f="date"></div><div><label class="label">Start time</label><input type="time" class="input" value="${w._time}" data-input="editWhen" data-f="time"></div><div><label class="label">Minutes</label><input type="number" min="1" class="input" value="${w._dur}" data-input="editWhen" data-f="dur"></div></div>
+    <div><label class="label">Date</label><input type="date" class="input" value="${w._date}" data-input="editWhen" data-f="date"></div><div><label class="label">Start time</label><input type="time" class="input" value="${w._time}" data-input="editWhen" data-f="time"></div><div><label class="label">Minutes</label><input type="number" inputmode="numeric" min="1" class="input" value="${w._dur}" data-input="editWhen" data-f="dur"></div></div>
     <textarea class="input mt-3" rows="2" placeholder="Workout notes…" data-input="awField" data-f="notes">${esc(w.notes || '')}</textarea></div>
   <div class="space-y-4">${w.exercises.map((ex, i) => exerciseCard(ex, i, w, 'edit', g[i])).join('')}</div>
   <form data-submit="awAddExercise" class="card mt-4 flex gap-2"><input name="name" list="ex-list" class="input" placeholder="Add exercise…" autocomplete="off" required><button class="btn btn-primary">${icon('plus')} Add</button></form>
@@ -1079,7 +1101,7 @@ function drawRoutineModal() {
     <div><div class="hidden sm:grid grid-cols-12 gap-2 text-xs muted font-medium mb-1"><div class="col-span-4">Exercise</div><div class="col-span-2">Sets</div><div class="col-span-2">Target reps / time</div><div class="col-span-2">Rest</div></div>
     <div class="space-y-2">${d.exercises.map((e, i) => `<div class="grid grid-cols-12 gap-2 items-center pb-2 sm:pb-0 border-b sm:border-0 border-slate-100 dark:border-slate-800 ${g[i] ? 'border-l-4 border-l-violet-400 pl-2' : ''}">
       <div class="col-span-12 sm:col-span-4"><input class="input" list="ex-list-m" value="${esc(e.name)}" data-input="rdEx" data-i="${i}" data-f="name" placeholder="Exercise">${g[i] ? `<div class="text-[10px] text-violet-600 dark:text-violet-300 mt-0.5">Superset ${g[i].label} · ${g[i].pos}/${g[i].size}</div>` : ''}</div>
-      <input type="number" min="1" class="input col-span-3 sm:col-span-2" value="${e.sets}" data-input="rdEx" data-i="${i}" data-f="sets" title="Sets">
+      <input type="number" inputmode="numeric" min="1" class="input col-span-3 sm:col-span-2" value="${e.sets}" data-input="rdEx" data-i="${i}" data-f="sets" title="Sets">
       <input class="input col-span-3 sm:col-span-2" value="${esc(e.reps)}" data-input="rdEx" data-i="${i}" data-f="reps" placeholder="8-12 / 0:45" title="Target reps or time">
       <select class="input col-span-3 sm:col-span-2 px-2" data-input="rdEx" data-i="${i}" data-f="rest" title="Rest">${restOptions(e.rest)}</select>
       <div class="col-span-3 sm:col-span-2 flex justify-end"><button type="button" class="btn btn-ghost btn-sm" data-action="rdMove" data-i="${i}" aria-label="Move up">${icon('arrow-up', 'w-3.5 h-3.5')}</button>${i < d.exercises.length - 1 ? `<button type="button" class="btn btn-ghost btn-sm ${e.ss ? 'text-violet-600' : ''}" data-action="rdLink" data-i="${i}" title="${e.ss ? 'Unlink superset' : 'Superset with next'}">${icon(e.ss ? 'unlink' : 'link', 'w-3.5 h-3.5')}</button>` : ''}<button type="button" class="btn btn-ghost btn-sm btn-danger" data-action="rdDel" data-i="${i}" aria-label="Remove">${icon('x', 'w-3.5 h-3.5')}</button></div></div>`).join('') || '<p class="text-sm muted">Add exercises below.</p>'}</div></div>
@@ -1091,7 +1113,7 @@ function folderModal(name) {
   const p = Store.get('programs')[name] || {};
   Modal.open(modalShell('Folder &amp; program', `<input type="hidden" name="orig" value="${esc(name)}">
     <div><label class="label">Folder name</label><input name="name" class="input" value="${esc(name)}" required></div>
-    <div class="grid grid-cols-2 gap-3"><div><label class="label">Program start date</label><input type="date" name="start" class="input" value="${p.start || ''}"></div><div><label class="label">Length (weeks)</label><input type="number" min="1" name="weeks" class="input" value="${p.weeks || ''}" placeholder="e.g. 4"></div></div>
+    <div class="grid grid-cols-2 gap-3"><div><label class="label">Program start date</label><input type="date" name="start" class="input" value="${p.start || ''}"></div><div><label class="label">Length (weeks)</label><input type="number" inputmode="numeric" min="1" name="weeks" class="input" value="${p.weeks || ''}" placeholder="e.g. 4"></div></div>
     <p class="text-xs muted">Leave the start date empty to use this as a plain folder. With a start date, the folder shows “Week X of N”, and the routine after the one you did last is marked “Next up”.</p>`,
     `<button type="button" class="btn" data-action="closeModal">Cancel</button><button class="btn btn-primary">Save</button>`, 'folderSave'));
 }
@@ -1122,7 +1144,7 @@ function libModal(name) {
     <div><label class="label">Secondary muscles (count as half a set)</label><div class="flex flex-wrap gap-1.5">${MUSCLES.map(m => `<label class="cursor-pointer"><input type="checkbox" name="sec" value="${m}" class="peer sr-only" ${(info.secondary || []).includes(m) ? 'checked' : ''}><span class="chip peer-checked:bg-brand-600 peer-checked:text-white">${m}</span></label>`).join('')}</div></div>
     <div id="bw-opts" class="rounded-xl border border-slate-200 dark:border-slate-800 p-3 ${BW_TYPES.has(info.type) ? '' : 'hidden'}">
       <label class="flex items-center gap-2 text-sm font-medium cursor-pointer"><input type="checkbox" name="countBW" class="w-4 h-4 accent-brand-600" ${info.countBW ? 'checked' : ''}> Count body weight toward volume</label>
-      <div class="flex flex-wrap items-center gap-2 mt-2 text-sm"><span class="muted">Use</span><input type="number" name="bwPct" min="1" max="100" step="1" class="input w-20 py-1" value="${info.bwPct ?? 100}"><span class="muted">% of body weight per rep</span></div>
+      <div class="flex flex-wrap items-center gap-2 mt-2 text-sm"><span class="muted">Use</span><input type="number" inputmode="numeric" name="bwPct" min="1" max="100" step="1" class="input w-20 py-1" value="${info.bwPct ?? 100}"><span class="muted">% of body weight per rep</span></div>
       <p class="text-xs muted mt-2">Volume = (body weight × % ${'+'} added weight, or − assistance) × reps. Body weight comes from your Nutrition weigh-ins for that date (7-day trend), or the fallback in Settings. Tip: push-ups move roughly 65%, pull-ups and dips about 100%.</p></div>
     <div><label class="label">How-to link (video or article)</label><input name="howto" class="input" value="${esc(info.howto || '')}" placeholder="https://"></div>
     <div><label class="label">Form cues</label><textarea name="notes" class="input" rows="2">${esc(info.notes || '')}</textarea></div>
@@ -1272,7 +1294,7 @@ function toHevyCSV() {
 }
 
 /* ---------- Fitness actions ---------- */
-Object.assign(ui, { editW: null, libSearch: '', libMuscle: 'all', libEquip: 'all', statMonth: ymd().slice(0, 7), calDay: null });
+Object.assign(ui, { editW: null, libSearch: '', libMuscle: 'all', libEquip: 'all', statMonth: ymd().slice(0, 7), calDay: null, noteOpen: new WeakSet() });
 const wctx = el => el.closest('[data-wctx]')?.dataset.wctx === 'edit' ? 'edit' : 'active';
 const wObj = el => wctx(el) === 'edit' ? ui.editW : Store.get('activeWorkout');
 const wSave = el => { if (wctx(el) === 'active') Store.save('activeWorkout'); };
@@ -1332,6 +1354,18 @@ const A_FIT = {
   awDelEx: el => { const w = wObj(el), ex = w.exercises[+el.dataset.i]; if (ex.sets.some(s => s.done && wctx(el) === 'active') && !confirm(`Remove ${ex.name} and its completed sets?`)) return; w.exercises.splice(+el.dataset.i, 1); if (w.exercises.length) w.exercises[w.exercises.length - 1].ss = false; wSave(el); render(); },
   awMoveEx: el => { const a = wObj(el).exercises, i = +el.dataset.i, j = i + +el.dataset.d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; a[a.length - 1].ss = false; wSave(el); render(); },
   awLink: el => { const ex = wObj(el).exercises[+el.dataset.i]; ex.ss = !ex.ss; wSave(el); render(); },
+  // ⋯ on an exercise: the less used tools, in a small sheet; the sheet keeps the workout it came from
+  awExMenu: el => {
+    const ctx = wctx(el), w = wObj(el), i = +el.dataset.i, ex = w.exercises[i], n = w.exercises.length;
+    const b = (act, ic, label, extra = '', cls = '') => `<button type="button" class="btn justify-start gap-3 py-3 text-base ${cls}" data-action="awExDo" data-do="${act}" data-i="${i}" ${extra}>${icon(ic, 'w-5 h-5 shrink-0')}<span>${label}</span></button>`;
+    Modal.open(modalShell(esc(ex.name), `<div class="grid gap-2" data-wctx="${ctx}">
+      ${i > 0 ? b('awMoveEx', 'arrow-up', 'Move up', 'data-d="-1"') : ''}${i < n - 1 ? b('awMoveEx', 'arrow-down', 'Move down', 'data-d="1"') : ''}
+      ${i < n - 1 ? b('awLink', ex.ss ? 'unlink' : 'link', ex.ss ? 'Remove from superset' : 'Superset with the next exercise') : ''}
+      ${b('libEditDo', 'settings-2', 'Exercise type and muscles', `data-name="${esc(ex.name)}"`)}
+      ${b('awDelEx', 'trash-2', 'Remove exercise', '', 'btn-danger')}</div>`));
+  },
+  awExDo: el => { const f = A[el.dataset.do === 'libEditDo' ? 'libEdit' : el.dataset.do]; Modal.close(); f(el); },
+  awNoteOpen: el => { const w = wObj(el), i = el.dataset.i, t = i == null ? w : w.exercises[+i]; ui.noteOpen.add(t); ui.after = () => (i == null ? $('#view [data-f="notes"]') : $(`#view [data-input="awExNote"][data-i="${i}"]`))?.focus(); render(); },
   awDiscard: () => { if (!confirm('Discard this workout? Nothing will be saved.')) return; Store.set('activeWorkout', null); Timer.stop(); Timer.visible = false; Timer.draw(); render(); },
   awFinish: () => {
     const aw = Store.get('activeWorkout');
@@ -1727,7 +1761,7 @@ function macroBar(label, val, target, color, unit = 'g') {
 }
 function renderNutrition() {
   ui.nutTab = { body: 'trend', history: 'plan' }[ui.nutTab] || ui.nutTab; // tabs merged in 2026-10
-  return tabs('nutTab', [['today', 'Daily log', 'utensils'], ['plan', 'Plan', 'target'], ['trend', 'Body & weight', 'line-chart'], ['foods', 'Foods & meals', 'bookmark']])
+  return tabs('nutTab', [['today', 'Daily log', 'utensils', 'Log'], ['plan', 'Plan', 'target', 'Plan'], ['trend', 'Body & weight', 'line-chart', 'Body'], ['foods', 'Foods & meals', 'bookmark', 'Foods']])
     + ({ today: nutToday, plan: () => nutPlanTab() + `<div class="mt-6">${nutHistory()}</div>`, trend: () => nutTrend() + `<div class="mt-6">${nutBody()}</div>`, foods: nutFoods }[ui.nutTab] || nutToday)();
 }
 function checkinBanner() {
@@ -1750,25 +1784,31 @@ function mealCard(d, key, label, ic, entries) {
       <button class="btn btn-ghost btn-sm px-1.5" data-action="entryCopy" data-id="${e.id}" title="Copy">${icon('copy', 'w-3.5 h-3.5')}</button><button class="btn btn-ghost btn-sm px-1.5 btn-danger" data-action="entryDel" data-id="${e.id}" title="Delete">${icon('trash-2', 'w-3.5 h-3.5')}</button></div>`).join('')}
   </div>`;
 }
+// "Today · Sat, Nov 7"; other years show the year
+function dayName(d) {
+  const t = ymd(), rel = d === t ? 'Today' : d === addDays(t, -1) ? 'Yesterday' : d === addDays(t, 1) ? 'Tomorrow' : '';
+  const s = fmtDate(d, { weekday: 'short', month: 'short', day: 'numeric', ...(d.slice(0, 4) !== t.slice(0, 4) ? { year: 'numeric' } : {}) });
+  return rel ? `${rel} · ${s}` : s;
+}
 function nutToday() {
   const d = ui.nutDate, dd = day(d), tot = dayTotals(d), T = targetsFor(d), isToday = d === ymd(), p = nutPlan();
   const tr = trendCached(), trT = trendAt(tr, d), ls = logStreak(), ws = weighStreak();
   const dayType = T.type && T.type !== 'std' ? `<span class="chip ${T.type === 'high' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200' : T.type === 'fast' ? 'bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-200' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200'}">${DAY_TYPES[T.type]} day</span>` : '';
   const recents = recentFoods(), meals = Store.get('meals');
   return `
-  <div class="flex flex-wrap items-center gap-2 mb-4">
-    <button class="btn" data-action="nutShift" data-d="-1" aria-label="Previous day">${icon('chevron-left')}</button>
-    <input type="date" class="input w-auto" value="${d}" data-change="nutDate">
-    <button class="btn" data-action="nutShift" data-d="1" aria-label="Next day">${icon('chevron-right')}</button>
-    ${isToday ? '<span class="chip chip-on">Today</span>' : `<button class="btn btn-sm" data-action="nutToday">Jump to today</button>`}${dayType}
-    <div class="ml-auto flex gap-1.5">${dd.entries.length ? `<button class="btn btn-sm" data-action="dayCopy">${icon('copy', 'w-3.5 h-3.5')} Copy day</button>` : ''}${ui.clip ? `<button class="btn btn-sm" data-action="clipPaste">${icon('clipboard-paste', 'w-3.5 h-3.5')} Paste ${ui.clip.items.length}</button><button class="btn btn-ghost btn-sm" data-action="clipClear" title="Clear clipboard">${icon('x', 'w-3.5 h-3.5')}</button>` : `<button class="btn btn-sm" data-action="nutCopyPrev">${icon('history', 'w-3.5 h-3.5')} Copy yesterday</button>`}</div>
-  </div>
+  <div class="mb-4 space-y-2"><div class="flex items-center gap-2">
+    <button class="btn shrink-0" data-action="nutShift" data-d="-1" aria-label="Previous day">${icon('chevron-left')}</button>
+    <label class="btn relative flex-1 min-w-0 sm:flex-none sm:min-w-[15rem] font-semibold focus-within:ring-2 focus-within:ring-brand-500">${icon('calendar-days', 'w-4 h-4 shrink-0 text-brand-700 dark:text-brand-300')}<span class="truncate">${dayName(d)}</span><input type="date" class="day-pick" value="${d}" data-change="nutDate" aria-label="Choose a day"></label>
+    <button class="btn shrink-0" data-action="nutShift" data-d="1" aria-label="Next day">${icon('chevron-right')}</button>
+    ${isToday ? '' : `<button class="btn shrink-0" data-action="nutToday">Today</button>`}
+    <button class="btn shrink-0" data-action="nutDayMenu" aria-label="Copy or paste a day" title="Copy or paste a day">${icon('ellipsis', 'w-4 h-4')}</button>
+  </div>${dayType || ui.clip ? `<div class="flex flex-wrap items-center gap-2">${dayType}${ui.clip ? `<button class="btn btn-sm" data-action="clipPaste">${icon('clipboard-paste', 'w-3.5 h-3.5')} Paste ${ui.clip.items.length} here</button><button class="btn btn-ghost btn-sm" data-action="clipClear" aria-label="Clear the copied day" title="Clear the copied day">${icon('x', 'w-3.5 h-3.5')}</button>` : ''}</div>` : ''}</div>
   ${checkinBanner()}
   <div class="lg:hidden mb-4 space-y-2"><button class="btn btn-primary w-full" data-action="lfOpen">${icon('search')} Log food</button>
     ${recents.length ? `<div class="flex gap-1.5 overflow-x-auto scroll-thin pb-1" role="group" aria-label="Add a recent food again">${recents.slice(0, 8).map(f => `<button class="chip whitespace-nowrap max-w-[15rem] shrink-0" data-action="quickFood" data-id="${esc(f.id)}" aria-label="Add ${esc(f.name)} again">${icon('plus', 'w-3 h-3 shrink-0')}<span class="truncate">${esc(f.name)}</span></button>`).join('')}</div>` : ''}</div>
   <div class="grid lg:grid-cols-3 gap-4 mb-4">
     <div class="card lg:col-span-2"><div class="flex flex-col sm:flex-row items-center gap-6">
-      <div class="relative shrink-0">${ring(tot.cal / T.cal, MACRO_COLORS.cal, 150, 14)}<div class="absolute inset-0 grid place-items-center text-center"><div><div class="text-3xl font-bold tabular-nums">${fmtNum(tot.cal)}</div><div class="text-xs muted">of ${fmtNum(T.cal)} kcal</div><div class="text-xs font-medium ${tot.cal > T.cal ? 'text-rose-500' : 'text-brand-600'}">${tot.cal > T.cal ? `${fmtNum(tot.cal - T.cal)} over` : `${fmtNum(T.cal - tot.cal)} left`}</div></div></div></div>
+      <div class="relative shrink-0">${ring(tot.cal / T.cal, MACRO_COLORS.cal, 150, 14)}<div class="absolute inset-0 grid place-items-center text-center"><div>${calCenter(tot, T)}</div></div></div>
       <div class="flex-1 w-full space-y-3">${macroBar('Protein', tot.p, T.p, MACRO_COLORS.p)}${macroBar('Carbs', tot.c, T.c, MACRO_COLORS.c)}${macroBar('Fat', tot.f, T.f, MACRO_COLORS.f)}</div></div>
       <div class="flex flex-wrap items-center gap-2 mt-3 text-xs muted">${tot.fiber ? `<span>Fiber ${fmtNum(tot.fiber)}g</span>` : ''}${tot.sodium ? `<span>· Sodium ${fmtNum(tot.sodium)}mg</span>` : ''}<span class="ml-auto">${p ? `Targets from your <button class="underline" data-action="setTab" data-key="nutTab" data-val="plan">plan</button>` : `<button class="underline" data-action="setTab" data-key="nutTab" data-val="plan">Set up an adaptive plan</button> · <button class="underline" data-action="openSettings">edit fixed targets</button>`}</span></div></div>
     <div class="card">${cardHead('scale', 'Body weight')}
@@ -1850,11 +1890,11 @@ const lfQuickHtml = () => `<form class="space-y-3" data-submit="lfQuickAdd"><div
   <p class="text-xs muted">kcal fills in from the macros as you type: 4 per gram of protein and carbs, 9 per gram of fat. Type your own number to keep it.</p><button class="btn btn-primary">${icon('plus')} Add to ${mealLabel(ui.lf.meal)}</button></form>`;
 function lfMealsHtml() {
   const ms = Store.get('meals');
-  return ms.length ? `<div class="flex items-center gap-2 text-sm"><span class="muted">Servings</span><input id="lf-mult" type="number" step="0.25" min="0.25" value="1" class="input w-20 py-1"></div><div class="space-y-1.5">${ms.map(m => { const t = mealTotals(m); return `<button type="button" class="w-full text-left rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2 hover:border-brand-400" data-action="lfMealTpl" data-id="${m.id}"><div class="text-sm font-medium">${esc(m.name)}</div><div class="text-xs muted">${m.items ? m.items.map(x => esc(x.name)).join(', ') + ' · ' : ''}${fmtNum(t.cal)} kcal · P${fmtNum(t.p)} C${fmtNum(t.c)} F${fmtNum(t.f)}</div></button>`; }).join('')}</div>` : '<p class="text-sm muted">No saved meals yet. On the daily log, tap the bookmark on any meal to save it for one-tap logging.</p>';
+  return ms.length ? `<div class="flex items-center gap-2 text-sm"><span class="muted">Servings</span><input id="lf-mult" type="number" inputmode="decimal" step="0.25" min="0.25" value="1" class="input w-20 py-1"></div><div class="space-y-1.5">${ms.map(m => { const t = mealTotals(m); return `<button type="button" class="w-full text-left rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2 hover:border-brand-400" data-action="lfMealTpl" data-id="${m.id}"><div class="text-sm font-medium">${esc(m.name)}</div><div class="text-xs muted">${m.items ? m.items.map(x => esc(x.name)).join(', ') + ' · ' : ''}${fmtNum(t.cal)} kcal · P${fmtNum(t.p)} C${fmtNum(t.c)} F${fmtNum(t.f)}</div></button>`; }).join('')}</div>` : '<p class="text-sm muted">No saved meals yet. On the daily log, tap the bookmark on any meal to save it for one-tap logging.</p>';
 }
 function lfRecipesHtml() {
   const rs = Store.get('recipes').filter(r => r.cal);
-  return rs.length ? `<div class="flex items-center gap-2 text-sm"><span class="muted">Servings</span><input id="lf-rserv" type="number" step="0.25" min="0.25" value="1" class="input w-20 py-1"></div><div class="space-y-1.5">${rs.map(r => `<button type="button" class="w-full text-left rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2 hover:border-brand-400" data-action="lfRecipe" data-id="${r.id}"><div class="text-sm font-medium">${esc(r.title)}</div><div class="text-xs muted">Per serving: ${fmtNum(r.cal)} kcal · P${fmtNum(r.p)} C${fmtNum(r.c)} F${fmtNum(r.f)}</div></button>`).join('')}</div>` : '<p class="text-sm muted">Recipes with macros per serving (Recipes &amp; Meals) appear here.</p>';
+  return rs.length ? `<div class="flex items-center gap-2 text-sm"><span class="muted">Servings</span><input id="lf-rserv" type="number" inputmode="decimal" step="0.25" min="0.25" value="1" class="input w-20 py-1"></div><div class="space-y-1.5">${rs.map(r => `<button type="button" class="w-full text-left rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2 hover:border-brand-400" data-action="lfRecipe" data-id="${r.id}"><div class="text-sm font-medium">${esc(r.title)}</div><div class="text-xs muted">Per serving: ${fmtNum(r.cal)} kcal · P${fmtNum(r.p)} C${fmtNum(r.c)} F${fmtNum(r.f)}</div></button>`).join('')}</div>` : '<p class="text-sm muted">Recipes with macros per serving (Recipes &amp; Meals) appear here.</p>';
 }
 let scanStream = null, scanTimer = null;
 function stopScan() { clearTimeout(scanTimer); scanTimer = null; if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; } }
@@ -1909,8 +1949,8 @@ function foodEditor(f, opts = {}) {
   Modal.open(modalShell(f ? 'Edit food' : 'Create custom food', `<input type="hidden" name="id" value="${esc(x.id)}">
     <div class="grid sm:grid-cols-2 gap-3"><div><label class="label">Name</label><input name="name" class="input" value="${esc(x.name)}" required autofocus></div><div><label class="label">Brand (optional)</label><input name="brand" class="input" value="${esc(x.brand || '')}"></div></div>
     <div class="grid sm:grid-cols-3 gap-3"><div><label class="label">Nutrition facts are per</label><select name="basis" class="input"><option value="serving" ${x.basis !== '100g' ? 'selected' : ''}>1 serving</option><option value="100g" ${x.basis === '100g' ? 'selected' : ''}>100 g / 100 ml</option></select></div>
-      <div><label class="label">Serving description</label><input name="servingLabel" class="input" value="${esc(x.servingLabel || '')}" placeholder="e.g. 1 bar, 2 slices"></div><div><label class="label">Serving weight (g)</label><input name="servingG" type="number" step="any" class="input" value="${x.servingG ?? ''}" placeholder="optional"></div></div>
-    <div class="grid grid-cols-4 gap-2">${[['cal', 'kcal'], ['p', 'Protein g'], ['c', 'Carbs g'], ['f', 'Fat g'], ['fiber', 'Fiber g'], ['sugar', 'Sugar g'], ['satfat', 'Sat. fat g'], ['sodium', 'Sodium mg']].map(([k, l]) => `<div><label class="label">${l}</label><input name="${k}" type="number" step="any" class="input" value="${nv(k)}" ${kcalAttrs(k, b)}></div>`).join('')}</div>
+      <div><label class="label">Serving description</label><input name="servingLabel" class="input" value="${esc(x.servingLabel || '')}" placeholder="e.g. 1 bar, 2 slices"></div><div><label class="label">Serving weight (g)</label><input name="servingG" type="number" inputmode="decimal" step="any" class="input" value="${x.servingG ?? ''}" placeholder="optional"></div></div>
+    <div class="grid grid-cols-4 gap-2">${[['cal', 'kcal'], ['p', 'Protein g'], ['c', 'Carbs g'], ['f', 'Fat g'], ['fiber', 'Fiber g'], ['sugar', 'Sugar g'], ['satfat', 'Sat. fat g'], ['sodium', 'Sodium mg']].map(([k, l]) => `<div><label class="label">${l}</label><input name="${k}" type="number" inputmode="decimal" step="any" class="input" value="${nv(k)}" ${kcalAttrs(k, b)}></div>`).join('')}</div>
     <div><label class="label">Extra units (optional) — one per line, “name = grams”</label><textarea name="extra" class="input font-mono text-[13px]" rows="3" placeholder="1 cup = 245&#10;1 scoop = 31">${esc((x.extra || []).map(e => `${e.label} = ${e.g}`).join('\n'))}</textarea><p class="text-xs muted mt-1">Weights let you log in grams, ounces or any unit you add. kcal fills in from the macros as you type; type your own number (from a label, say) to keep it.</p></div>
     <div><label class="label">Barcode (optional)</label><input name="barcode" class="input" inputmode="numeric" value="${esc(x.barcode || '')}"></div>`,
     `${f ? `<button type="button" class="btn btn-danger mr-auto" data-action="foodDelete" data-id="${esc(x.id)}">${icon('trash-2')} Delete</button>` : ''}<button type="button" class="btn" data-action="${ui.lf ? 'foodBackToLog' : 'closeModal'}">Cancel</button><button class="btn btn-primary">${icon('save')} Save food</button>`, 'foodSave'),
@@ -1924,21 +1964,21 @@ function planModal() {
   Modal.open(modalShell(nutPlan() ? 'Edit plan' : 'Set up your plan', `
     <section class="space-y-3"><h4 class="font-semibold text-sm">About you</h4>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3"><div><label class="label">Sex</label><select name="sex" class="input"><option value="male" ${pr.sex !== 'female' ? 'selected' : ''}>Male</option><option value="female" ${pr.sex === 'female' ? 'selected' : ''}>Female</option></select></div>
-      <div><label class="label">Birth year</label><input name="birthYear" type="number" class="input" value="${pr.birthYear || ''}" placeholder="1990" required></div>
-      ${lbs ? `<div><label class="label">Height (ft)</label><input name="ft" type="number" class="input" value="${hIn ? Math.floor(hIn / 12) : ''}" required></div><div><label class="label">Height (in)</label><input name="inch" type="number" step="0.5" class="input" value="${hIn ? round(hIn % 12, 1) : ''}"></div>` : `<div class="col-span-2"><label class="label">Height (cm)</label><input name="cm" type="number" class="input" value="${pr.heightCm ? round(pr.heightCm, 0) : ''}" required></div>`}</div>
+      <div><label class="label">Birth year</label><input name="birthYear" type="number" inputmode="numeric" class="input" value="${pr.birthYear || ''}" placeholder="1990" required></div>
+      ${lbs ? `<div><label class="label">Height (ft)</label><input name="ft" type="number" inputmode="numeric" class="input" value="${hIn ? Math.floor(hIn / 12) : ''}" required></div><div><label class="label">Height (in)</label><input name="inch" type="number" inputmode="decimal" step="0.5" class="input" value="${hIn ? round(hIn % 12, 1) : ''}"></div>` : `<div class="col-span-2"><label class="label">Height (cm)</label><input name="cm" type="number" inputmode="numeric" class="input" value="${pr.heightCm ? round(pr.heightCm, 0) : ''}" required></div>`}</div>
       <div class="grid sm:grid-cols-2 gap-3"><div><label class="label">Activity level (outside of logging)</label><select name="activity" class="input">${ACTIVITY.map(([v, l]) => `<option value="${v}" ${(pr.activity || 1.375) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-      <div><label class="label">Current weight (${S.unit})</label><input name="weight" type="number" step="0.1" class="input" value="${tw ? round(toUnit(tw), 1) : ''}" ${tw ? 'readonly title="From your 7-day trend"' : 'required'}></div></div></section>
+      <div><label class="label">Current weight (${S.unit})</label><input name="weight" type="number" inputmode="decimal" step="0.1" class="input" value="${tw ? round(toUnit(tw), 1) : ''}" ${tw ? 'readonly title="From your 7-day trend"' : 'required'}></div></div></section>
     <section class="space-y-3"><h4 class="font-semibold text-sm">Goal</h4>
       <div class="grid sm:grid-cols-3 gap-3"><div><label class="label">Goal</label><select name="goal" class="input"><option value="lose" ${goal === 'lose' ? 'selected' : ''}>Lose weight</option><option value="maintain" ${goal === 'maintain' ? 'selected' : ''}>Maintain</option><option value="gain" ${goal === 'gain' ? 'selected' : ''}>Gain weight</option></select></div>
       <div><label class="label">Rate (% of body weight / week)</label><select name="rate" class="input"><optgroup label="Losing">${LOSE_RATES.map(r => `<option value="${r}" ${rate === r && goal !== 'gain' ? 'selected' : ''}>${r}%${tw ? ` (~${fmtNum(toUnit(tw * r / 100), 1)} ${S.unit}/wk)` : ''}</option>`).join('')}</optgroup><optgroup label="Gaining">${GAIN_RATES.map(r => `<option value="${r}" ${rate === r && goal === 'gain' ? 'selected' : ''}>${r}%${tw ? ` (~${fmtNum(toUnit(tw * r / 100), 1)} ${S.unit}/wk)` : ''}</option>`).join('')}</optgroup></select></div>
-      <div><label class="label">Goal weight (${S.unit})</label><input name="target" type="number" step="0.1" class="input" value="${p.targetWeight ? round(toUnit(p.targetWeight), 1) : ''}" placeholder="optional"></div></div></section>
+      <div><label class="label">Goal weight (${S.unit})</label><input name="target" type="number" inputmode="decimal" step="0.1" class="input" value="${p.targetWeight ? round(toUnit(p.targetWeight), 1) : ''}" placeholder="optional"></div></div></section>
     <section class="space-y-3"><h4 class="font-semibold text-sm">Coaching</h4>
       <div class="grid sm:grid-cols-2 gap-3"><div><label class="label">Check-in style</label><select name="mode" class="input"><option value="coached" ${p.mode === 'coached' ? 'selected' : ''}>Coached — adjust targets automatically</option><option value="collab" ${!p.mode || p.mode === 'collab' ? 'selected' : ''}>Collaborative — I review and approve</option><option value="manual" ${p.mode === 'manual' ? 'selected' : ''}>Manual — show data, I set targets</option></select></div>
       <div><label class="label">Weekly check-in day</label><select name="dow" class="input">${['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d, i) => `<option value="${i}" ${(p.checkinDow ?? 1) === i ? 'selected' : ''}>${d}</option>`).join('')}</select></div></div></section>
     <section class="space-y-3"><h4 class="font-semibold text-sm">Macros</h4>
       <div class="grid sm:grid-cols-3 gap-3"><div><label class="label">Protein</label><select name="protein" class="input">${[0.7, 0.8, 0.9, 1.0, 1.1].map(v => `<option value="${v}" ${(p.proteinPerLb || 0.9) === v ? 'selected' : ''}>${v} g per lb (${round(v * 2.2046, 1)} g/kg)</option>`).join('')}</select></div>
       <div><label class="label">Diet style</label><select name="diet" class="input">${Object.entries(DIETS).map(([k, [l, f]]) => `<option value="${k}" ${(p.diet || 'balanced') === k ? 'selected' : ''}>${l} (${Math.round(f * 100)}% fat)</option>`).join('')}</select></div>
-      <div><label class="label">Starting expenditure (optional)</label><input name="prior" type="number" class="input" value="${p.priorKcal || ''}" placeholder="e.g. from MacroFactor"></div></div>
+      <div><label class="label">Starting expenditure (optional)</label><input name="prior" type="number" inputmode="numeric" class="input" value="${p.priorKcal || ''}" placeholder="e.g. from MacroFactor"></div></div>
       <p class="text-xs muted">Protein is based on your trend weight; fat is a share of calories; carbs fill the rest. If you know your expenditure (e.g. MacroFactor's latest number), enter it — otherwise it's estimated from your stats and refined from your logs.</p></section>`,
     `${nutPlan() ? `<button type="button" class="btn btn-danger mr-auto" data-action="planEnd">End plan</button>` : ''}<button type="button" class="btn" data-action="closeModal">Cancel</button><button class="btn btn-primary">${icon('sparkles')} ${nutPlan() ? 'Save & recalculate' : 'Create plan'}</button>`, 'planSave'), { wide: true });
 }
@@ -1953,7 +1993,7 @@ function checkinModal(ci, review) {
       <div class="stat"><div class="text-xs muted">Expenditure</div><div class="text-xl font-bold">${fmtNum(round10(ci.expenditure))}</div></div></div>
     ${ci.notes.length ? `<div class="rounded-lg bg-amber-50 dark:bg-amber-950/40 p-3 text-sm space-y-1">${ci.notes.map(n => `<p>${esc(n)}</p>`).join('')}</div>` : ''}
     <div><div class="label">${review ? 'New targets (edit if you like)' : (ci.applied ? 'Targets applied' : 'Targets kept')}</div>
-      <div class="grid grid-cols-4 gap-2">${[['cal', 'kcal'], ['p', 'Protein'], ['c', 'Carbs'], ['f', 'Fat']].map(([k, l]) => `<div><label class="text-xs muted">${l} <span class="opacity-70">(was ${fmtNum(ci.old[k])})</span></label>${review ? `<input name="${k}" type="number" class="input text-lg font-semibold" value="${T[k]}">` : `<div class="text-lg font-semibold">${fmtNum(T[k])}</div>`}</div>`).join('')}</div></div>`,
+      <div class="grid grid-cols-4 gap-2">${[['cal', 'kcal'], ['p', 'Protein'], ['c', 'Carbs'], ['f', 'Fat']].map(([k, l]) => `<div><label class="text-xs muted">${l} <span class="opacity-70">(was ${fmtNum(ci.old[k])})</span></label>${review ? `<input name="${k}" type="number" inputmode="numeric" class="input text-lg font-semibold" value="${T[k]}">` : `<div class="text-lg font-semibold">${fmtNum(T[k])}</div>`}</div>`).join('')}</div></div>`,
     review ? `<button type="button" class="btn" data-action="checkinKeep">Keep current targets</button><button class="btn btn-primary">${icon('check')} Apply new targets</button>` : `<button type="button" class="btn btn-primary" data-action="closeModal">Close</button>`, review ? 'checkinApply' : ''), { onClose: () => { ui.pendingCi = null; render(); } });
 }
 function nutPlanTab() {
@@ -1985,7 +2025,7 @@ function nutPlanTab() {
   </div>
   <div class="card mb-4">${cardHead('calendar-range', 'Calorie schedule', `<span class="text-xs muted">Weekly total stays ${fmtNum(T.cal * 7)} kcal</span>`)}
     <div class="grid grid-cols-7 gap-1.5">${order.map(i => `<div class="text-center"><div class="text-xs font-semibold muted mb-1">${DN[i]}</div><select class="input px-1 py-1 text-xs" data-change="planDayType" data-i="${i}">${Object.entries(DAY_TYPES).map(([k, l]) => `<option value="${k}" ${sch[i] === k ? 'selected' : ''}>${l}</option>`).join('')}</select><div class="text-sm font-semibold tabular-nums mt-1">${fmtNum(dayT[i].cal)}</div><div class="text-[10px] muted">C ${fmtNum(dayT[i].c)}g</div></div>`).join('')}</div>
-    <div class="flex flex-wrap items-center gap-3 mt-3 text-sm"><label class="flex items-center gap-1.5">High/low days ±<input type="number" step="50" min="50" class="input w-20 py-1" value="${p.shiftKcal || 300}" data-change="planShift" data-f="shiftKcal"> kcal</label><label class="flex items-center gap-1.5">Fast days<input type="number" step="50" min="0" class="input w-20 py-1" value="${p.fastKcal || 600}" data-change="planShift" data-f="fastKcal"> kcal</label><span class="text-xs muted">Extra or fewer calories come from carbs; protein and fat stay the same. Other days rebalance to keep the weekly total.</span></div></div>
+    <div class="flex flex-wrap items-center gap-3 mt-3 text-sm"><label class="flex items-center gap-1.5">High/low days ±<input type="number" inputmode="numeric" step="50" min="50" class="input w-20 py-1" value="${p.shiftKcal || 300}" data-change="planShift" data-f="shiftKcal"> kcal</label><label class="flex items-center gap-1.5">Fast days<input type="number" inputmode="numeric" step="50" min="0" class="input w-20 py-1" value="${p.fastKcal || 600}" data-change="planShift" data-f="fastKcal"> kcal</label><span class="text-xs muted">Extra or fewer calories come from carbs; protein and fat stay the same. Other days rebalance to keep the weekly total.</span></div></div>
   <div class="card mb-4">${cardHead('line-chart', 'Expenditure vs. intake (7-day average)')}
     ${lineChart([{ points: intake7, color: '#f59e0b', width: 2 }, { points: es.map(x => ({ x: +parseYmd(x.d), y: x.e })), color: '#0d9488', width: 3 }], { yFmt: v => fmtNum(v) })}
     <div class="flex gap-4 text-xs muted mt-1"><span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-brand-600 inline-block"></span>Expenditure</span><span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-amber-500 inline-block"></span>Intake</span></div></div>
@@ -2042,7 +2082,7 @@ function nutFoods() {
       <div class="card">${cardHead('bookmark', 'Saved meals')}
         <div class="space-y-2">${meals.map(m => { const t = mealTotals(m); return `<div class="rounded-lg border border-slate-200 dark:border-slate-800 p-3"><div class="flex items-start gap-2"><div class="flex-1 min-w-0"><div class="font-medium">${esc(m.name)}</div><div class="text-xs muted">${m.items ? m.items.map(x => esc(x.name)).join(', ') : 'Quick macros'}</div><div class="text-xs tabular-nums mt-0.5">${fmtNum(t.cal)} kcal · P${fmtNum(t.p)} · C${fmtNum(t.c)} · F${fmtNum(t.f)}</div></div><button class="btn btn-sm btn-primary" data-action="addMeal" data-id="${m.id}" title="Log">${icon('plus', 'w-3.5 h-3.5')}</button><button class="btn btn-sm" data-action="mealEdit" data-id="${m.id}" title="Rename">${icon('pencil', 'w-3.5 h-3.5')}</button><button class="btn btn-sm btn-danger" data-action="mealDel" data-id="${m.id}" title="Delete">${icon('trash-2', 'w-3.5 h-3.5')}</button></div></div>`; }).join('') || '<p class="text-sm muted">On the daily log, tap the bookmark icon on any meal to save it here.</p>'}</div></div>
       <form class="card" data-submit="mealAdd">${cardHead('plus', 'Quick saved meal (macros only)')}
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2"><input name="name" class="input col-span-2 sm:col-span-5" placeholder="Name" required><input name="cal" type="number" step="any" class="input" placeholder="kcal (auto)" data-input="kcalTyped"><input name="p" type="number" step="any" class="input" placeholder="P (g)" data-input="kcalAuto"><input name="c" type="number" step="any" class="input" placeholder="C (g)" data-input="kcalAuto"><input name="f" type="number" step="any" class="input" placeholder="F (g)" data-input="kcalAuto"><button class="btn col-span-2 sm:col-span-1">${icon('save')} Save</button></div></form>
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2"><input name="name" class="input col-span-2 sm:col-span-5" placeholder="Name" required><input name="cal" type="number" inputmode="decimal" step="any" class="input" placeholder="kcal (auto)" data-input="kcalTyped"><input name="p" type="number" inputmode="decimal" step="any" class="input" placeholder="P (g)" data-input="kcalAuto"><input name="c" type="number" inputmode="decimal" step="any" class="input" placeholder="C (g)" data-input="kcalAuto"><input name="f" type="number" inputmode="decimal" step="any" class="input" placeholder="F (g)" data-input="kcalAuto"><button class="btn col-span-2 sm:col-span-1">${icon('save')} Save</button></div></form>
     </div></div>`;
 }
 function nutHistory() {
@@ -2070,7 +2110,7 @@ function nutHistory() {
 function macroModal(title, o, action, id, withMeal = false) {
   Modal.open(modalShell(title, `<input type="hidden" name="id" value="${esc(id)}">
     <div><label class="label">Name</label><input name="name" class="input" value="${esc(o.name)}" autofocus></div>
-    <div class="grid grid-cols-4 gap-2">${[['cal', 'kcal'], ['p', 'Protein'], ['c', 'Carbs'], ['f', 'Fat']].map(([k, l]) => `<div><label class="label">${l}</label><input name="${k}" type="number" step="any" class="input" value="${o[k] ?? ''}" ${kcalAttrs(k, o)}></div>`).join('')}</div>
+    <div class="grid grid-cols-4 gap-2">${[['cal', 'kcal'], ['p', 'Protein'], ['c', 'Carbs'], ['f', 'Fat']].map(([k, l]) => `<div><label class="label">${l}</label><input name="${k}" type="number" inputmode="decimal" step="any" class="input" value="${o[k] ?? ''}" ${kcalAttrs(k, o)}></div>`).join('')}</div>
     <p class="text-xs muted">kcal fills in from protein, carbs and fat as you type. Type your own number to keep it.</p>
     ${withMeal ? `<div><label class="label">Meal</label><select name="meal" class="input w-auto">${MEALS.map(([k, l]) => `<option value="${k}" ${mealOf(o) === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>` : ''}`,
     `<button type="button" class="btn" data-action="closeModal">Cancel</button><button class="btn btn-primary">Save</button>`, action));
@@ -2208,6 +2248,15 @@ const A_NUT = {
   goNutTab: el => { ui.nutTab = el.dataset.tab; go('nutrition'); },
   nutShift: el => { ui.nutDate = addDays(ui.nutDate, +el.dataset.d); render(); },
   nutToday: () => { ui.nutDate = ymd(); render(); },
+  // ⋯ beside the day: copying a whole day, in a small sheet so the day bar fits on a phone
+  nutDayMenu: () => {
+    const d = ui.nutDate, n = day(d).entries.length, prev = day(addDays(d, -1)).entries.length;
+    const b = (act, ic, label, sub, off) => `<button type="button" class="btn justify-start gap-3 py-3 text-base text-left" data-action="nutDayDo" data-do="${act}" ${off ? 'disabled' : ''}>${icon(ic, 'w-5 h-5 shrink-0')}<span class="min-w-0"><span class="block">${label}</span><span class="block text-xs muted font-normal">${sub}</span></span></button>`;
+    Modal.open(modalShell(esc(dayName(d)), `<div class="grid gap-2">
+      ${b('nutCopyPrev', 'history', 'Copy the day before into this day', prev ? `${prev} item${prev === 1 ? '' : 's'} from ${fmtDate(addDays(d, -1), { weekday: 'short', month: 'short', day: 'numeric' })}` : 'Nothing was logged the day before', !prev)}
+      ${b('dayCopy', 'copy', 'Copy this day', n ? `${n} item${n === 1 ? '' : 's'}, then go to another day and tap Paste` : 'Nothing logged on this day yet', !n)}</div>`));
+  },
+  nutDayDo: el => { const f = A[el.dataset.do]; Modal.close(); f(el); },
   nutDate: el => { if (el.value) { ui.nutDate = el.value; render(); } },
   nutWeight: el => { const v = num(el.value), d = ensureDay(ui.nutDate); d.weight = v == null ? null : fromUnit(v); Store.save('nutrition'); toast(v == null ? 'Weight cleared' : 'Weight saved'); render(); },
   nutWeightToday: el => { const v = num(el.value), d = ensureDay(ymd()); d.weight = v == null ? null : fromUnit(v); Store.save('nutrition'); toast('Weight saved'); render(); },
@@ -2306,7 +2355,7 @@ const A_NUT = {
     Modal.close(); ui.nutTab = 'plan'; toast(old ? 'Plan updated' : `Plan created — ${fmtNum(cal)} kcal to start`); if (S.view !== 'nutrition') go('nutrition'); else render();
   },
   planEnd: () => { if (!confirm('End your plan? Your current targets stay as fixed targets, and your history is kept.')) return; const p = nutPlan(); if (p && p.targets) { S.targets = { cal: p.targets.cal, p: p.targets.p, c: p.targets.c, f: p.targets.f }; saveSettings(); } Store.set('nutPlan', null); Modal.close(); render(); },
-  planTargets: () => { const T = baseTargets(); Modal.open(modalShell('Adjust daily targets', `<div class="grid grid-cols-4 gap-2">${[['cal', 'kcal'], ['p', 'Protein g'], ['c', 'Carbs g'], ['f', 'Fat g']].map(([k, l]) => `<div><label class="label">${l}</label><input name="${k}" type="number" class="input" value="${T[k]}"></div>`).join('')}</div><p class="text-xs muted">${nutPlan().mode === 'coached' ? 'In Coached mode the next check-in will adjust these again.' : 'These stay until you change them or approve a check-in.'}</p>`, `<button type="button" class="btn" data-action="closeModal">Cancel</button><button class="btn btn-primary">Save</button>`, 'planTargetsSave')); },
+  planTargets: () => { const T = baseTargets(); Modal.open(modalShell('Adjust daily targets', `<div class="grid grid-cols-4 gap-2">${[['cal', 'kcal'], ['p', 'Protein g'], ['c', 'Carbs g'], ['f', 'Fat g']].map(([k, l]) => `<div><label class="label">${l}</label><input name="${k}" type="number" inputmode="numeric" class="input" value="${T[k]}"></div>`).join('')}</div><p class="text-xs muted">${nutPlan().mode === 'coached' ? 'In Coached mode the next check-in will adjust these again.' : 'These stay until you change them or approve a check-in.'}</p>`, `<button type="button" class="btn" data-action="closeModal">Cancel</button><button class="btn btn-primary">Save</button>`, 'planTargetsSave')); },
   planTargetsSave: f => { const v = fd(f), p = nutPlan(); p.targets = { cal: num(v.cal) || p.targets.cal, p: num(v.p) ?? p.targets.p, c: num(v.c) ?? p.targets.c, f: num(v.f) ?? p.targets.f }; S.targets = { ...p.targets }; saveSettings(); Store.save('nutPlan'); Modal.close(); render(); },
   planDayType: el => { const p = nutPlan(); p.schedule = p.schedule || Array(7).fill('std'); p.schedule[+el.dataset.i] = el.value; Store.save('nutPlan'); render(); },
   planShift: el => { const p = nutPlan(); p[el.dataset.f] = Math.max(0, num(el.value) || 0); Store.save('nutPlan'); render(); },
@@ -2348,12 +2397,14 @@ function openSettings() {
     <section class="space-y-3"><h4 class="font-semibold text-sm">Workouts</h4>
       <div class="grid sm:grid-cols-3 gap-3"><div><label class="label">Weight unit</label><select name="unit" class="input"><option value="lbs" ${S.unit === 'lbs' ? 'selected' : ''}>lbs</option><option value="kg" ${S.unit === 'kg' ? 'selected' : ''}>kg</option></select></div>
       <div><label class="label">Default rest</label><select name="restSeconds" class="input">${restOptions(S.restSeconds)}</select></div>
-      <div><label class="label">Timer sound</label><select name="timerSound" class="input"><option value="1" ${S.timerSound ? 'selected' : ''}>On</option><option value="0" ${!S.timerSound ? 'selected' : ''}>Off</option></select></div></div>
-      <div class="grid sm:grid-cols-3 gap-3"><div><label class="label">Body weight fallback (${S.unit})</label><input name="bwFallback" type="number" step="0.1" class="input" value="${S.bwFallback ? fmtNum(toUnit(S.bwFallback), 1).replace(/,/g, '') : ''}" placeholder="Used if no weigh-ins"></div><p class="sm:col-span-2 text-xs muted self-end">For exercises set to count body weight toward volume. Your Nutrition weigh-ins are used first.</p></div>
+      <div><label class="label">Timer sound</label><select name="timerSound" class="input"><option value="1" ${S.timerSound ? 'selected' : ''}>On</option><option value="0" ${!S.timerSound ? 'selected' : ''}>Off</option></select></div>
+      <div><label class="label">RPE column</label><select name="rpe" class="input"><option value="0" ${!S.rpe ? 'selected' : ''}>Hidden</option><option value="1" ${S.rpe ? 'selected' : ''}>Shown</option></select></div><p class="sm:col-span-2 text-xs muted self-end">Rate how hard each set felt (1–10). Sets that already have an RPE always show it.</p></div>
+      <div class="grid sm:grid-cols-3 gap-3"><div><label class="label">Body weight fallback (${S.unit})</label><input name="bwFallback" type="number" inputmode="decimal" step="0.1" class="input" value="${S.bwFallback ? fmtNum(toUnit(S.bwFallback), 1).replace(/,/g, '') : ''}" placeholder="Used if no weigh-ins"></div><p class="sm:col-span-2 text-xs muted self-end">For exercises set to count body weight toward volume. Your Nutrition weigh-ins are used first.</p></div>
       <button type="button" class="btn btn-sm" data-action="enableNotifications">${icon('bell', 'w-3.5 h-3.5')} Allow rest-timer notifications</button></section>
     <section class="space-y-3"><h4 class="font-semibold text-sm">Nutrition</h4>
       ${nutPlan() ? `${['cal', 'p', 'c', 'f'].map(k => `<input type="hidden" name="t_${k}" value="${T[k]}">`).join('')}<p class="text-sm muted">Daily targets are managed by your adaptive plan (${fmtNum(baseTargets().cal)} kcal). Change them on Nutrition → Plan.</p>`
-      : `<div class="grid grid-cols-4 gap-2">${[['cal', 'kcal'], ['p', 'Protein g'], ['c', 'Carbs g'], ['f', 'Fat g']].map(([k, l]) => `<div><label class="label">${l}</label><input name="t_${k}" type="number" class="input" value="${T[k]}"></div>`).join('')}</div><p class="text-xs muted">Fixed daily targets · macro calories ${fmtNum(T.p * 4 + T.c * 4 + T.f * 9)} kcal. Set up a plan on Nutrition → Plan to have these adjust automatically.</p>`}
+      : `<div class="grid grid-cols-4 gap-2">${[['cal', 'kcal'], ['p', 'Protein g'], ['c', 'Carbs g'], ['f', 'Fat g']].map(([k, l]) => `<div><label class="label">${l}</label><input name="t_${k}" type="number" inputmode="numeric" class="input" value="${T[k]}"></div>`).join('')}</div><p class="text-xs muted">Fixed daily targets · macro calories ${fmtNum(T.p * 4 + T.c * 4 + T.f * 9)} kcal. Set up a plan on Nutrition → Plan to have these adjust automatically.</p>`}
+      <div class="grid sm:grid-cols-2 gap-3"><div><label class="label">Big calorie number</label><select name="calBig" class="input"><option value="left" ${S.calBig !== 'eaten' ? 'selected' : ''}>Calories left today</option><option value="eaten" ${S.calBig === 'eaten' ? 'selected' : ''}>Calories eaten</option></select></div><p class="text-xs muted self-end">Shown in the middle of the calorie ring and on the Today card.</p></div>
       <div class="grid sm:grid-cols-2 gap-3"><div><label class="label">USDA FoodData Central key (optional)</label><input name="fdcKey" type="password" class="input" value="${esc(S.fdcKey || '')}" placeholder="Uses a shared demo key if blank" autocomplete="off"></div><p class="text-xs muted self-end">Food search works without it, but the shared demo key has a low hourly limit. A free personal key from api.data.gov removes that.</p></div></section>
     <section class="space-y-3 rounded-xl border border-slate-200 dark:border-slate-800 p-4"><h4 class="font-semibold text-sm flex items-center gap-2">${icon('database', 'w-4 h-4')} Data &amp; sync</h4>
       <div class="flex flex-wrap gap-2"><button type="button" class="btn btn-primary" data-action="exportAll">${icon('download')} Back up records + photos</button><button type="button" class="btn" data-action="importAll">${icon('upload')} Import backup…</button><button type="button" class="btn" data-action="hevyImport">${icon('dumbbell')} Import Hevy CSV…</button><button type="button" class="btn" data-action="mfImport">${icon('apple')} Import MacroFactor…</button></div>
@@ -2932,7 +2983,7 @@ function grocSpendWeek(ws = startOfWeek()) { const we = addDays(ws, 7); return s
 
 function renderRecipes() {
   const open = Store.get('grocery').filter(x => !x.checked).length;
-  return tabs('recTab', [['recipes', 'Recipe box', 'book-heart'], ['plan', 'Meal plan', 'calendar-days'], ['grocery', `Grocery list${open ? ` (${open})` : ''}`, 'shopping-cart'], ['pantry', 'Pantry & freezer', 'refrigerator']])
+  return tabs('recTab', [['recipes', 'Recipe box', 'book-heart', 'Recipes'], ['plan', 'Meal plan', 'calendar-days', 'Plan'], ['grocery', `Grocery list${open ? ` (${open})` : ''}`, 'shopping-cart', `Grocery${open ? ` (${open})` : ''}`], ['pantry', 'Pantry & freezer', 'refrigerator', 'Pantry']])
     + ({ recipes: recList, plan: recPlan, grocery: recGrocery, pantry: recPantry }[ui.recTab] || recList)();
 }
 // ---------- Recipe box ----------
@@ -2947,8 +2998,8 @@ function recList() {
   const cmp = { az: (a, b) => a.title.localeCompare(b.title), fav: (a, b) => (+!!b.fav - +!!a.fav) || ((b.rating || 0) - (a.rating || 0)) || a.title.localeCompare(b.title), rating: (a, b) => ((b.rating || 0) - (a.rating || 0)) || a.title.localeCompare(b.title), recent: (a, b) => (lastMade(b) || '').localeCompare(lastMade(a) || ''), stale: (a, b) => (lastMade(a) || '0').localeCompare(lastMade(b) || '0'), quick: (a, b) => (num(a.time) || 999) - (num(b.time) || 999) }[srt] || ((a, b) => a.title.localeCompare(b.title));
   list.sort(cmp);
   const stale = !q && !sel.length ? staleFavorites() : [];
-  return `<div class="flex flex-wrap gap-2 mb-3"><input id="rec-search" class="input sm:w-72" placeholder="Search recipes, ingredients, tags…" value="${esc(ui.recSearch)}" data-input="recSearch"><select class="input w-auto" data-change="recSortSet" aria-label="Sort">${REC_SORT.map(([k, l]) => `<option value="${k}" ${srt === k ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="flex-1"></span><button class="btn" data-action="recImport">${icon('download')} Import</button><button class="btn btn-primary" data-action="recNew">${icon('plus')} New recipe</button></div>
-  <div class="flex flex-wrap gap-1.5 mb-4">${REC_SPECIAL.map(([k, l]) => `<button class="chip ${sel.includes(k) ? 'chip-on' : ''}" data-action="recTag" data-v="${k}">${l}</button>`).join('')}<span class="w-px bg-slate-200 dark:bg-slate-700 mx-1"></span>${[...seen].map(([k, x]) => `<button class="chip ${sel.includes(k) ? 'chip-on' : ''}" data-action="recTag" data-v="${esc(k)}">${esc(x)}</button>`).join('')}${sel.length ? `<button class="chip" data-action="recTagClear">${icon('x', 'w-3 h-3')} Clear</button>` : ''}</div>
+  return `<div class="flex gap-2 mb-2"><input id="rec-search" class="input flex-1 min-w-0 sm:flex-none sm:w-72" placeholder="Search recipes" aria-label="Search recipes, ingredients or tags" value="${esc(ui.recSearch)}" data-input="recSearch"><span class="hidden sm:block flex-1"></span><button class="btn shrink-0" data-action="recImport" aria-label="Import a recipe" title="Import a recipe">${icon('download')}<span class="hidden sm:inline">Import</span></button><button class="btn btn-primary shrink-0" data-action="recNew">${icon('plus')}<span class="sm:hidden">New</span><span class="hidden sm:inline">New recipe</span></button></div>
+  <div class="flex items-center gap-2 mb-4"><div class="flex gap-1.5 overflow-x-auto scroll-thin flex-1 min-w-0 py-1" role="group" aria-label="Filter recipes">${sel.length ? `<button class="chip shrink-0 whitespace-nowrap" data-action="recTagClear">${icon('x', 'w-3 h-3')} Clear</button>` : ''}${REC_SPECIAL.map(([k, l]) => `<button class="chip shrink-0 whitespace-nowrap ${sel.includes(k) ? 'chip-on' : ''}" data-action="recTag" data-v="${k}">${l}</button>`).join('')}<span class="w-px shrink-0 bg-slate-200 dark:bg-slate-700 mx-1"></span>${[...seen].map(([k, x]) => `<button class="chip shrink-0 whitespace-nowrap ${sel.includes(k) ? 'chip-on' : ''}" data-action="recTag" data-v="${esc(k)}">${esc(x)}</button>`).join('')}</div><select class="input w-28 sm:w-auto shrink-0" data-change="recSortSet" aria-label="Sort recipes">${REC_SORT.map(([k, l]) => `<option value="${k}" ${srt === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
   ${stale.length ? `<div class="card mb-4">${cardHead('history', 'Haven’t had these in a while', '<span class="text-xs muted">Favorites & 4★+</span>')}<div class="flex flex-wrap gap-2">${stale.map(({ r, last }) => `<button class="chip py-1.5" data-action="recView" data-id="${r.id}">${r.fav ? '♥ ' : ''}${esc(r.title)} <span class="muted">· ${last ? `${daysBetween(last, t)}d ago` : 'not logged'}</span></button>`).join('')}</div></div>` : ''}
   ${list.length ? `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">${list.map(r => { const lm = lastMade(r), pc = perServCost(r); return `<button class="card text-left hover:border-brand-400 flex flex-col" data-action="recView" data-id="${r.id}">
     ${recThumb(r, 'w-full h-36 rounded-xl mb-3')}
@@ -2963,9 +3014,9 @@ function recEditor(r, pre) {
     ${pre && r.img ? `<img src="${esc(webUrl(r.img))}" alt="" referrerpolicy="no-referrer" class="w-full h-40 object-cover rounded-xl" onerror="this.remove()">` : ''}
     <div><label class="label">Title</label><input name="title" class="input" value="${esc(r.title)}" required ${isNew && !pre ? 'autofocus' : ''}></div>
     <div class="grid sm:grid-cols-3 gap-3"><div class="sm:col-span-3"><label class="label">Tags (comma separated)</label><input name="tags" class="input" value="${esc((r.tags || []).join(', '))}" placeholder="Quick, High Protein, Kid-Friendly"></div>
-    <div><label class="label">Servings</label><input name="servings" type="number" min="1" step="any" class="input" value="${r.servings}"></div><div><label class="label">Total time (min)</label><input name="time" type="number" class="input" value="${esc(r.time)}"></div><div><label class="label">Est. cost for whole recipe ($)</label><input name="cost" type="number" step="0.01" min="0" class="input" value="${r.cost ?? ''}" placeholder="e.g. 14"></div>
+    <div><label class="label">Servings</label><input name="servings" type="number" inputmode="decimal" min="1" step="any" class="input" value="${r.servings}"></div><div><label class="label">Total time (min)</label><input name="time" type="number" inputmode="numeric" class="input" value="${esc(r.time)}"></div><div><label class="label">Est. cost for whole recipe ($)</label><input name="cost" type="number" inputmode="decimal" step="0.01" min="0" class="input" value="${r.cost ?? ''}" placeholder="e.g. 14"></div>
     <div class="sm:col-span-2"><label class="label">Source link</label><input name="source" class="input" value="${esc(r.source)}" placeholder="https://"></div><label class="flex items-center gap-2 text-sm self-end pb-2"><input type="checkbox" name="freezer" value="1" class="w-4 h-4 accent-brand-600" ${r.freezer ? 'checked' : ''}> Freezer-friendly</label></div>
-    <div><label class="label">Macros per serving (optional — or calculate them from the ingredients after saving)</label><div class="grid grid-cols-4 gap-2">${[['cal', 'kcal'], ['p', 'Protein g'], ['c', 'Carbs g'], ['f', 'Fat g']].map(([k, l]) => `<input name="${k}" type="number" step="any" class="input" placeholder="${l}" value="${r[k] ?? ''}">`).join('')}</div></div>
+    <div><label class="label">Macros per serving (optional — or calculate them from the ingredients after saving)</label><div class="grid grid-cols-4 gap-2">${[['cal', 'kcal'], ['p', 'Protein g'], ['c', 'Carbs g'], ['f', 'Fat g']].map(([k, l]) => `<input name="${k}" type="number" inputmode="decimal" step="any" class="input" placeholder="${l}" value="${r[k] ?? ''}">`).join('')}</div></div>
     <div><label class="label">Ingredients — one per line, quantity first (e.g. “2 cups rice”)</label><textarea name="ingredients" class="input font-mono text-[13px]" rows="8">${esc(r.ingredients)}</textarea></div>
     <div><label class="label">Steps — one per line</label><textarea name="steps" class="input" rows="6">${esc(r.steps)}</textarea></div>
     <div><label class="label">Notes</label><textarea name="notes" class="input" rows="2">${esc(r.notes)}</textarea></div>
@@ -2986,7 +3037,7 @@ function recViewModal(r) {
     <div class="flex flex-wrap gap-1.5">${(r.tags || []).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${r.time ? `<span class="chip">${icon('clock', 'w-3 h-3')} ${esc(r.time)} min</span>` : ''}${r.freezer ? '<span class="chip">🧊 Freezer-friendly</span>' : ''}${pc ? `<span class="chip">${money(pc)} / serving · ${money(r.cost)} total</span>` : ''}</div>
     <div>${r.cal ? `<div class="grid grid-cols-4 gap-2">${[['kcal', r.cal, ''], ['Protein', r.p, 'g'], ['Carbs', r.c, 'g'], ['Fat', r.f, 'g']].map(([l, v, u]) => `<div class="stat text-center"><div class="text-xs muted">${l}</div><div class="font-bold">${fmtNum(v)}${u}</div></div>`).join('')}</div>` : ''}
       <div class="flex flex-wrap items-center gap-2 mt-2"><span class="text-xs muted">${r.cal ? `Per serving${r.macroCalc ? ' · calculated from ingredients' : ''}` : 'No macros yet'}</span><button type="button" class="btn btn-sm btn-ghost" data-action="recMacros" data-id="${r.id}">${icon('calculator', 'w-3.5 h-3.5')} ${r.cal ? 'Recalculate' : 'Calculate from ingredients'}</button>
-      ${r.cal ? `<span class="flex-1"></span><select id="rec-log-meal" class="input w-auto py-1 text-xs" aria-label="Meal">${MEALS.map(([k, l]) => `<option value="${k}" ${defaultMeal() === k ? 'selected' : ''}>${l}</option>`).join('')}</select><input id="rec-log-serv" type="number" step="0.25" min="0.25" value="1" class="input w-16 py-1 text-xs" aria-label="Servings"><button type="button" class="btn btn-sm" data-action="recLog" data-id="${r.id}">${icon('utensils', 'w-3.5 h-3.5')} Log</button>` : ''}</div></div>
+      ${r.cal ? `<span class="flex-1"></span><select id="rec-log-meal" class="input w-auto py-1 text-xs" aria-label="Meal">${MEALS.map(([k, l]) => `<option value="${k}" ${defaultMeal() === k ? 'selected' : ''}>${l}</option>`).join('')}</select><input id="rec-log-serv" type="number" inputmode="decimal" step="0.25" min="0.25" value="1" class="input w-16 py-1 text-xs" aria-label="Servings"><button type="button" class="btn btn-sm" data-action="recLog" data-id="${r.id}">${icon('utensils', 'w-3.5 h-3.5')} Log</button>` : ''}</div></div>
     <div><div class="flex items-center gap-2 mb-2"><h4 class="font-semibold">Ingredients</h4><div class="ml-auto flex items-center gap-1 text-sm"><button type="button" class="btn btn-sm" data-action="recServ" data-id="${r.id}" data-d="-1" aria-label="Fewer servings">−</button><span class="min-w-[6rem] text-center">${fmtQty(serv)} serving${serv === 1 ? '' : 's'}</span><button type="button" class="btn btn-sm" data-action="recServ" data-id="${r.id}" data-d="1" aria-label="More servings">+</button></div></div>
       <ul class="space-y-1">${ings.map(l => { const have = pantryOn && pantryHas(l); return `<li><label class="flex gap-2 text-sm"><input type="checkbox" class="mt-1 accent-brand-600"><span class="flex-1">${esc(scaleLine(l, scale))}</span>${have && !have.basic ? '<span class="text-[10px] text-emerald-600 dark:text-emerald-400 shrink-0">✓ in pantry</span>' : ''}</label></li>`; }).join('') || '<li class="text-sm muted">No ingredients listed.</li>'}</ul></div>
     <div><h4 class="font-semibold mb-2">Steps</h4><ol class="list-decimal pl-5 space-y-2 text-sm">${String(r.steps || '').split('\n').filter(s => s.trim()).map(s => `<li>${esc(s.replace(/^\d+[.)]\s*/, ''))}</li>`).join('')}</ol></div>
@@ -3004,7 +3055,7 @@ function recMacroModal(r) {
   Modal.open(modalShell(`Macros · ${esc(r.title)}`, `<p class="text-sm muted">Matched against a built-in table of common ingredients (USDA estimates) and your saved foods. Adjust any match or the grams, then use the result. Not finding something? Save it under Nutrition → Foods and it shows up here.</p>
     <div class="space-y-2">${m.lines.map((l, i) => { const o = d.map[l.raw] || {}, cur = o.key || ''; return `<div class="rounded-lg border border-slate-200 dark:border-slate-800 p-2"><div class="flex items-start gap-2 text-sm"><span class="flex-1 ${st[l.status]}">${esc(l.raw)}</span><span class="tabular-nums text-xs shrink-0 ${st[l.status]}">${l.status === 'ok' ? `${fmtNum(l.cal)} kcal · P${fmtNum(l.p)}` : l.status === 'free' ? '≈0 kcal' : l.status === 'nomatch' ? 'No match' : l.status === 'noamt' ? 'Amount?' : 'Skipped'}</span></div>
       <div class="flex flex-wrap gap-2 mt-1.5"><select class="input py-1 text-xs flex-1 min-w-[10rem]" data-change="mcPick" data-i="${i}" aria-label="Match"><option value="" ${!cur ? 'selected' : ''}>Auto${l.name && !cur ? `: ${esc(l.status === 'free' ? 'seasoning (≈0)' : l.name)}` : l.status === 'nomatch' ? ' (no match)' : ''}</option><option value="skip" ${cur === 'skip' ? 'selected' : ''}>Skip this line</option><optgroup label="Common ingredients">${dbOpts.map(x => `<option value="db:${x.i}" ${cur === `db:${x.i}` ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</optgroup>${foods.length ? `<optgroup label="Your foods">${foods.map(f => `<option value="food:${f.id}" ${cur === `food:${f.id}` ? 'selected' : ''}>${esc(f.name)}${f.brand ? ` (${esc(f.brand)})` : ''}</option>`).join('')}</optgroup>` : ''}</select>
-      ${l.status !== 'skip' && l.status !== 'free' ? `<label class="flex items-center gap-1 text-xs muted"><input type="number" min="0" step="any" class="input py-1 text-xs w-20" value="${o.g != null && o.g !== '' ? o.g : l.g != null ? Math.round(l.g) : ''}" placeholder="grams" data-change="mcGrams" data-i="${i}" aria-label="Grams"> g</label>` : ''}</div></div>`; }).join('') || '<p class="text-sm muted">Add ingredients to the recipe first.</p>'}</div>
+      ${l.status !== 'skip' && l.status !== 'free' ? `<label class="flex items-center gap-1 text-xs muted"><input type="number" inputmode="decimal" min="0" step="any" class="input py-1 text-xs w-20" value="${o.g != null && o.g !== '' ? o.g : l.g != null ? Math.round(l.g) : ''}" placeholder="grams" data-change="mcGrams" data-i="${i}" aria-label="Grams"> g</label>` : ''}</div></div>`; }).join('') || '<p class="text-sm muted">Add ingredients to the recipe first.</p>'}</div>
     <div class="grid grid-cols-4 gap-2 sticky bottom-0">${[['kcal', m.per.cal, ''], ['Protein', m.per.p, 'g'], ['Carbs', m.per.c, 'g'], ['Fat', m.per.f, 'g']].map(([lb, v, u]) => `<div class="stat text-center"><div class="text-xs muted">${lb} / serving</div><div class="font-bold">${fmtNum(v)}${u}</div></div>`).join('')}</div>
     <p class="text-xs muted">${num(r.servings) || 1} servings · whole recipe ${fmtNum(m.tot.cal)} kcal${m.missing ? ` · <span class="text-amber-600 dark:text-amber-400">${m.missing} line${m.missing === 1 ? '' : 's'} not counted</span>` : ''}</p>`,
     `<button type="button" class="btn" data-action="mcCancel" data-id="${r.id}">Cancel</button><button type="button" class="btn btn-primary" data-action="mcApply" data-id="${r.id}">${icon('check')} Use these macros</button>`), { wide: true });
@@ -3031,7 +3082,7 @@ function ckDraw() {
   el.innerHTML = CK.done ? `<div class="flex-1 grid place-items-center p-6"><div class="max-w-md w-full space-y-5 text-center"><div class="text-4xl">🍽️</div><h2 class="text-2xl font-bold">${esc(r.title)} — done!</h2>
       <div><div class="label mb-1">How was it?</div><div class="flex justify-center">${[1, 2, 3, 4, 5].map(k => `<button class="text-4xl px-1 ${(r.rating || 0) >= k ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600'}" data-action="ckRate" data-v="${k}" aria-label="${k} stars">★</button>`).join('')}</div></div>
       <div class="flex justify-center gap-2"><button class="btn ${r.kids ? 'btn-primary' : ''}" data-action="ckKids">🧒 Kids ate it</button><button class="btn ${r.fav ? 'text-rose-600 border-rose-300' : ''}" data-action="ckFav">${r.fav ? '♥' : '♡'} Favorite</button></div>
-      <div class="flex items-center justify-center gap-2 text-sm"><span class="muted">Freeze leftovers:</span><input id="ck-freeze" type="number" min="0" step="1" value="0" class="input w-20 py-1" aria-label="Portions to freeze"><span class="muted">portions</span></div>
+      <div class="flex items-center justify-center gap-2 text-sm"><span class="muted">Freeze leftovers:</span><input id="ck-freeze" type="number" inputmode="numeric" min="0" step="1" value="0" class="input w-20 py-1" aria-label="Portions to freeze"><span class="muted">portions</span></div>
       <label class="flex items-center justify-center gap-2 text-sm"><input id="ck-left" type="checkbox" class="w-4 h-4 accent-brand-600"> Leftovers for lunch tomorrow</label>
       <button class="btn btn-primary w-full text-base py-3" data-action="ckFinish">${icon('check')} Save & close</button></div></div>`
     : `<div class="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800"><button class="btn btn-sm" data-action="ckClose" aria-label="Exit cook mode">${icon('x')}</button><div class="flex-1 min-w-0"><div class="font-semibold truncate">${esc(r.title)}</div><div class="text-xs muted">${n ? `Step ${i + 1} of ${n}` : ''}${CK.wake ? ' · screen stays on' : ''}</div></div><button class="btn btn-sm lg:hidden" data-action="ckIngToggle">${icon('list', 'w-3.5 h-3.5')} Ingredients</button><button class="btn btn-sm" data-action="ckTimerNew">${icon('timer', 'w-3.5 h-3.5')} Timer</button></div>
@@ -3265,10 +3316,10 @@ function recGrocery() {
       <button class="btn w-full btn-danger" data-action="grocClearAll" ${g.length ? '' : 'disabled'}>${icon('trash-2')} Clear entire list</button>
       <p class="text-xs muted">Building from the plan combines matching ingredients, skips leftovers and freezer meals, and skips what’s in your pantry.</p></div>
     <div class="card">${cardHead('wallet', 'Grocery budget')}
-      <div class="flex items-center gap-2 text-sm mb-2"><span class="muted">Weekly budget $</span><input type="number" min="0" step="1" class="input w-24 py-1" value="${k.budget ?? ''}" data-change="gBudget" placeholder="—" aria-label="Weekly budget"></div>
+      <div class="flex items-center gap-2 text-sm mb-2"><span class="muted">Weekly budget $</span><input type="number" inputmode="numeric" min="0" step="1" class="input w-24 py-1" value="${k.budget ?? ''}" data-change="gBudget" placeholder="—" aria-label="Weekly budget"></div>
       ${k.budget ? `<div class="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden"><div class="h-full ${spent > k.budget ? 'bg-rose-500' : 'bg-brand-600'}" style="width:${Math.min(100, spent / k.budget * 100)}%"></div></div>` : ''}
       <p class="text-sm mt-2"><strong class="tabular-nums">${money(spent)}</strong> <span class="muted">spent this week${k.budget ? ` of ${money(k.budget)} · ${spent > k.budget ? `${money(spent - k.budget)} over` : `${money(k.budget - spent)} left`}` : ''}</span></p>${plan.n ? `<p class="text-xs muted">Planned meals estimate: ${money(plan.c)}</p>` : ''}
-      <form class="grid grid-cols-2 gap-2 mt-3" data-submit="spendAdd"><input name="amount" type="number" step="0.01" min="0" class="input" placeholder="Trip total $" value="${cartPrice ? cartPrice.toFixed(2) : ''}" required><input name="date" type="date" class="input" value="${ymd()}">${k.stores.length ? `<select name="store" class="input"><option value="">Store…</option>${k.stores.map(s => `<option ${st === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>` : `<input name="store" class="input" placeholder="Store">`}<button class="btn btn-sm">${icon('plus', 'w-3.5 h-3.5')} Log trip</button></form>
+      <form class="grid grid-cols-2 gap-2 mt-3" data-submit="spendAdd"><input name="amount" type="number" inputmode="decimal" step="0.01" min="0" class="input" placeholder="Trip total $" value="${cartPrice ? cartPrice.toFixed(2) : ''}" required><input name="date" type="date" class="input" value="${ymd()}">${k.stores.length ? `<select name="store" class="input"><option value="">Store…</option>${k.stores.map(s => `<option ${st === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>` : `<input name="store" class="input" placeholder="Store">`}<button class="btn btn-sm">${icon('plus', 'w-3.5 h-3.5')} Log trip</button></form>
       ${k.spend.length ? `<div class="mt-3 space-y-1">${k.spend.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6).map(s => `<div class="flex items-center gap-2 text-xs"><span class="muted w-14">${fmtDate(s.date, { month: 'short', day: 'numeric' })}</span><span class="flex-1 truncate">${esc(s.store || 'Groceries')}</span><span class="tabular-nums">${money(s.amount)}</span><button class="btn btn-ghost btn-sm -my-1" data-action="spendDel" data-id="${s.id}" aria-label="Delete">${icon('x', 'w-3 h-3')}</button></div>`).join('')}</div>
         <div class="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs muted space-y-0.5">${[1, 2, 3, 4].map(i => { const w = addDays(ws, -7 * i), v = grocSpendWeek(w); return `<div class="flex"><span class="flex-1">Week of ${fmtDate(w, { month: 'short', day: 'numeric' })}</span><span class="tabular-nums">${v ? money(v) : '—'}</span></div>`; }).join('')}</div>` : ''}</div>
     <div class="card">${cardHead('repeat', 'Staples', '<span class="text-xs muted">Re-add on a schedule</span>')}
@@ -3278,7 +3329,7 @@ function recGrocery() {
 }
 function grocEditModal(x) {
   const k = gkit();
-  Modal.open(modalShell('Grocery item', `<input type="hidden" name="id" value="${x.id}"><div class="grid grid-cols-3 gap-3"><div><label class="label">Qty</label><input name="qty" type="number" step="any" class="input" value="${x.qty ?? ''}"></div><div><label class="label">Unit</label><input name="unit" class="input" value="${esc(x.unit || '')}"></div><div><label class="label">Price $</label><input name="price" type="number" step="0.01" min="0" class="input" value="${x.price ?? ''}"></div></div>
+  Modal.open(modalShell('Grocery item', `<input type="hidden" name="id" value="${x.id}"><div class="grid grid-cols-3 gap-3"><div><label class="label">Qty</label><input name="qty" type="number" inputmode="decimal" step="any" class="input" value="${x.qty ?? ''}"></div><div><label class="label">Unit</label><input name="unit" class="input" value="${esc(x.unit || '')}"></div><div><label class="label">Price $</label><input name="price" type="number" inputmode="decimal" step="0.01" min="0" class="input" value="${x.price ?? ''}"></div></div>
     <div><label class="label">Item</label><input name="name" class="input" value="${esc(x.name)}" required></div>
     <div class="grid grid-cols-2 gap-3"><div><label class="label">Aisle</label><select name="section" class="input">${GSECTIONS.map(([s, l]) => `<option value="${s}" ${(x.section || gSection(x.name)) === s ? 'selected' : ''}>${l}</option>`).join('')}</select></div><div><label class="label">Store</label><select name="store" class="input"><option value="">Any</option>${k.stores.map(s => `<option ${x.store === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div></div>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="remember" value="1" checked class="accent-brand-600"> Always put “${esc(x.name)}” in this aisle</label>
@@ -3295,7 +3346,7 @@ function recPantry() {
       ${groups.map(([l, xs]) => `<div class="label mt-3">${l}</div>${xs.map(x => `<div class="flex items-center gap-2 text-sm py-1"><span class="flex-1 ${x.low ? 'text-amber-700 dark:text-amber-300' : ''}">${esc(x.name)}${x.low ? ' · low' : ''}</span><button class="btn btn-ghost btn-sm text-xs" data-action="panLow" data-id="${x.id}" title="${x.low ? 'Restocked' : 'Running low — add to grocery list'}">${x.low ? 'Restocked' : 'Low'}</button><button class="btn btn-ghost btn-sm" data-action="panDel" data-id="${x.id}" aria-label="Used up">${icon('x', 'w-3 h-3')}</button></div>`).join('')}`).join('') || '<p class="text-sm muted">Add what’s in the cupboard, fridge and freezer staples. Separate several with commas.</p>'}
       <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800"><div class="label">Always on hand</div><div class="flex flex-wrap gap-1">${k.basics.map((b, i) => `<span class="chip text-[11px]">${esc(b)} <button class="ml-1 opacity-60 hover:opacity-100" data-action="basicDel" data-i="${i}" aria-label="Remove ${esc(b)}">×</button></span>`).join('')}</div><form class="flex gap-2 mt-2" data-submit="basicAdd"><input name="name" class="input text-sm py-1" placeholder="Add a basic" required autocomplete="off"><button class="btn btn-sm" aria-label="Add basic">${icon('plus', 'w-3.5 h-3.5')}</button></form><p class="text-[11px] muted mt-1">Never added to the grocery list from recipes.</p></div></div>
     <div class="card">${cardHead('snowflake', 'Freezer', `<span class="text-xs muted">${sum(fz.map(f => +f.portions || 0))} portions</span>`)}
-      <form class="grid grid-cols-6 gap-2 mb-3" data-submit="fzAdd"><input name="name" class="input text-sm col-span-6" placeholder="What’s in it (e.g. Chicken tortilla soup)" required autocomplete="off"><input name="portions" type="number" min="1" step="1" value="4" class="input text-sm col-span-2" aria-label="Portions"><input name="date" type="date" class="input text-sm col-span-3" value="${t}" aria-label="Date frozen"><button class="btn btn-sm col-span-1" aria-label="Add">${icon('plus', 'w-3.5 h-3.5')}</button></form>
+      <form class="grid grid-cols-6 gap-2 mb-3" data-submit="fzAdd"><input name="name" class="input text-sm col-span-6" placeholder="What’s in it (e.g. Chicken tortilla soup)" required autocomplete="off"><input name="portions" type="number" inputmode="numeric" min="1" step="1" value="4" class="input text-sm col-span-2" aria-label="Portions"><input name="date" type="date" class="input text-sm col-span-3" value="${t}" aria-label="Date frozen"><button class="btn btn-sm col-span-1" aria-label="Add">${icon('plus', 'w-3.5 h-3.5')}</button></form>
       <div class="space-y-2">${fz.map(f => { const age = f.date ? daysBetween(f.date, t) : 0, planned = Object.entries(Store.get('mealPlan')).filter(([d, xs]) => d >= t && xs.some(i => i.freezerId === f.id)).map(([d]) => d).sort()[0]; return `<div class="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5 ${(f.portions || 0) <= 0 ? 'opacity-50' : ''}"><div class="flex items-center gap-2"><span class="font-medium text-sm flex-1">${esc(f.name)}</span><span class="chip text-[10px]">${f.portions || 0} left</span></div><div class="text-xs mt-0.5 ${age > 90 ? 'text-rose-600 dark:text-rose-400' : 'muted'}">Frozen ${f.date ? fmtDate(f.date, { month: 'short', day: 'numeric' }) : '—'} · ${age}d${age > 90 ? ' — use soon' : ''}${planned ? ` · planned ${fmtDate(planned, { weekday: 'short' })}` : ''}</div>
         <div class="flex flex-wrap gap-1.5 mt-2"><button class="btn btn-sm" data-action="fzUse" data-id="${f.id}" ${(f.portions || 0) <= 0 ? 'disabled' : ''}>−1 portion</button><button class="btn btn-sm" data-action="fzPlan" data-id="${f.id}" ${(f.portions || 0) <= 0 ? 'disabled' : ''}>${icon('calendar-plus', 'w-3.5 h-3.5')} Plan</button><span class="flex-1"></span><button class="btn btn-ghost btn-sm" data-action="fzDel" data-id="${f.id}" aria-label="Delete">${icon('trash-2', 'w-3.5 h-3.5')}</button></div></div>`; }).join('') || '<p class="text-sm muted">Log meals you freeze — with dates, portions left, and a nudge to thaw the night before.</p>'}</div></div>
     <div class="card">${cardHead('sparkles', 'What can I make?')}${pan.length || k.basics.length ? `<div class="space-y-2">${cm.map(({ r, m }) => `<div class="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5"><div class="flex items-center gap-2"><button class="font-medium text-sm flex-1 text-left hover:underline" data-action="recView" data-id="${r.id}">${esc(r.title)}</button><span class="text-xs tabular-nums ${m.pct >= 80 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'muted'}">${m.have}/${m.total}</span></div><div class="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden mt-1.5"><div class="h-full ${m.pct >= 80 ? 'bg-emerald-500' : 'bg-amber-500'}" style="width:${m.pct}%"></div></div>${m.missing.length ? `<div class="text-xs muted mt-1">Need: ${esc(m.missing.slice(0, 5).join(', '))}${m.missing.length > 5 ? '…' : ''} <button class="text-brand-600 underline" data-action="cmGroc" data-id="${r.id}">add to list</button></div>` : '<div class="text-xs text-emerald-600 dark:text-emerald-400 mt-1">You have everything ✓</div>'}</div>`).join('')}</div>` : '<p class="text-sm muted">Add pantry items to see which recipes you can make tonight.</p>'}</div></div>`;
@@ -3598,6 +3649,12 @@ const A_SHARE = {
 // would notice; each device shows the newest one once, as a card on the dashboard. A slide can show
 // a picture from assets/whatsnew/ (give it alt text) and a `go` shortcut: [view, ui key, tab, label].
 const RELEASES = [
+  { id: '2026-11-07b', title: 'Easier to use on a phone', slides: [
+    { title: 'Logging sets', body: '<p>The weight and reps boxes are wider and taller, so a weight like 182.5 shows in full. <strong>Previous</strong> fits on one line, and tapping it still copies last time’s numbers.</p><p>Moving, supersetting and removing an exercise are under <strong>⋯</strong> beside its rest time. Notes open from <strong>Add note</strong>.</p><p>The <strong>RPE</strong> column is hidden unless you turn it on in <strong>Settings → Workouts</strong>. Sets that already have an RPE still show it.</p>', go: ['fitness', '', '', 'Open Workouts'] },
+    { title: 'Calories left', body: '<p>The calorie ring and the Today card now lead with what’s <strong>left</strong> for the day, and how much protein is still to go.</p><p>To see calories eaten instead, open <strong>Settings → Nutrition → Big calorie number</strong>.</p>', go: ['nutrition', '', '', 'Open Nutrition'] },
+    { title: 'Moving between days', body: '<p>In Nutrition, the day reads <strong>Today · Sat, Nov 7</strong>. Tap it to pick another day, or use the arrows.</p><p>Copying a whole day, or the day before into this one, is under <strong>⋯</strong> beside the day.</p>' },
+    { title: 'Bigger and tidier', body: '<ul class="list-disc pl-5 space-y-1"><li>On a phone, buttons and fields are at least 44 points tall, and number fields open the number keypad.</li><li>Tabs use short names on a phone so they fit. A row that still doesn’t fit fades at the edge; swipe it for more.</li><li>Recipe filters sit in one row that you can swipe.</li><li>The backup reminder is one line, and <strong>Later</strong> puts it off for a week.</li></ul>' }
+  ] },
   { id: '2026-11-07', title: 'Welcome to Body Dashboard', slides: [
     { title: 'Training and diet, nothing else', body: '<p>Body Dashboard keeps the fitness and diet parts of Life Dashboard: <strong>Workouts</strong>, <strong>Nutrition</strong> and <strong>Recipes &amp; Meals</strong>, working as they did there.</p>', go: ['fitness', '', '', 'Open Workouts'] },
     { title: 'Bring your records across', body: '<p>In Life Dashboard, open <strong>Settings &amp; Sync</strong> and tap <strong>Back up</strong>. Here, open <strong>Settings &amp; Sync → Import backup</strong> and choose that file.</p><p>Only workouts, food, weight, measurements, progress photos and recipes come across. Everything else stays in Life Dashboard, untouched.</p>' }
@@ -3662,7 +3719,7 @@ const A_HELP = {
 // (Sync.photos); API keys and downloaded libraries stay on the device. Sign-in is a plain redirect, so no
 // Google script is loaded.
 const DRIVE = { clientId: '', scope: 'https://www.googleapis.com/auth/drive.appdata', file: 'body-dashboard-sync.json', api: 'https://www.googleapis.com', auth: 'https://accounts.google.com/o/oauth2/v2/auth' };
-const SYNC_SETTINGS = ['name', 'hiddenTabs', 'tabsV', 'hiddenCards', 'cardOrder', 'bar', 'unit', 'restSeconds', 'timerSound', 'targets', 'bwFallback'];
+const SYNC_SETTINGS = ['name', 'hiddenTabs', 'tabsV', 'hiddenCards', 'cardOrder', 'bar', 'unit', 'restSeconds', 'timerSound', 'targets', 'bwFallback', 'rpe', 'calBig'];
 const SYNC_SKIP = []; // photoMeta used to stay on each device; photos sync since 2026-10 (Sync.photos)
 const SYNC_BASE = 'sync.base';
 // A sync that would remove more than this many records (outside the lists that are routinely
@@ -4097,6 +4154,7 @@ const A = {
   },
   openSidebar,
   closeSidebar, closeModal: () => Modal.close(),
+  backupLater: () => { S.backupLater = ymd(); saveSettings(); toast('The reminder will be back in a week'); render(); },
   cycleTheme: () => { S.theme = { system: 'light', light: 'dark', dark: 'system' }[S.theme] || 'system'; saveSettings(); applyTheme(); },
   toggleCollapse: () => { S.collapsed = !S.collapsed; saveSettings(); applyCollapse(); },
   // timer
@@ -4132,7 +4190,7 @@ const A = {
 
   saveSettings: f => {
     const v = fd(f);
-    Object.assign(S, { name: v.name.trim(), theme: v.theme, unit: v.unit, restSeconds: +v.restSeconds, bwFallback: num(v.bwFallback) ? (v.unit === 'lbs' ? num(v.bwFallback) * LB : num(v.bwFallback)) : null, timerSound: v.timerSound === '1', fdcKey: (v.fdcKey || '').trim(), targets: { cal: num(v.t_cal) || 2000, p: num(v.t_p) || 0, c: num(v.t_c) || 0, f: num(v.t_f) || 0 } });
+    Object.assign(S, { name: v.name.trim(), theme: v.theme, unit: v.unit, restSeconds: +v.restSeconds, bwFallback: num(v.bwFallback) ? (v.unit === 'lbs' ? num(v.bwFallback) * LB : num(v.bwFallback)) : null, timerSound: v.timerSound === '1', rpe: v.rpe === '1', calBig: v.calBig === 'eaten' ? 'eaten' : 'left', fdcKey: (v.fdcKey || '').trim(), targets: { cal: num(v.t_cal) || 2000, p: num(v.t_p) || 0, c: num(v.t_c) || 0, f: num(v.t_f) || 0 } });
     const bar = [...new Set([v.bar0, v.bar1, v.bar2, v.bar3].filter(Boolean))];
     if (bar.length === 4) S.bar = bar; else if ([v.bar0, v.bar1, v.bar2, v.bar3].some(Boolean)) toast('Choose four different sections for the bottom bar', 'error');
     saveSettings(); applyTheme(); Modal.close(); toast('Settings saved'); render();
@@ -4150,6 +4208,7 @@ document.addEventListener('click', e => {
   const fn = A[el.dataset.action]; if (!fn) return console.warn('Unknown action', el.dataset.action);
   e.preventDefault(); fn(el, e);
 });
+document.addEventListener('scroll', e => { if (e.target.classList?.contains('tabs-row')) tabFade(e.target); }, true);
 document.addEventListener('input', e => { const el = e.target.closest('[data-input]'); if (el && A[el.dataset.input]) A[el.dataset.input](el, e); });
 document.addEventListener('change', e => { const el = e.target.closest('[data-change]'); if (el && A[el.dataset.change]) A[el.dataset.change](el, e); });
 document.addEventListener('submit', e => { const f = e.target.closest('[data-submit]'); if (!f) return; e.preventDefault(); const fn = A[f.dataset.submit]; if (fn) fn(f, e); });

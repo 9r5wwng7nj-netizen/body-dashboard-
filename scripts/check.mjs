@@ -61,4 +61,9 @@ const remoteLoaders = [...html.matchAll(/loadScript\(\s*["'`]https?:\/\/[^"'`]+/
 const remoteExec = [...remoteScripts, ...remoteStyles, ...remoteLoaders];
 if (remoteExec.length) fail(`remote executable dependencies found: ${remoteExec.join(', ')}`); else ok('runtime dependency scripts and styles are local');
 
+// 5. Every number field says which phone keypad to open (decimal for weights and grams, numeric for whole numbers).
+const numberFields = [...html.matchAll(/<input\b[^<>]*?type="number"[^<>]*?>/g)].map(m => m[0]);
+const noKeypad = numberFields.filter(t => !/\binputmode="(decimal|numeric)"/.test(t));
+if (noKeypad.length) fail(`number fields without inputmode: ${noKeypad.map(t => t.slice(0, 80)).join(' | ')}`); else ok(`${numberFields.length} number fields name their keypad`);
+
 process.exit(failed ? 1 : 0);
