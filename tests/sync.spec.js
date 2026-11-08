@@ -454,3 +454,16 @@ for(const marker of ['missing','weak'])test(`${marker} JSON update marker pauses
  expect((await sync(d.page)).error).toContain('No personal records were uploaded');expect(drive.file).toBeNull();expect(drive.writes).toEqual([]);expect(await titles(d.page)).toEqual(['Synthetic retained during marker failure']);expect(await d.page.evaluate(()=>syncBox())).toContain('Google Drive sync is paused');
  drive.omitEtag=false;drive.weakEtag=false;expect((await sync(d.page)).error).toBe('');expect(JSON.parse(drive.file.body).data.recipes[0].title).toBe('Synthetic retained during marker failure');await d.context.close();
 });
+
+test('a first desktop Drive-copy adoption preserves a full imported workout history on Drive and both devices',async({browser})=>{
+ const drive=fakeDrive(),phone=await device(browser,drive),desktop=await device(browser,drive);
+ const history=Array.from({length:36},(_,i)=>({id:'synthetic-imported-history-'+i,name:'Synthetic historical session '+i,start:new Date(Date.UTC(2026,9,1+i,12)).toISOString(),end:new Date(Date.UTC(2026,9,1+i,13)).toISOString(),notes:'Synthetic imported history',exercises:[{name:'Bench Press (Barbell)',sets:[{id:'synthetic-set-'+i,type:'normal',weight:40+i/10,reps:5,done:true}]}]})).reverse();
+ await phone.page.evaluate(async history=>{Store.set('workouts',history);await Store.flushDirty();},history);
+ expect((await sync(phone.page)).error).toBe('');expect(JSON.parse(drive.file.body).data.workouts).toEqual(history);const before=drive.file.body;
+ await sync(desktop.page);await desktop.page.click('[data-action="syncFirst"][data-mode="theirs"]');await desktop.page.waitForFunction(()=>!Sync.busy&&syncMeta().last);
+ expect(drive.file.body).toBe(before);expect(await desktop.page.evaluate(()=>W())).toEqual(history);expect(await phone.page.evaluate(()=>W())).toEqual(history);
+ await sync(phone.page);await sync(desktop.page);
+ expect(JSON.parse(drive.file.body).data.workouts).toEqual(history);await desktop.page.reload();await phone.page.reload();
+ for(const d of[phone,desktop]){await d.page.waitForFunction(()=>typeof Store!=='undefined'&&Store.ready&&!Sync.busy);expect(await d.page.evaluate(()=>W().length)).toBe(36);await d.page.evaluate(()=>{ui.fitTab='history';go('fitness');});await expect(d.page.getByText('No workouts logged yet',{exact:true})).toHaveCount(0);}
+ await phone.context.close();await desktop.context.close();
+});

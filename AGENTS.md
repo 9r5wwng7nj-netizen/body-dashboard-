@@ -126,6 +126,7 @@ Secondary selections/cues, the read-only 200-definition catalog and Plan/Perform
 ## Optional local training cycles — 2026-11-08
 
 - Train → Import cycle adds private multi-week prescriptions with per-set targets, optional base/ramp TMs and load rounding. See `docs/TRAINING_CYCLES.md` for the versioned contract and persistence boundaries.
+- Open an imported cycle → Edit program (or a linked routine’s Edit button) before starting. `cpPlan(c)` reads optional `customDefinition` with the immutable imported `definition` as fallback. Save program edits atomically with linked routines; preserve source signatures, IDs, maxes and all active/history snapshots. See `docs/TRAINING_CYCLES.md`.
 - `trainingCycles: []` is optional. Keep imported cycle definitions, targets and actual logged values separate. Preserve active/history snapshots after setup changes. Do not seed personal plans or commit them to this public repository.
 - `weight_distance` adds loaded carries with canonical kg/km and optional yards/metres display. Preserve legacy tracking and draft-unit meanings. Warm-ups and loaded carries stay outside rep-based muscle-set totals.
 - Progression and contradictory source instructions require user review. Do not silently change TMs, infer effort or prohibit recording actual activity. Sync remains off.
