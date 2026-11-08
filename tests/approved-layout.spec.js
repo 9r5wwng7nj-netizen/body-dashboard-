@@ -25,10 +25,10 @@ test('picker and coverage have accessible controls in both themes and enlarged t
   const target=await apply.boundingBox();expect(target.width).toBeGreaterThanOrEqual(44);expect(target.height).toBeGreaterThanOrEqual(44);expect(target.y+target.height).toBeLessThanOrEqual(844);
   if(theme==='dark'&&text===100)await page.screenshot({path:`output/playwright/mineral-picker-${browserName}.png`});
   await page.evaluate(()=>{ui.exercisePicker=null;Modal.close();showRoutineCoverage(true);});
-  expect(await page.locator('[role="dialog"]').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
+  expect(await page.locator('#view').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);
   await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   const issues=await page.evaluate(async()=>(await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>v.id));expect(issues).toEqual([]);
-  await page.evaluate(()=>{ui.coverage=null;Modal.close();});
+  await page.evaluate(()=>{ui.muscleSets=null;ui.fitTab='routines';Modal.close();render();});
  }
 });
 test('switching appearance updates inherited shell text as well as card surfaces',async({page})=>{

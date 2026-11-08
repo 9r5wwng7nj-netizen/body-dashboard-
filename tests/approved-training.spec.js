@@ -57,7 +57,7 @@ test('routine coverage keeps scalar plans, primary/secondary, sparse metadata an
  const r=await page.evaluate(()=>{const routine={name:'Synthetic coverage',exercises:[{name:'Bench Press (Barbell)',sets:3},{name:'Triceps Pushdown (Cable)',sets:2},{name:'Plank',sets:4},{name:'Custom unknown',sets:2},{name:'Leg Press',sets:null}]};const report=routineCoverage(routine,.5,1);ui.rDraft={...routine,id:null,folder:'',notes:''};showRoutineCoverage(true);return report;});
  expect(r.total).toBe(7);expect(r.invalid).toBe(1);expect(r.separate).toEqual([{name:'Plank',sets:4}]);expect(r.unknown).toHaveLength(1);
  expect(r.rows.find(m=>m.muscle==='Triceps')).toMatchObject({primary:2,secondary:3,credited:3.5});
- await expect(page.locator('#modal')).toContainText('frequency not specified');await page.locator('[data-f="frequency"]').fill('2');await expect(page.locator('#modal')).toContainText('Planned week scenario · 2 repeats/week');await expect(page.locator('#modal')).toContainText('14');
+ await expect(page.locator('#view')).toContainText('Unsaved routine');await expect(page.locator('#view')).toContainText('No weekly frequency assumed');await page.getByRole('button',{name:'Week scenario',exact:true}).click();await page.getByRole('spinbutton',{name:'Weekly occurrences of unsaved routine',exact:true}).fill('2');await expect(page.locator('#view [role="status"]')).toContainText('14 planned rep-based slots');
 });
 test('custom creation confirms metadata, selects locally and keeps parent draft on cancel',async({page})=>{
  await page.evaluate(()=>{ui.rDraft={id:null,name:'Synthetic routine',folder:'',notes:'Do not lose',exercises:[]};drawRoutineModal();openExercisePicker('routine-add');});

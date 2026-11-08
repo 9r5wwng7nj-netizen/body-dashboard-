@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-08 — Plan and Performed Muscle sets
+
+- Linked routine/rotation/week-scenario coverage with actual local Monday-through-today training.
+- Separated primary sets, secondary involvement, timed/conditioning/warm-up work, invalid rows and inferred/unallocated mappings. Coarse areas deduplicate physical rows.
+- Added source drilldown, mapping review and explicit current-role reinterpretation without rewriting history or tracking basis. Finish/monthly reporting reuse the read model; PR/E1RM behavior remains.
+
 ## 2026-11-07 — Expanded offline exercise catalog
 
 - Added 144 curated definitions for 200 fresh-catalog choices, with shared aliases/muscle/equipment search and corrected inference traps.
