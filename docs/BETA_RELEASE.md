@@ -2,21 +2,32 @@
 
 Published November 7, 2026 (America/New_York).
 
-**Cobalt Air personal beta — open on iPhone:** https://9r5wwng7nj-netizen.github.io/body-dashboard-/
+**Exercise cues personal beta — open on iPhone:** https://9r5wwng7nj-netizen.github.io/body-dashboard-/
 
 ## Release identity
 
-- Tested source: `f4ea8bb87dc92d577aca7752d0aee8e1e3691b93`, branch `beta/personal-web`.
-- Deployment: `6734dd6d7a3528ed75a509d24456aa3bbf05000c`, branch `gh-pages`, root folder.
-- [Passing source checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42444569513).
-- [Successful Pages build/deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42444818083).
+- Tested source: `2834caca6e7c7cea387e4d9d389bfbe30476656d`, branch `beta/personal-web`.
+- Deployment: `26228a86fa5843602f7eefb6b6eb4aea10bca94e`, branch `gh-pages`, root folder.
+- [Passing source checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42447614700).
+- [Successful Pages build/deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42448147503).
 - [Public release manifest](https://9r5wwng7nj-netizen.github.io/body-dashboard-/release.json) records source and SHA-256 asset hashes.
 
 The deployment contains 17 allowlisted package files: app HTML, service worker, manifest, CSS, icons, pinned libraries/licenses, `.nojekyll` and the release manifest. No backups, credentials, certificates, local preview tools, tests or planning documents are in the Pages artifact. The public source branch contains reviewed code/tests and synthetic planning fixtures. Main was retained; no force push was used.
 
 `node scripts/package-beta.mjs EMPTY_OUTPUT_DIRECTORY SOURCE_COMMIT` creates this package. It refuses a nonempty destination and rejects unexpected backup/key/JSON files. The packaged worker gets a cache generation derived from the tested source commit, so later deployments can install a new complete shell without forcing reload over active work. Keep Pages configured to `gh-pages` at `/`.
 
-## Checks actually run — Cobalt Air
+## Secondary muscles and exercise cues — current update
+
+Both exercise-creation paths now share secondary-muscle fields with visible checks and 44px labels. Exercise cues appear while logging and carry into later sessions; Session notes remain attached to their original workout. Explicit Save as exercise cue reviews a copy. Metadata saves show confirmed local commit, retain recoverable pending edits, protect newer changes and offer export/reload on conflict. No existing note or classification is automatically migrated.
+
+- Full local checks: **184 Chromium passed (38.1s), 77 WebKit passed (54.3s)**, including CSS/static checks. Exact-source GitHub CI passed **184 Chromium / 77 WebKit**.
+- The staged package passed both-engine offline logging and the new secondary/cue/promotion/repeat/backup workflow. Independent final preservation review found no critical blocker.
+- Live HTTPS: all 15 non-marker runtime hashes match the manifest. Both engines passed offline swap/resume/finish, duplicate-safe workout import, byte-identical photo-backup restoration and reload, with Cobalt light/dark/light and unchanged retired records/storage names.
+- The live cue-specific flow passed both engines: custom secondaries, visible cue, explicit session-note promotion, offline reload, finish/repeat, blank new Session note, reusable cue and full backup restore. Original history and set IDs remained unchanged; zero page errors or network writes in either live flow.
+- Physical iPhone keyboard, safe-area, Home Screen and VoiceOver acceptance remain manual. If all writes fail before an intent checkpoints, keep the tab open and save/export the form; see [release details](product-review/2026-11-07/RELEASE_1_EXERCISE_CUES.md).
+
+## Previous checks — Cobalt Air
+
 
 - Final local `npm test -- --workers=2`: **170 passed (35.9s)**, including CSS build/static checks.
 - Final local `npm run test:webkit`: **63 passed (45.2s)**.
@@ -49,7 +60,7 @@ See `docs/product-review/2026-11-07/IMPLEMENTATION_REPORT.md` for behavior, pres
 
 ## Earlier beta history
 
-The previous Warm Mineral source was `25d1c96bf8e10003323dc34c66720d2f7a46df0b`, deployed as `35d2c922fe396cdb46b1d4b807ff86c979e26340` (170 Chromium / 63 WebKit, plus staged/live offline and backup verification). The prior focused-interface source was `fa734b77e064cae7b3e3b64502a427802bec7c0d`, deployed as `1682a2ae40b73edbea609601ddd860d55ddf638f`. It removed the sidebar and introduced focused workout logging. The initial beta source was `98515a08138b7453b4c0a60e05282ff6575b11d9`, deployed as `65af0a3788f36cc3fc17dcbd7262deaa5b98b0f4`. Cobalt Air advances the existing Pages branch normally; no force push or browser-data reset was used. Main remains unchanged. Personal reference screenshots are excluded from source and artifacts.
+Cobalt Air source `f4ea8bb87dc92d577aca7752d0aee8e1e3691b93` was deployed as `6734dd6d7a3528ed75a509d24456aa3bbf05000c`. The previous Warm Mineral source was `25d1c96bf8e10003323dc34c66720d2f7a46df0b`, deployed as `35d2c922fe396cdb46b1d4b807ff86c979e26340` (170 Chromium / 63 WebKit, plus staged/live offline and backup verification). The prior focused-interface source was `fa734b77e064cae7b3e3b64502a427802bec7c0d`, deployed as `1682a2ae40b73edbea609601ddd860d55ddf638f`. It removed the sidebar and introduced focused workout logging. The initial beta source was `98515a08138b7453b4c0a60e05282ff6575b11d9`, deployed as `65af0a3788f36cc3fc17dcbd7262deaa5b98b0f4`. Cobalt Air advances the existing Pages branch normally; no force push or browser-data reset was used. Main remains unchanged. Personal reference screenshots are excluded from source and artifacts.
 
 ## Records and updates
 

@@ -27,6 +27,16 @@ If an earlier unrelated save or all storage writes fail before the metadata inte
 - Builder: 14 new Chromium scenarios passed; combined new/approved-training WebKit 25 passed. Independent review found and resolved stale reopen, newer-edit acknowledgement, partial cue mapping and optional recovery validation issues.
 - Root current-source full Chromium: **184 passed (38.1s)**, including CSS/static checks.
 - Root hosted synthetic Chromium/WebKit smoke passed custom secondaries, visible cue, explicit session promotion, offline reload, finish/repeat cue/session distinction and full backup restoration, with original history IDs and zero page errors/network writes.
-- Root current-source full WebKit: **77 passed (54.3s)**. Exact-source CI, staged package and live publication identities are recorded when their gates finish.
+- Root current-source full WebKit: **77 passed (54.3s)**. Exact-source CI also passed **184 Chromium / 77 WebKit**.
 
 Physical iPhone keyboard, safe-area, Home Screen termination and VoiceOver acceptance remain manual. Default engine checks do not establish those outcomes.
+
+## Publication
+
+- Tested source: `2834caca6e7c7cea387e4d9d389bfbe30476656d`.
+- [Source CI](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42447614700) passed. Final independent read-only review found no critical preservation blocker.
+- Deployment: `26228a86fa5843602f7eefb6b6eb4aea10bca94e`; [Pages run](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42448147503) succeeded.
+- Exact staged package and live HTTPS passed both-engine common offline/import/photo-backup flow and the new secondary/cue/promotion/repeat/full-backup flow, with zero page errors or network writes. Live manifest and all 15 non-marker runtime file hashes match. Original history/set identities and session observations remained intact.
+- Only 17 allowlisted public runtime files were published; research, tests, synthetic fixtures and personal data are excluded. Source/main/storage boundaries remain unchanged.
+
+The first live smoke was started while Pages was still deploying and rejected the old manifest; a cue probe also encountered the old checkbox UI. These were deployment-timing checks, not successful acceptance runs. Both checks were rerun after Pages success and exact-source verification, and passed as reported above.
