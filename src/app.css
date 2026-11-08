@@ -322,3 +322,6 @@ select.input { max-width: 100%; }
 .exercise-cue-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 .exercise-muscle-choice > span:first-of-type { min-width: 0; overflow-wrap: anywhere; }
+
+/* WebKit native selects ignore the intended touch height; keep the week picker a full target. */
+#cp-week { appearance: none; -webkit-appearance: none; min-height: 44px; }
