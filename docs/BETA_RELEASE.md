@@ -6,10 +6,10 @@ Published November 7, 2026 (America/New_York).
 
 ## Release identity
 
-- Tested source: `98515a08138b7453b4c0a60e05282ff6575b11d9`, branch `beta/personal-web`.
-- Deployment: `65af0a3788f36cc3fc17dcbd7262deaa5b98b0f4`, branch `gh-pages`, root folder.
-- [Passing source checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42432742733).
-- [Successful Pages build/deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42433020489).
+- Tested source: `fa734b77e064cae7b3e3b64502a427802bec7c0d`, branch `beta/personal-web`.
+- Deployment: `1682a2ae40b73edbea609601ddd860d55ddf638f`, branch `gh-pages`, root folder.
+- [Passing source checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42436234440).
+- [Successful Pages build/deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42436452466).
 - [Public release manifest](https://9r5wwng7nj-netizen.github.io/body-dashboard-/release.json) records source and SHA-256 asset hashes.
 
 The deployment contains 17 allowlisted package files: app HTML, service worker, manifest, CSS, icons, pinned libraries/licenses, `.nojekyll` and the release manifest. No backups, credentials, certificates, local preview tools, tests or planning documents are in the Pages artifact. The public source branch contains reviewed code/tests and synthetic planning fixtures. Main was retained; no force push was used.
@@ -18,14 +18,23 @@ The deployment contains 17 allowlisted package files: app HTML, service worker, 
 
 ## Checks actually run
 
-- Local final `npm test -- --workers=2`: **129 passed**, 26.5 seconds, including CSS/static checks.
-- Local final `npm run test:webkit`: **22 passed**, 18.8 seconds.
+- Local final `npm test -- --workers=2`: **140 passed**, 29.8 seconds, including CSS/static checks.
+- Local final `npm run test:webkit`: **33 passed**, 27.7 seconds.
+- A final hidden-History minimize fallback was then checked with the five navigation scenarios in each engine (all passed); the GitHub runner below tested the exact final source.
 - GitHub Linux runner: full Chromium and hosted WebKit commands passed for the source commit above.
 - Both browser engines passed a separate test against the exact staged package, including offline reopen/finish/reload.
 - All 15 non-marker runtime files listed in the live release manifest matched their expected SHA-256 hashes. The release manifest itself was fetched separately; `.nojekyll` is a build marker.
 - Fresh, isolated persistent browser profiles tested the actual live HTTPS site in Chromium and WebKit: Ready offline; offline reopen; explicit set acceptance; unchecked-row exclusion on finish; fitness JSON imported twice without duplicates; original precision; full backup restoration with byte-identical local PNG and offline image decoding; final reload.
 - Live verification had zero page errors and zero network writes. Synthetic records lived only in the test profiles, which were removed afterward. No personal browser profiles, existing health records or credentials were inspected during app validation.
 - Deployment review caught and fixed a Linux font/scrollbar overflow at 200% text. Card headings and actions now wrap. The regression also reserves scrollbar space and uses a portable font locally. The initially failing CI run was not published; only the subsequent passing source was packaged.
+
+## Focused interface update
+
+The November 7 update replaces the left drawer with four bottom destinations at every width, retaining saved navigation and dashboard preferences. Header controls provide quick adds, Help and Settings. Active sessions show a focused timer/Finish header, compact stats, flat exercise sections and wider set values. Minimize and Resume keep the same workout; a hidden History preference falls back to Dashboard. Set numbers open type/removal options. Optional adjustments retain expansion while editing. History previews exercises, with calendar/totals and full details available by expansion. See `docs/FOCUSED_INTERFACE.md`.
+
+The initial beta source was `98515a08138b7453b4c0a60e05282ff6575b11d9`, deployed as `65af0a3788f36cc3fc17dcbd7262deaa5b98b0f4`. The intermediate spacing commit was checked but not deployed separately; it is included in the focused interface release above. The deployment advances the existing Pages branch normally. No force push or browser-data reset was used.
+
+After the focused interface deployment, fresh Chromium and WebKit profiles verified all 15 public runtime hashes, the absence of a sidebar, focused Finish access, offline finish/import-twice/reload, and byte-identical photo backup restoration. Both had zero page errors and zero network writes. Personal reference screenshots were not added to source or artifacts.
 
 ## Records and updates
 
