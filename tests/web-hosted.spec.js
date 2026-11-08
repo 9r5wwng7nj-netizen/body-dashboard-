@@ -211,7 +211,9 @@ test('phone rows support themes, enlarged text, accessible controls and stable n
   await page.locator('[data-input="awSet"][data-f="weight"]').first().scrollIntoViewIfNeeded();
   await page.screenshot({ path: `output/playwright/web-${browserName}-390-dark-large-row.png`, fullPage: true });
   const complete = page.getByRole('button', { name: 'Complete set', exact: true }).first(); await complete.scrollIntoViewIfNeeded();
-  const target = await complete.boundingBox(), bar = await page.locator('#bottom-bar').boundingBox(); expect(Math.round(target.y + target.height)).toBeLessThanOrEqual(Math.round(bar.y));
+  const target = await complete.boundingBox(), view = await page.locator('#view').boundingBox();
+  await expect(page.locator('#bottom-bar')).toBeHidden();
+  expect(Math.round(target.y + target.height)).toBeLessThanOrEqual(Math.round(view.y + view.height));
   expect(await page.evaluate(async () => (await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })).violations.map(v => v.id))).toEqual([]);
 });
 

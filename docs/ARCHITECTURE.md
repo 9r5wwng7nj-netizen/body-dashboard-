@@ -11,8 +11,10 @@
   - the build scans `index.html`; run `npm run build:css` after changing classes.
 
 ## 2. Shell markup
-- Sidebar `#sidebar` holds the `#nav` built from `VIEWS`, plus the Settings, Theme and Collapse buttons.
-- Header holds `#view-title`, `#header-date` and the rest-timer button.
+- Four destinations in `#bottom-bar` use `VIEWS` and the saved `S.bar` order at every width. There is no sidebar.
+- Header holds `#view-title`, quick adds, Help and Settings. Active workouts switch to Minimize, rest timer and Finish.
+- `renderNav()` toggles the focused-workout shell from the rendered active view. Minimized workouts have a Resume strip; the same `activeWorkout` record stays in storage. The timer moves into normal document flow above Resume to keep both controls reachable.
+- Set-number options reuse existing set mutations. Expanded adjustments live in transient `ui.stepOpen`; no new stored UI fields are required. History previews exercises before expanding full details.
 - `#view` is where the current page renders. `#modal` is the single modal host. Toasts sit alongside them.
 
 ## 3. Script sections (search for the banner text)

@@ -21,7 +21,6 @@
   html, body { height: 100%; }
   /* Installed on a phone: keep the shell clear of the home indicator and rounded corners. */
   #app-shell { padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
-  #sidebar { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
   /* Phones: the bottom bar takes the home-indicator space itself, and the timer and messages sit above it. */
   @media (max-width: 767px) {
     #app-shell { padding-bottom: 0; }
@@ -30,14 +29,6 @@
     #timer > .card { width: 100%; }
     #timer-text { flex: 1; font-size: 1.75rem; }
     #toasts { bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
-  }
-  #sidebar { transform: translateX(-100%); transition: transform .2s ease, width .2s ease; }
-  #sidebar.open { transform: none; }
-  @media (min-width: 768px) {
-    #sidebar { transform: none; }
-    #sidebar.collapsed { width: 4.25rem; }
-    #sidebar.collapsed .nav-label { display: none; }
-    #sidebar.collapsed .nav-item { justify-content: center; padding-left: 0; padding-right: 0; }
   }
   input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   input[type=number] { -moz-appearance: textfield; }
@@ -55,37 +46,30 @@
 <body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 antialiased">
 <a class="skip-link" href="#view">Skip to main content</a>
 <div id="app-shell" class="flex h-[100dvh] overflow-hidden">
-  <div id="sidebar-backdrop" class="fixed inset-0 bg-black/40 z-30 hidden" data-action="closeSidebar"></div>
-  <aside id="sidebar" class="fixed md:static z-40 inset-y-0 left-0 w-64 shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
-    <div class="h-14 flex items-center gap-2.5 px-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
-      <div class="w-8 h-8 rounded-lg bg-brand-600 text-white grid place-items-center shrink-0"><i data-lucide="activity" class="w-4 h-4"></i></div>
-      <span class="nav-label font-semibold tracking-tight">Body Dashboard</span>
-    </div>
-    <nav id="nav" aria-label="Main navigation" class="flex-1 overflow-y-auto scroll-thin p-2 space-y-0.5"></nav>
-    <div class="p-2 border-t border-slate-200 dark:border-slate-800 space-y-0.5">
-      <button class="nav-item w-full" data-action="openHelp" title="Help &amp; what’s new"><i data-lucide="life-buoy" class="w-5 h-5 shrink-0"></i><span class="nav-label">Help &amp; what’s new</span><span id="help-dot" class="nav-label ml-auto hidden"><span class="w-2 h-2 rounded-full bg-rose-500 inline-block"></span><span class="sr-only"> (something new)</span></span></button>
-      <button class="nav-item w-full" data-action="openSettings" title="Settings & Sync"><i data-lucide="settings" class="w-5 h-5 shrink-0"></i><span class="nav-label">Settings &amp; Sync</span></button>
-      <button class="nav-item w-full" data-action="cycleTheme" title="Toggle theme"><i data-lucide="sun-moon" class="w-5 h-5 shrink-0"></i><span class="nav-label" id="theme-label">Theme</span></button>
-      <button class="nav-item w-full hidden md:flex" data-action="toggleCollapse" title="Collapse sidebar"><i data-lucide="panel-left" class="w-5 h-5 shrink-0"></i><span class="nav-label">Collapse</span></button>
-    </div>
-  </aside>
   <div class="flex-1 flex flex-col min-w-0">
     <header class="min-h-14 shrink-0 flex items-center gap-2 px-3 md:px-6 py-2 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
-      <button class="btn btn-ghost md:hidden relative" data-action="openSidebar" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false"><i data-lucide="menu" class="w-5 h-5"></i><span id="menu-dot" class="hidden absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900"></span></button>
+      <button id="workout-minimize" class="btn btn-ghost hidden" data-action="workoutMinimize" aria-label="Minimize workout"><i data-lucide="chevron-down" class="w-5 h-5"></i></button>
       <h1 id="view-title" tabindex="-1" class="font-semibold truncate"></h1>
-      <div class="ml-auto flex items-center gap-2">
-        <span id="save-state" class="text-xs muted" role="status" aria-live="polite"></span>
-        <span id="header-date" class="hidden sm:inline text-sm muted"></span>
+      <div id="header-tools" class="ml-auto flex items-center gap-1">
+        <span id="header-date" class="hidden lg:inline text-sm muted"></span>
         <button id="sync-btn" class="btn btn-sm hidden" data-action="syncNow"></button>
-        <button class="btn btn-sm" data-action="showTimer" title="Rest timer"><i data-lucide="timer" class="w-4 h-4"></i><span class="hidden sm:inline">Timer</span></button>
+        <button class="btn btn-ghost" data-action="quickAdd" aria-label="Quick add food, weight, workout or recipe" title="Quick add"><i data-lucide="plus" class="w-5 h-5"></i></button>
+        <button class="btn btn-ghost relative" data-action="openHelp" aria-label="Help &amp; what’s new" title="Help &amp; what’s new"><i data-lucide="circle-help" class="w-5 h-5"></i><span id="help-dot" class="hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-rose-500"><span class="sr-only">New help or update</span></span></button>
+        <button class="btn btn-ghost" data-action="openSettings" aria-label="Settings &amp; Sync" title="Settings &amp; Sync"><i data-lucide="settings-2" class="w-5 h-5"></i></button>
+      </div>
+      <div id="workout-header-actions" class="ml-auto hidden items-center gap-2">
+        <button class="btn btn-ghost" data-action="showTimer" aria-label="Rest timer" title="Rest timer"><i data-lucide="timer" class="w-5 h-5"></i></button>
+        <button class="btn btn-primary" data-action="awFinish">Finish</button>
       </div>
     </header>
+    <div class="shell-status"><span id="save-state" class="text-xs muted" role="status" aria-live="polite"></span></div>
     <div id="save-recovery" class="hidden shrink-0 border-b border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-3 md:px-6 py-2" role="status" aria-live="polite" aria-atomic="true"></div>
     <main id="view" tabindex="-1" aria-labelledby="view-title" class="flex-1 overflow-y-auto scroll-thin"></main>
-    <nav id="bottom-bar" aria-label="Quick navigation" class="md:hidden shrink-0 flex items-stretch px-1 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur"></nav>
+    <div id="timer" class="fixed z-40 bottom-4 right-4 hidden"></div>
+    <div id="resume-workout" class="hidden shrink-0"></div>
+    <nav id="bottom-bar" aria-label="Main navigation" class=" shrink-0 flex items-stretch px-1 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur"></nav>
   </div>
 </div>
-<div id="timer" class="fixed z-40 bottom-4 right-4 hidden"></div>
 <div id="modal" class="fixed inset-0 z-50 hidden"></div>
 <div id="toasts" class="fixed z-[60] bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none"></div>
 <div id="status-announcement" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -181,7 +165,7 @@ const SETTINGS_DEFAULT = {
   tabsV: 0, // which default-hidden tabs have been applied to saved settings (see below)
   hiddenCards: [], // dashboard cards the person chose to hide; see DASH_CARDS
   cardOrder: [], // the dashboard cards' order, by id; empty means the DASH_CARDS order
-  bar: ['dashboard', 'fitness', 'nutrition', 'recipes'] // the four sections in the phone's bottom bar, around the + button
+  bar: ['dashboard', 'fitness', 'nutrition', 'recipes'] // the four sections in the bottom navigation
 };
 let S = loadSettings();
 function loadSettings() {
@@ -490,7 +474,7 @@ function enhanceAccessibility(root = document) {
     if (name) control.setAttribute('aria-label', name);
   }
   for (const el of $$('[data-action]', root)) {
-    if (!el.matches('button, a, input, select, textarea, label, summary') && !el.querySelector('button, a, input, select, textarea') && el.id !== 'sidebar-backdrop' && el.dataset.action !== 'closeModal') {
+    if (!el.matches('button, a, input, select, textarea, label, summary') && !el.querySelector('button, a, input, select, textarea') && el.dataset.action !== 'closeModal') {
       el.setAttribute('role', 'button'); if (!el.hasAttribute('tabindex')) el.tabIndex = 0;
     }
   }
@@ -504,7 +488,6 @@ function enhanceAccessibility(root = document) {
   for (const frame of $$('iframe:not([title])', root)) {
     if (!frame.hidden) frame.title = 'Embedded media player';
   }
-  syncSidebarAccessibility();
   if (Modal.isOpen()) modalBackground(true);
 }
 function focusSnapshot(element = document.activeElement) {
@@ -526,13 +509,6 @@ function restoreFocus(snapshot, root = document) {
 }
 function focusableElements(root) {
   return $$('button, a[href], input:not([type="hidden"]), select, textarea, iframe, [tabindex]', root).filter(el => !el.disabled && el.tabIndex >= 0 && !el.closest('[inert]') && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
-}
-function syncSidebarAccessibility() {
-  const sidebar = $('#sidebar'), small = !matchMedia('(min-width: 768px)').matches, open = sidebar.classList.contains('open');
-  const hidden = small && !open;
-  sidebar.inert = hidden;
-  sidebar.setAttribute('aria-hidden', String(hidden));
-  $('[data-action="openSidebar"]').setAttribute('aria-expanded', String(small && open));
 }
 function modalBackground(inert) {
   for (const el of $$('#app-shell, #timer, #mini-player, .skip-link')) el.inert = inert;
@@ -715,7 +691,7 @@ function navCount(id) {
   if (c.dot) return `<span class="nav-count w-2 h-2 rounded-full bg-emerald-500 inline-block" title="${c.what}"></span><span class="sr-only"> ${c.what}</span>`;
   return `<span class="nav-count chip ${c.late ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/60 dark:text-rose-200' : 'bg-brand-100 text-brand-800 dark:bg-brand-900/60 dark:text-brand-200'}" title="${c.n} ${c.what}">${c.n}<span class="sr-only"> ${c.what}</span></span>`;
 }
-// Phones: the four sections, around a + button that adds food, weight, a workout or a recipe from a link.
+// Four bottom destinations at every width; quick adds live in the header.
 const BAR_LABEL = { recipes: 'Meals' };
 function barViews() {
   const ok = VIEWS.filter(v => v.id).map(v => v.id), list = [...new Set((S.bar || []).filter(id => ok.includes(id)))];
@@ -725,10 +701,9 @@ function renderBar() {
   const el = $('#bottom-bar'); if (!el) return;
   const item = id => {
     const v = VIEWS.find(x => x.id === id), c = NAV_COUNTS[id] && NAV_COUNTS[id](), on = S.view === id, n = c && c.n ? c : null;
-    return `<button type="button" class="bar-item ${on ? 'bar-on' : ''}" data-action="go" data-view="${id}" aria-current="${on ? 'page' : 'false'}">${icon(v.icon, 'w-5 h-5')}<span class="truncate max-w-full">${esc(BAR_LABEL[id] || v.label)}</span>${n ? `<span class="bar-badge ${n.late ? 'bar-late' : ''}" aria-hidden="true">${n.dot ? '' : n.n > 99 ? '99+' : n.n}</span><span class="sr-only">, ${n.n} ${esc(n.what)}</span>` : ''}</button>`;
+    return `<button type="button" class="bar-item ${on ? 'bar-on' : ''}" data-action="go" data-view="${id}" aria-current="${on ? 'page' : 'false'}">${icon(v.icon, 'w-5 h-5')}<span class="truncate max-w-full">${esc(BAR_LABEL[id] || v.label)}</span>${n ? `<span class="nav-count bar-badge ${n.late ? 'bar-late' : ''}" aria-hidden="true">${n.dot ? '' : n.n > 99 ? '99+' : n.n}</span><span class="sr-only">, ${n.n} ${esc(n.what)}</span>` : ''}</button>`;
   };
-  const [a, b, c, d] = barViews();
-  el.innerHTML = `${item(a)}${item(b)}<div class="flex items-center px-1"><button type="button" class="bar-add" data-action="quickAdd" aria-label="Add food or weight, start a workout, or save a recipe from a link">${icon('plus', 'w-6 h-6')}</button></div>${item(c)}${item(d)}`;
+  el.innerHTML = barViews().map(item).join('');
 }
 // The + sheet. Weight has a small form; food, a workout and a recipe link open their usual screens.
 const QUICK_ADD = [['food', 'Food', 'apple'], ['weight', 'Weight', 'scale'], ['workout', 'Workout', 'dumbbell'], ['link', 'Recipe from a link', 'link-2']];
@@ -745,13 +720,18 @@ function quickAddForm(what) {
   else if (what === 'link') shareOpen();
 }
 function renderNav() {
-  $('#nav').innerHTML = VIEWS.map(v => v.section
-    ? `<div class="nav-label px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">${v.section}</div>`
-    : `<button class="nav-item w-full ${S.view === v.id ? 'nav-active' : ''}" aria-current="${S.view === v.id ? 'page' : 'false'}" data-action="go" data-view="${v.id}" title="${v.label}">${icon(v.icon, 'w-5 h-5 shrink-0')}<span class="nav-label truncate">${v.label}</span><span class="nav-label ml-auto">${navCount(v.id)}</span></button>`).join('');
-  // On a phone the menu is closed, so the menu button carries a dot when anything inside has a count.
+  const active = !!$('#view [data-wctx="active"]');
+  document.body.classList.toggle('workout-focus', active);
+  $('#header-tools').classList.toggle('hidden', active);
+  $('#workout-minimize').classList.toggle('hidden', !active);
+  $('#workout-header-actions').classList.toggle('hidden', !active);
+  $('#workout-header-actions').classList.toggle('flex', active);
+  $('#bottom-bar').classList.toggle('hidden', active);
   $('#help-dot').classList.toggle('hidden', !helpWaiting());
-  const waiting = !!$('#nav .nav-count') || helpWaiting(), menu = $('[data-action="openSidebar"]');
-  $('#menu-dot').classList.toggle('hidden', !waiting); menu.setAttribute('aria-label', waiting ? 'Open menu (items need attention)' : 'Open menu');
+  if (active) $('#view-title').textContent = 'Log workout';
+  const aw = Store.get('activeWorkout'), resume = $('#resume-workout');
+  resume.classList.toggle('hidden', !aw || active);
+  resume.innerHTML = aw && !active ? `<button class="resume-session" data-action="workoutResume">${icon('activity', 'w-5 h-5')}<span class="min-w-0 flex-1 text-left"><strong class="block truncate">${esc(aw.name || 'Workout')}</strong><span class="text-xs">Workout in progress</span></span><span>Resume</span>${icon('chevron-up', 'w-4 h-4')}</button>` : '';
   renderBar();
 }
 let _rendering = false;
@@ -791,6 +771,7 @@ async function workoutWake() {
 document.addEventListener('visibilitychange', () => workoutWake());
 function afterRender(focused) {
   const view = $('#view'), style = getComputedStyle(view), contentWidth = view.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  document.body.classList.toggle('enlarged-text', parseFloat(getComputedStyle(document.documentElement).fontSize) >= 24);
   const needsRpe = S.rpe || Store.get('activeWorkout')?.exercises.some(ex => ex.sets.some(set => set.rpe != null || set.draft?.rpe != null));
   view.classList.toggle('workout-large-type', parseFloat(getComputedStyle(document.documentElement).fontSize) >= 24 || contentWidth < 345 || (contentWidth < 600 && needsRpe));
   clearInterval(tickIv);
@@ -801,15 +782,12 @@ function afterRender(focused) {
   document.querySelectorAll('#view .tabs-row').forEach(g => { const a = g.querySelector('.tab-active'); if (a && a.offsetLeft + a.offsetWidth > g.clientWidth) g.scrollLeft = a.offsetLeft - 8; tabFade(g); });
   hydratePhotos();
 }
-function go(view) { S.view = view; saveSettings(); closeSidebar(); lastRendered = null; render(); if (!Modal.isOpen()) $('#view-title').focus({ preventScroll: true }); }
-function openSidebar() { $('#sidebar').classList.add('open'); $('#sidebar-backdrop').classList.remove('hidden'); syncSidebarAccessibility(); $('#nav button')?.focus(); }
-function closeSidebar() { const focused = $('#sidebar').contains(document.activeElement); $('#sidebar').classList.remove('open'); $('#sidebar-backdrop').classList.add('hidden'); syncSidebarAccessibility(); if (focused && !matchMedia('(min-width: 768px)').matches) $('[data-action="openSidebar"]').focus(); }
+function go(view) { S.view = view; saveSettings(); lastRendered = null; render(); if (!Modal.isOpen()) $('#view-title').focus({ preventScroll: true }); }
 function applyTheme() {
   const dark = S.theme === 'dark' || (S.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.classList.toggle('dark', dark);
   const l = $('#theme-label'); if (l) l.textContent = `Theme: ${S.theme[0].toUpperCase() + S.theme.slice(1)}`;
 }
-function applyCollapse() { $('#sidebar').classList.toggle('collapsed', !!S.collapsed); }
 
 /* =====================================================================
    REST TIMER (floating, survives reloads)
@@ -888,7 +866,7 @@ const dashShow = id => !(S.hiddenCards || []).includes(id);
 function dashOrder() { const ids = DASH_CARDS.map(c => c[0]), saved = (S.cardOrder || []).filter(id => ids.includes(id)); return [...new Set([...saved, ...ids])]; }
 function dashCardsModal(focus) {
   const order = dashOrder(), byId = Object.fromEntries(DASH_CARDS.map(c => [c[0], c]));
-  Modal.open(modalShell('Show, hide or reorder cards', `<p class="text-sm muted">Choose which cards the dashboard shows and in what order. Hiding a card hides nothing else; the section is still in the menu.</p>
+  Modal.open(modalShell('Show, hide or reorder cards', `<p class="text-sm muted">Choose which cards the dashboard shows and in what order. Hiding a card hides nothing else; the section is still in the header.</p>
     <div class="space-y-1">${order.map((id, i) => { const [, label, ic] = byId[id]; return `<div class="flex items-center gap-2 py-1"><label class="flex flex-1 min-w-0 items-center gap-3 py-0.5"><input type="checkbox" class="accent-brand-600" data-change="dashCardToggle" data-val="${id}" ${dashShow(id) ? 'checked' : ''}> ${icon(ic, 'w-4 h-4 muted')}<span class="truncate">${esc(label)}</span></label>
       <button type="button" class="btn btn-sm btn-ghost" data-action="dashCardMove" data-val="${id}" data-d="-1" aria-label="Move ${esc(label)} up" ${i ? '' : 'disabled'}>${icon('arrow-up', 'w-4 h-4')}</button><button type="button" class="btn btn-sm btn-ghost" data-action="dashCardMove" data-val="${id}" data-d="1" aria-label="Move ${esc(label)} down" ${i < order.length - 1 ? '' : 'disabled'}>${icon('arrow-down', 'w-4 h-4')}</button></div>`; }).join('')}</div>`,
     `<button type="button" class="btn btn-primary" data-action="closeModal">Done</button>`), { onClose: () => render() });
@@ -1218,7 +1196,7 @@ function workoutDraftText(set, field) {
 }
 const WorkoutCommands = {
   busy: false,
-  pending(value) { this.busy = value; for (const field of $$('[data-wctx="active"] input, [data-wctx="active"] textarea')) field.readOnly = value; for (const button of $$('[data-wctx="active"] button, [data-wctx="active"] select')) button.disabled = value; },
+  pending(value) { this.busy = value; for (const field of $$('[data-wctx="active"] input, [data-wctx="active"] textarea')) field.readOnly = value; for (const button of $$('[data-wctx="active"] button, [data-wctx="active"] select, #workout-header-actions button, #workout-minimize')) button.disabled = value; },
   async complete(el) {
     if (this.busy) return;
     this.pending(true); el.disabled = true; el.setAttribute('aria-busy', 'true'); const row = el.closest('tr'); row?.setAttribute('data-set-state', 'pending'); const rowLabel = row?.querySelector('[data-row-save-state]'); if (rowLabel) rowLabel.textContent = 'Saving';
@@ -1314,6 +1292,8 @@ const routineSummary = r => { const g = supersetGroups(r.exercises).filter(Boole
 function renderFitness() {
   if (ui.editW) return fitEditor(ui.editW);
   const aw = Store.get('activeWorkout');
+  if (aw && (!ui.fitTab || ui.fitTab === 'workout')) return fitActive(aw);
+  if (ui.fitTab === 'stats') ui.historyTotalsOpen = true;
   ui.fitTab = { stats: 'history', data: 'history' }[ui.fitTab] || ui.fitTab; // tabs merged into History in 2026-10
   const t = tabs('fitTab', [['workout', aw ? 'Active workout' : 'Workout', aw ? 'activity' : 'play', 'Workout'], ['history', 'History', 'history', 'History'], ['routines', 'Routines', 'folder', 'Routines'], ['library', 'Exercises', 'library', 'Exercises'], ['progress', 'Progress', 'trending-up', 'Progress']]);
   return t + ({ workout: fitWorkoutTab, history: fitHistoryAll, routines: fitRoutinesTab, library: fitLibraryTab, progress: fitProgressTab }[ui.fitTab] || fitWorkoutTab)();
@@ -1361,24 +1341,27 @@ function exerciseCard(ex, i, w, ctx, grp) {
   const rows = ex.sets.map((s, j) => {
     if (s.type !== 'warmup') n++; const p = prevSets[j], [lab, cls] = setBadge({ ...s, type: s.draft?.type || s.type }, n);
     return `<tr data-set-state="${s.draft ? 'draft' : s.done ? 'committed' : 'suggestion'}" class="${s.done && ctx !== 'edit' ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}">
-      <td class="py-1 pl-1 whitespace-nowrap"><button class="w-8 h-8 rounded-md text-xs font-bold ${cls}" data-action="awSetType" data-i="${i}" data-j="${j}" title="Tap to change set type (warm-up, drop, failure)">${lab}</button><span class="set-status-space"><span class="text-xs muted" data-row-save-state>${s.draft ? 'Draft' : s.done ? 'Saved' : 'Suggested'}</span></span>${s.pr && s.pr.length ? `<span class="ml-0.5" title="${s.pr.map(k => PR_LABELS[k]).join(', ')}">🏆</span>` : ''}</td>
+      <td class="py-1 pl-1 whitespace-nowrap"><button class="w-8 h-8 rounded-md text-xs font-bold ${cls}" data-action="awSetType" data-i="${i}" data-j="${j}" aria-label="Options for set ${lab}" title="Set type or remove set">${lab}</button><span class="set-status-space"><span class="text-xs muted" data-row-save-state>${s.draft ? 'Draft' : s.done ? 'Saved' : 'Suggested'}</span></span>${s.pr && s.pr.length ? `<span class="ml-0.5" title="${s.pr.map(k => PR_LABELS[k]).join(', ')}">🏆</span>` : ''}</td>
       ${showPrevious ? `<td class="py-1 pr-1">${p ? `<button class="text-xs muted hover:text-brand-600 text-left whitespace-nowrap tabular-nums min-h-[2.75rem] min-w-11" data-action="awFillPrev" data-i="${i}" data-j="${j}" title="Tap to copy into this set" aria-label="Previous from ${esc(wDate(prev.w))}: ${esc(setLabel(p, type))}. Copy into this set">${setShort(p, type)}</button>` : '<span class="text-xs muted">—</span>'}</td>` : ''}
       ${cols.map(c => `<td data-field-label="${head(c)}" class="py-1 px-0.5 sm:px-1">${cell(c, s, p, j)}</td>`).join('')}
       ${showRpe ? `<td data-field-label="RPE" class="py-1 px-0.5 sm:px-1 w-12 sm:w-16"><input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="input h-11 px-1 py-1.5 text-center tabular-nums" value="${esc(s.draft?.rpe ?? s.rpe ?? '')}" placeholder="RPE" data-input="awSet" data-i="${i}" data-j="${j}" data-f="rpe" aria-label="RPE"></td>` : ''}
       ${ctx === 'edit' ? '' : `<td class="py-1 px-0.5 sm:px-1"><button class="w-11 h-11 rounded-lg grid place-items-center ${s.done ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-600'}" data-action="awSetDone" data-i="${i}" data-j="${j}" aria-label="${s.draft && s.done ? 'Save set changes' : s.done ? 'Undo completed set' : 'Complete set'}" title="${s.draft ? 'Draft: save changes' : s.done ? 'Saved on device; tap to undo' : 'Accept and save this set'}">${icon(s.draft && s.done ? 'save' : s.done ? 'undo-2' : 'check')}</button></td>`}
-      <td class="py-1 pr-0.5"><button class="btn btn-ghost btn-sm px-1 text-slate-400" data-action="awDelSet" data-i="${i}" data-j="${j}" aria-label="Delete set">${icon('x', 'w-3.5 h-3.5')}</button></td></tr>`;
+      ${ctx === 'edit' ? `<td class="py-1 pr-0.5"><button class="btn btn-ghost btn-sm px-1 text-slate-400" data-action="awDelSet" data-i="${i}" data-j="${j}" aria-label="Delete set">${icon('x', 'w-3.5 h-3.5')}</button></td>` : ''}</tr>`;
   }).join('');
   return `<div class="workout-exercise card p-3 sm:p-4 ${grp ? 'border-l-4 border-l-violet-400 dark:border-l-violet-500' : ''}">
     ${grp ? `<div class="text-[11px] font-semibold text-violet-600 dark:text-violet-300 mb-1 flex items-center gap-1">${icon('link', 'w-3 h-3')} Superset ${grp.label} · ${grp.pos}/${grp.size}${grp.pos < grp.size ? ' · go straight to the next exercise' : ' · rest after this one'}</div>` : ''}
     <div class="workout-exercise-head flex flex-wrap items-center gap-2 mb-3">
       <div class="flex-1 min-w-[10rem]"><button class="font-semibold text-brand-700 dark:text-brand-300 hover:underline text-left" data-action="libEdit" data-name="${esc(ex.name)}" title="Exercise settings">${esc(ex.name)}</button>
-        <div class="text-xs muted flex flex-wrap gap-x-2"><span>${esc(info.primary)} · ${typeLabel(type)}${info.countBW && BW_TYPES.has(type) ? ' · body weight counts' : ''}</span>${prev ? `<span>Last ${fmtDate(wDate(prev.w), { month: 'short', day: 'numeric' })}: ${setLabel(bestSet(prev.ex, type), type)}</span>` : '<span>First time logging this</span>'}${info.howto ? `<a href="${esc(webUrl(info.howto))}" target="_blank" rel="noopener" class="text-brand-600 dark:text-brand-400 underline">How-to</a>` : ''}</div></div>
-      <label class="flex items-center gap-1 text-xs muted" title="Rest after each set">${icon('timer', 'w-3.5 h-3.5')}<select class="input py-1 px-1.5 w-auto text-xs" data-change="awRest" data-i="${i}" aria-label="Rest after each set">${restOptions(ex.rest)}</select></label>
+        <div class="exercise-context text-xs muted flex flex-wrap gap-x-2"><span>${esc(info.primary)} · ${typeLabel(type)}${info.countBW && BW_TYPES.has(type) ? ' · body weight counts' : ''}</span>${prev ? `<span>Last ${fmtDate(wDate(prev.w), { month: 'short', day: 'numeric' })}: ${setLabel(bestSet(prev.ex, type), type)}</span>` : '<span>First time logging this</span>'}${info.howto ? `<a href="${esc(webUrl(info.howto))}" target="_blank" rel="noopener" class="text-brand-600 dark:text-brand-400 underline">How-to</a>` : ''}</div></div>
       <button class="btn btn-ghost btn-sm" data-action="awExMenu" data-i="${i}" aria-label="More for ${esc(ex.name)}" title="Move, superset or remove">${icon('ellipsis', 'w-4 h-4')}</button>
+      <div class="exercise-tools flex items-center gap-2 w-full">
+        <label class="flex items-center gap-1 text-xs muted" title="Rest after each set">${icon('timer', 'w-3.5 h-3.5')} Rest <select class="input py-1 px-1.5 w-auto text-xs" data-change="awRest" data-i="${i}" aria-label="Rest after each set">${restOptions(ex.rest)}</select></label>
+        ${ex.notes || ui.noteOpen.has(ex) ? '' : `<button class="btn btn-ghost btn-sm text-brand-700 dark:text-brand-300" data-action="awNoteOpen" data-i="${i}">${icon('notebook-pen', 'w-4 h-4')} Add note</button>`}
+      </div>
     </div>
-    ${ex.notes || ui.noteOpen.has(ex) ? `<input class="input py-1.5 text-xs mb-2" placeholder="Exercise notes…" value="${esc(ex.notes)}" data-input="awExNote" data-i="${i}" aria-label="Notes for ${esc(ex.name)}">` : `<button class="text-xs text-brand-700 dark:text-brand-300 mb-2 min-h-11 inline-flex items-center gap-1" data-action="awNoteOpen" data-i="${i}">${icon('plus', 'w-3 h-3')} Add note</button>`}
-    <div class="workout-matrix-wrap overflow-x-auto"><table class="workout-matrix w-full max-w-3xl text-sm"><caption class="text-xs muted text-left mb-2">${ctx === 'active' ? 'Check a set to log it.' : 'Edit set values, then save the workout.'}</caption><thead><tr class="text-xs muted text-left"><th data-col="set" class="font-medium pl-1 w-9">Set</th>${showPrevious ? '<th data-col="previous" class="font-medium">Previous</th>' : ''}${cols.map(c => `<th data-col="${c}" class="font-medium text-center">${head(c)}</th>`).join('')}${showRpe ? '<th class="font-medium text-center">RPE</th>' : ''}${ctx === 'edit' ? '' : '<th data-col="done" class="w-10"><span class="sr-only">Log set</span></th>'}<th data-col="remove" class="w-7"><span class="sr-only">Remove set</span></th></tr></thead><tbody>${rows}</tbody></table></div>
-    ${ctx === 'edit' ? '' : setStepper(ex, i, type, prevSets)}
+    ${ex.notes || ui.noteOpen.has(ex) ? `<input class="input py-1.5 text-xs mb-2" placeholder="Exercise notes…" value="${esc(ex.notes)}" data-input="awExNote" data-i="${i}" aria-label="Notes for ${esc(ex.name)}">` : ''}
+    <div class="workout-matrix-wrap overflow-x-auto"><table class="workout-matrix w-full max-w-3xl text-sm"><caption class="text-xs muted text-left mb-2">${ctx === 'active' ? 'Check a set to log it. Tap its number for options.' : 'Edit set values, then save the workout.'}</caption><thead><tr class="text-xs muted text-left"><th data-col="set" class="font-medium pl-1 w-9">Set</th>${showPrevious ? '<th data-col="previous" class="font-medium">Previous</th>' : ''}${cols.map(c => `<th data-col="${c}" class="font-medium text-center">${head(c)}</th>`).join('')}${showRpe ? '<th class="font-medium text-center">RPE</th>' : ''}${ctx === 'edit' ? '' : '<th data-col="done" class="w-10"><span class="sr-only">Log set</span></th>'}${ctx === 'edit' ? '<th data-col="remove" class="w-7"><span class="sr-only">Remove set</span></th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div>
+    ${ctx === 'edit' ? '' : `<details class="set-adjustments" ${ui.stepOpen.has(ex.id || String(i)) ? 'open' : ''}><summary data-action="awStepToggle" data-key="${esc(ex.id || String(i))}">Adjust next set ${icon('chevron-down', 'w-4 h-4')}</summary>${setStepper(ex, i, type, prevSets)}</details>`}
     <button class="btn btn-sm w-full mt-2" data-action="awAddSet" data-i="${i}">${icon('plus', 'w-3.5 h-3.5')} Add set</button>
   </div>`;
 }
@@ -1400,15 +1383,12 @@ function fitActive(aw) {
   let done = 0, vol = 0;
   const bwNow = bodyweightOn(ymd()); aw.exercises.forEach(e => { const info = exInfo(e.name), t = info.type; e.sets.forEach(s => { if (s.done) { done++; if (s.type !== 'warmup') vol += setVolume(s, t, info.countBW ? bwNow : null, info); } }); });
   const g = supersetGroups(aw.exercises);
-  return `<div data-wctx="active" class="pb-20 md:pb-0">
-  <p class="text-sm muted mb-3">${completedWorkoutsThisWeek().length} completed this week · ${workoutWeekRange()}. This active workout is not counted yet.</p>
-  <div class="workout-summary card p-2.5 sm:p-4 mb-4 sticky top-0 z-10"><div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-    <input class="input text-base font-semibold flex-1 min-w-0 sm:min-w-[12rem]" value="${esc(aw.name)}" data-input="awField" data-f="name" aria-label="Workout name">
-    <button class="btn btn-primary sm:order-last" data-action="awFinish">${icon('check')} Finish</button>
-    <div class="w-full sm:w-auto flex items-center gap-x-3 sm:gap-4 text-sm tabular-nums"><span><span class="muted sm:block sm:text-xs">Time </span><span id="elapsed" class="font-semibold">0:00</span></span><span><span class="muted sm:block sm:text-xs">Volume </span><span class="font-semibold">${fmtNum(toUnit(vol))} ${S.unit}</span></span><span><span class="muted sm:block sm:text-xs">Sets </span><span class="font-semibold">${done}</span></span>
-      <button class="btn btn-sm btn-ghost btn-danger ml-auto sm:hidden" data-action="awDiscard" aria-label="Discard workout">${icon('trash-2', 'w-4 h-4')}</button></div>
-    <button class="btn btn-danger hidden sm:inline-flex sm:ml-auto" data-action="awDiscard">${icon('trash-2')} Discard</button></div></div>
-  ${aw.notes || ui.noteOpen.has(aw) ? `<textarea class="input mb-4" rows="2" placeholder="Workout notes…" data-input="awField" data-f="notes" aria-label="Workout notes">${esc(aw.notes)}</textarea>` : `<button class="text-sm text-brand-700 dark:text-brand-300 mb-3 min-h-[2.75rem] inline-flex items-center gap-1" data-action="awNoteOpen">${icon('plus', 'w-3.5 h-3.5')} Add workout note</button>`}
+  return `<div data-wctx="active" class="workout-session">
+  <div class="workout-summary card mb-4">
+    <div class="flex items-center gap-2"><input class="workout-name input flex-1 min-w-0" value="${esc(aw.name)}" data-input="awField" data-f="name" aria-label="Workout name"><button class="btn btn-ghost" data-action="workoutOptions" aria-label="Workout options">${icon('ellipsis')}</button></div>
+    <div class="workout-stats tabular-nums"><div><span class="text-xs muted">Duration</span><strong id="elapsed">0:00</strong></div><div><span class="text-xs muted">Volume</span><strong>${fmtNum(toUnit(vol))} <small>${S.unit}</small></strong></div><div><span class="text-xs muted">Sets</span><strong>${done}</strong></div></div>
+  </div>
+  ${aw.notes || ui.noteOpen.has(aw) ? `<textarea class="input mb-4" rows="2" placeholder="Workout notes…" data-input="awField" data-f="notes" aria-label="Workout notes">${esc(aw.notes)}</textarea>` : ''}
   <div class="space-y-4">${aw.exercises.map((ex, i) => exerciseCard(ex, i, aw, 'active', g[i])).join('')}</div>
   <form data-submit="awAddExercise" class="card mt-4 flex gap-2"><input name="name" list="ex-list" class="input" placeholder="Add exercise (type to search)…" autocomplete="off" required><button class="btn btn-primary">${icon('plus')} Add</button></form>
   <p class="text-xs muted mt-2">Tip: for a time, type 130 for 1:30 or 45 for 0:45; tap a “Previous” value to copy it; tap ${icon('ellipsis', 'w-3 h-3 inline')} to move an exercise or superset it with the next one; tap an exercise name to set its type and muscles. Turn on the RPE column in Settings.</p>
@@ -1425,8 +1405,8 @@ function fitEditor(w) {
   <form data-submit="awAddExercise" class="card mt-4 flex gap-2"><input name="name" list="ex-list" class="input" placeholder="Add exercise…" autocomplete="off" required><button class="btn btn-primary">${icon('plus')} Add</button></form>
   <p class="text-xs muted mt-2">Sets with any value entered are saved. Empty sets are dropped.</p>${exDatalist('ex-list')}</div>`;
 }
-// History: the month calendar and stats on top, then every workout
-const fitHistoryAll = () => (W().length ? fitStatsTab() : '') + fitHistoryTab();
+// History: expandable calendar/totals, followed by personal workout previews.
+const fitHistoryAll = () => (W().length ? `<details class="mb-4" ${ui.historyTotalsOpen ? 'open' : ''}><summary data-action="historyTotalsToggle" class="min-h-11 text-sm muted cursor-pointer">Calendar &amp; training totals</summary>${fitStatsTab()}</details>` : '') + fitHistoryTab();
 function fitHistoryTab() {
   const ws = W();
   if (!ws.length) return emptyState('history', 'No workouts logged yet', 'Finish a workout, log a past one, or import your Hevy history.', `<div class="flex justify-center gap-2"><button class="btn" data-action="logPast">${icon('calendar-plus')} Log past workout</button><button class="btn btn-primary" data-action="hevyImport">${icon('upload')} Import from Hevy</button></div>`);
@@ -1435,10 +1415,10 @@ function fitHistoryTab() {
     const m = new Date(w.start).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }), g = supersetGroups(w.exercises);
     const prs = sum(w.exercises.map(e => e.sets.filter(s => s.pr && s.pr.length).length));
     if (m !== month) { month = m; out += `<h3 class="text-sm font-semibold muted mt-5 mb-2">${m}</h3>`; }
-    out += `<details class="card p-0 mb-2 group"><summary class="p-4 flex items-center gap-3 cursor-pointer list-none">
+    out += `<details class="workout-feed card p-0 mb-2 group"><summary class="p-4 flex flex-wrap items-center gap-3 cursor-pointer list-none">
       <div class="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-300 grid place-items-center text-xs font-bold leading-none text-center shrink-0">${new Date(w.start).toLocaleDateString(undefined, { month: 'short' })}<br>${new Date(w.start).getDate()}</div>
       <div class="flex-1 min-w-0"><div class="font-semibold truncate">${esc(w.name)}${prs ? ` <span class="text-xs font-normal">🏆 ${prs}</span>` : ''}</div>${wDate(w) > ymd() ? '<p class="text-xs muted">Future-dated · excluded from this week’s count</p>' : ''}<div class="text-xs muted">${fmtDur((new Date(w.end) - new Date(w.start)) / 1000)} · ${fmtNum(toUnit(workoutVolume(w)))} ${S.unit} · ${workoutSets(w)} sets · ${w.exercises.length} exercises</div></div>
-      ${icon('chevron-down', 'w-4 h-4 muted group-open:rotate-180 transition')}</summary>
+      ${icon('chevron-down', 'w-4 h-4 muted group-open:rotate-180 transition')}<span class="feed-preview w-full">${w.exercises.slice(0,3).map(e => `<span>${icon('dumbbell', 'w-5 h-5 shrink-0 muted')}<span>${e.sets.length} ${e.sets.length === 1 ? 'set' : 'sets'} · ${esc(e.name)}</span></span>`).join('')}${w.exercises.length > 3 ? `<span class="muted">${w.exercises.length - 3} more ${w.exercises.length === 4 ? 'exercise' : 'exercises'} · expand for details</span>` : ''}</span></summary>
       <div class="px-4 pb-4 border-t border-slate-100 dark:border-slate-800 pt-3 space-y-3">
         ${w.notes ? `<p class="text-sm italic muted">${esc(w.notes)}</p>` : ''}
         ${w.exercises.map((e, i) => { let n = 0; const type = exInfo(e.name).type; return `<div class="${g[i] ? 'border-l-4 border-l-violet-400 pl-2' : ''}"><div class="font-medium text-sm">${esc(e.name)}${g[i] ? ` <span class="text-[11px] text-violet-600 dark:text-violet-300">Superset ${g[i].label}</span>` : ''}</div>${e.notes ? `<div class="text-xs muted">${esc(e.notes)}</div>` : ''}<div class="flex flex-wrap gap-1.5 mt-1">${e.sets.map(s => { if (s.type !== 'warmup') n++; const [lab] = setBadge(s, n); return `<span class="chip">${lab}: ${setLabel(s, type)}${s.pr && s.pr.length ? ' 🏆' : ''}</span>`; }).join('')}</div></div>`; }).join('')}
@@ -1658,7 +1638,7 @@ function toHevyCSV() {
 }
 
 /* ---------- Fitness actions ---------- */
-Object.assign(ui, { editW: null, libSearch: '', libMuscle: 'all', libEquip: 'all', statMonth: ymd().slice(0, 7), calDay: null, noteOpen: new WeakSet() });
+Object.assign(ui, { editW: null, libSearch: '', libMuscle: 'all', libEquip: 'all', statMonth: ymd().slice(0, 7), calDay: null, noteOpen: new WeakSet(), stepOpen: new Set(), historyTotalsOpen: false });
 const wctx = el => el.closest('[data-wctx]')?.dataset.wctx === 'edit' ? 'edit' : 'active';
 const wObj = el => wctx(el) === 'edit' ? ui.editW : Store.get('activeWorkout');
 const wSave = el => { if (wctx(el) === 'active') Store.save('activeWorkout'); };
@@ -1707,7 +1687,22 @@ const A_FIT = {
     finally { ui.editSaving = false; controls.forEach(el => { el.disabled = false; el.readOnly = false; }); }
   },
   awAddExercise: f => { const name = fd(f).name.trim(); if (!name) return; const w = wObj(f); w.exercises.push({ id: uid(), name, notes: '', rest: S.restSeconds, sets: [blankSet(), blankSet(), blankSet()] }); addToLibrary([name]); wSave(f); render(); },
-  awSetType: el => { const s = wObj(el).exercises[+el.dataset.i].sets[+el.dataset.j], order = ['normal', 'warmup', 'drop', 'failure']; const type = order[(order.indexOf(s.draft?.type || s.type) + 1) % order.length]; if (wctx(el) === 'active') setWorkoutDraft(s, 'type', type); else s.type = type; wSave(el); render(); },
+  historyTotalsToggle: el => { ui.historyTotalsOpen = !el.closest('details').open; el.closest('details').open = ui.historyTotalsOpen; },
+  workoutMinimize: () => { ui.fitTab = 'history'; go((S.hiddenTabs.fitTab || []).includes('history') ? 'dashboard' : 'fitness'); },
+  workoutResume: () => { ui.editW = null; ui.fitTab = 'workout'; go('fitness'); },
+  workoutOptions: () => Modal.open(modalShell('Workout options', `<p class="text-sm muted mb-3">${completedWorkoutsThisWeek().length} completed this week · ${workoutWeekRange()}. This active workout is not counted yet.</p><div class="grid gap-2" data-wctx="active"><button class="btn justify-start" data-action="workoutOption" data-do="awNoteOpen">${icon('notebook-pen')} Workout note</button><button class="btn btn-danger justify-start" data-action="workoutOption" data-do="awDiscard">${icon('trash-2')} Discard workout</button></div>`)),
+  workoutOption: el => { Modal.close(); A[el.dataset.do](el); },
+  awSetType: el => {
+    const ctx = wctx(el), i = el.dataset.i, j = el.dataset.j;
+    Modal.open(modalShell('Set options', `<div class="grid gap-2" data-wctx="${ctx}">${[['normal','Working set'],['warmup','Warm-up'],['drop','Drop set'],['failure','Failure set']].map(([type,label]) => `<button class="btn justify-start" data-action="awSetChoice" data-i="${i}" data-j="${j}" data-type="${type}">${label}</button>`).join('')}<button class="btn btn-danger justify-start" data-action="awSetChoice" data-i="${i}" data-j="${j}" data-type="delete">${icon('trash-2')} Delete set</button></div>`));
+  },
+  awSetChoice: el => {
+    const w = wObj(el), ctx = wctx(el), i = +el.dataset.i, j = +el.dataset.j, set = w.exercises[i].sets[j], type = el.dataset.type;
+    if (type === 'delete') { if (set.done && !confirm('Remove this completed set?')) return; w.exercises[i].sets.splice(j,1); }
+    else if (ctx === 'active') setWorkoutDraft(set, 'type', type); else set.type = type;
+    wSave(el); Modal.close(); render();
+  },
+  awStepToggle: el => { const key = el.dataset.key, open = !el.closest('details').open; if (open) ui.stepOpen.add(key); else ui.stepOpen.delete(key); el.closest('details').open = open; },
   awSetDone: el => WorkoutCommands.complete(el),
   awStep: el => {
     const w = wObj(el), ex = w.exercises[+el.dataset.i], j = +el.dataset.j, s = ex.sets[j], f = el.dataset.f, d = +el.dataset.d; if (!s) return;
@@ -2831,7 +2826,7 @@ function openSettings() {
       <div class="grid sm:grid-cols-2 gap-3"><div><label class="label">Your name (for greeting)</label><input name="name" class="input" value="${esc(S.name)}"></div>
       <div><label class="label">Theme</label><select name="theme" class="input">${['system', 'light', 'dark'].map(t => `<option value="${t}" ${S.theme === t ? 'selected' : ''}>${t[0].toUpperCase() + t.slice(1)}</option>`).join('')}</select></div>
       </div>
-      <fieldset><legend class="label">Bottom bar on a phone</legend><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${barViews().map((id, i) => `<select name="bar${i}" class="input" aria-label="Bottom bar, place ${i + 1}">${VIEWS.filter(v => v.id).map(v => `<option value="${v.id}" ${v.id === id ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select>`).join('')}</div><p class="text-xs muted mt-1">Four sections, two on each side of the + button. Everything else stays in the menu.</p></fieldset></section>
+      <fieldset><legend class="label">Bottom navigation order</legend><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${barViews().map((id, i) => `<select name="bar${i}" class="input" aria-label="Bottom bar, place ${i + 1}">${VIEWS.filter(v => v.id).map(v => `<option value="${v.id}" ${v.id === id ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select>`).join('')}</div><p class="text-xs muted mt-1">Four destinations. Quick add is in the header; settings and help are always one tap away.</p></fieldset></section>
     <section class="space-y-3"><h4 class="font-semibold text-sm">Workouts</h4>
       <div class="grid sm:grid-cols-3 gap-3"><div><label class="label">Weight unit</label><select name="unit" class="input"><option value="lbs" ${S.unit === 'lbs' ? 'selected' : ''}>lbs</option><option value="kg" ${S.unit === 'kg' ? 'selected' : ''}>kg</option></select></div>
       <div><label class="label">Default rest</label><select name="restSeconds" class="input">${restOptions(S.restSeconds)}</select></div>
@@ -3218,7 +3213,7 @@ async function commitBackupImport(plan) {
       throw e;
     }
     Store.data = plan.data; S = plan.settings; await WebWrites.init();
-    Photos.clearURLs(); applyTheme(); applyCollapse(); drawSaveRecovery();
+    Photos.clearURLs(); applyTheme(); drawSaveRecovery();
   });
 }
 // What a backup holds and how to bring it in. `day` is set for a dated copy from Google Drive, which
@@ -3270,7 +3265,7 @@ async function resetAllData() {
   Photos.clearURLs();
   S = structuredClone(SETTINGS_DEFAULT);
   Store.data = Object.fromEntries(Object.entries(COLLECTIONS).map(([k, v]) => [k, structuredClone(v)]));
-  await WebWrites.init(); ensureSeeds(); await Store.flushAll(); saveSettings(); applyTheme(); applyCollapse();
+  await WebWrites.init(); ensureSeeds(); await Store.flushAll(); saveSettings(); applyTheme();
 }
 function ensureSeeds() {
   const d = Store.data;
@@ -4259,6 +4254,10 @@ const A_SHARE = {
 // would notice; each device shows the newest one once, as a card on the dashboard. A slide can show
 // a picture from assets/whatsnew/ (give it alt text) and a `go` shortcut: [view, ui key, tab, label].
 const RELEASES = [
+  { id: '2026-11-07-focused-ui', title: 'A simpler space to train', slides: [
+    { title: 'Four destinations, no drawer', body: '<p>Bottom navigation keeps Dashboard, Workouts, Nutrition and Meals in reach. Settings, Help and quick adds are in the header. Your saved order and dashboard preferences stay in place.</p>' },
+    { title: 'Focus on the next set', body: '<p>Active workouts use the full screen with Finish and the timer at the top. Exercise sections are flatter, set numbers open options, and extra adjustment controls expand when needed. Minimize a workout to browse; Resume returns to the same session.</p>' }
+  ] },
   { id: '2026-11-07-workout-spacing', title: 'More breathing room while logging', slides: [
     { title: 'Keep the exercise in view', body: '<p>On phones, the workout summary scrolls with the page so it no longer covers an exercise heading.</p>' },
     { title: 'Clearer set rows and adjustments', body: '<p>Set rows have more space, empty Previous columns stay out of the way, and load/reps adjustments have separate labels. Unchecked sets still need your confirmation before they are logged.</p>' }
@@ -4301,11 +4300,11 @@ const RELEASES = [
 ];
 const TOUR = [
   { title: 'Welcome to Body Dashboard', body: '<p>Your training and your diet in one place.</p><p>Everything you enter is saved on this device. There is no account to create, and nobody else can see your records.</p>' },
-  { title: 'Getting around', body: '<p>The menu lists every section. On a phone, the bar at the bottom holds four sections and a <strong>+</strong> button for quick adds, and the <strong>☰</strong> button at the top left opens the full menu.</p><ul class="list-disc pl-5 space-y-1"><li><strong>Dashboard</strong> has direct Log food, Start/Resume workout and Log weight actions in Today. Show, hide or reorder cards with the sliders button.</li><li>Inside a section, the row of tabs across the top switches between its pages.</li><li>A number beside a menu item means something there needs attention today.</li></ul>' },
+  { title: 'Getting around', body: '<p>Use the four destinations along the bottom. The <strong>+</strong> in the header opens quick adds; the sliders open Settings &amp; Sync. During a workout, the down arrow minimizes it without ending it, and Resume brings it back.</p><ul class="list-disc pl-5 space-y-1"><li><strong>Dashboard</strong> has direct Log food, Start/Resume workout and Log weight actions in Today. Show, hide or reorder cards with the sliders button.</li><li>Inside a section, the row of tabs across the top switches between its pages.</li><li>A number beside a destination means something there needs attention today.</li></ul>' },
   { title: 'The three sections', body: '<ul class="list-disc pl-5 space-y-1"><li><strong>Workouts</strong>: log your sets as you train, follow a program, and see your progress, with a collapsible rest timer. Check each set to save it; unchecked suggestions do not enter a finished workout. Background alarms are not guaranteed.</li><li><strong>Nutrition</strong>: search for foods or scan a barcode to log what you eat, track your weight, and let the adaptive plan set your calories.</li><li><strong>Recipes &amp; Meals</strong>: recipes with their macros, a meal plan, Plan my week and a grocery list.</li></ul>', go: ['fitness', '', '', 'Open Workouts'] },
   { title: 'Coming from Life Dashboard?', body: '<p>For workouts only, use <strong>Settings → Import workout history</strong> to preview fitness JSON or extract training from a backup. It leaves other Life records out.</p><p>In Life Dashboard, open <strong>Settings &amp; Sync</strong> and tap <strong>Back up</strong>. Here, open <strong>Settings &amp; Sync → Import backup</strong> and choose that file. Your workouts, food, weight, measurements, progress photos and recipes come across; nothing else does.</p>' },
   { title: 'Put it on your phone', body: '<p>Open this page’s web address on your phone. On an iPhone use Safari: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>. On Android use Chrome: open the <strong>⋮</strong> menu and choose <strong>Add to Home screen</strong>.</p><p>Wait for <strong>Ready offline</strong> while online first. Then it opens from the Home Screen without a connection. Records stay in this browser; exporting a backup protects against storage being cleared. Updates wait until all Body tabs close.</p>' },
-  { title: 'Keep your records safe', body: '<p>Your records live on this device. Removing the app from your home screen, or clearing the browser’s data, erases them.</p><p>Every week or so, open <strong>Settings &amp; Sync</strong>, tap <strong>Back up records + photos</strong>, and keep the file somewhere safe.</p><p>You can open this tour again from <strong>Help &amp; what’s new</strong> in the menu.</p>' }
+  { title: 'Keep your records safe', body: '<p>Your records live on this device. Removing the app from your home screen, or clearing the browser’s data, erases them.</p><p>Every week or so, open <strong>Settings &amp; Sync</strong>, tap <strong>Back up records + photos</strong>, and keep the file somewhere safe.</p><p>You can open this tour again from <strong>Help &amp; what’s new</strong> in the header.</p>' }
 ];
 const newsWaiting = () => S.tour !== 'new' && !!RELEASES.length && S.newsSeen !== RELEASES[0].id;
 const helpWaiting = () => S.tour === 'new' || newsWaiting();
@@ -4330,10 +4329,9 @@ function deckDraw() {
     `${D.i ? `<button type="button" class="btn mr-auto" data-action="deckStep" data-d="-1">Back</button>` : '<span class="mr-auto"></span>'}${s.go ? `<button type="button" class="btn" data-action="deckGo">${s.go[3]}</button>` : ''}<button type="button" class="btn btn-primary" data-action="${last ? 'closeModal' : 'deckStep'}" data-d="1" autofocus>${last ? 'Done' : 'Next'}</button>`), { onClose: () => { ui.deck = null; render(); } });
 }
 function openHelp() {
-  closeSidebar();
   Modal.open(modalShell('Help &amp; what’s new', `
     <section class="space-y-2"><h4 class="font-semibold text-sm">Finding your way</h4>
-      <p class="text-sm muted">A short tour of every section, how the menu works, putting the app on your phone and backing up your records.</p>
+      <p class="text-sm muted">A short tour of every section, how navigation works, putting the app on your phone and backing up your records.</p>
       <button type="button" class="btn btn-primary" data-action="helpTour">${icon('compass')} Start the tour</button></section>
     <section class="space-y-2"><h4 class="font-semibold text-sm">What’s new</h4>
       ${RELEASES.map(r => `<div class="rounded-xl border border-slate-200 dark:border-slate-800 p-3"><div class="flex flex-wrap items-center gap-2"><div class="flex-1 min-w-[10rem]"><div class="text-sm font-medium">${esc(r.title)}</div><div class="text-xs muted">${fmtDate(r.id.slice(0, 10), { month: 'long', day: 'numeric', year: 'numeric' })}</div></div><button type="button" class="btn btn-sm" data-action="helpNews" data-id="${r.id}">See what changed</button></div>
@@ -4801,11 +4799,9 @@ const A = {
     H[key] = next; if (!next.length) delete H[key]; saveSettings(); syncTouch();
     if (next.includes(ui[key])) ui[key] = null;
   },
-  openSidebar,
-  closeSidebar, closeModal: () => Modal.close(),
+  closeModal: () => Modal.close(),
   backupLater: () => { S.backupLater = ymd(); saveSettings(); toast('The reminder will be back in a week'); render(); },
   cycleTheme: () => { S.theme = { system: 'light', light: 'dark', dark: 'system' }[S.theme] || 'system'; saveSettings(); applyTheme(); },
-  toggleCollapse: () => { S.collapsed = !S.collapsed; saveSettings(); applyCollapse(); },
   // timer
   showTimer: () => { if (document.activeElement?.matches('[data-input="awSet"]')) document.activeElement.blur(); Timer.visible = true; Timer.collapsed = false; Timer.draw(); unlockAudio(); },
   timerExpand: () => { if (document.activeElement?.matches('[data-input="awSet"]')) document.activeElement.blur(); Timer.collapsed = false; Timer.draw(); },
@@ -4880,13 +4876,11 @@ document.addEventListener('focusin', e => { if (e.target.matches('[data-input="a
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.matches('[data-input="awSet"]')) { e.preventDefault(); const fields = $$('[data-input="awSet"]', e.target.closest('tr')); const next = fields[fields.indexOf(e.target) + 1] || $('[data-action="awSetDone"]', e.target.closest('tr')); next?.focus(); return; }
   if (Modal.isOpen()) { Modal.keydown(e); if (e.defaultPrevented) return; }
-  if (e.key === 'Escape' && $('#sidebar').classList.contains('open')) { e.preventDefault(); closeSidebar(); }
   const el = e.target.closest('[role="button"][data-action]');
   if (el && e.target === el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); el.click(); }
   const picker = e.target.closest('label[data-file-picker]');
   if (picker && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); picker.querySelector('input[type="file"]').click(); }
 });
-matchMedia('(min-width: 768px)').addEventListener('change', syncSidebarAccessibility);
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (S.theme === 'system') applyTheme(); });
 // Catch up with other devices when the app comes back to the front or the connection returns.
 document.addEventListener('visibilitychange', async () => {
@@ -4902,7 +4896,7 @@ window.addEventListener('online', () => Sync.auto());
 // ?pwa on localhost is for tests.
 function drawOfflineState(message) {
   let el = $('#offline-state');
-  if (!el) { el = document.createElement('p'); el.id = 'offline-state'; el.className = 'text-xs muted px-3 py-1 shrink-0'; el.setAttribute('role', 'status'); $('#save-recovery').before(el); }
+  if (!el) { el = document.createElement('p'); el.id = 'offline-state'; el.className = 'text-xs muted px-3 py-1 shrink-0'; el.setAttribute('role', 'status'); $('.shell-status').append(el); }
   el.textContent = message;
 }
 async function registerOfflineShell() {
@@ -4926,7 +4920,7 @@ async function registerOfflineShell() {
 async function init() {
   const back = await gauthFinishCode(); // a lasting sign-in comes back as ?code=…
   const signedIn = back === 'sync' || syncFinishSignIn();
-  applyTheme(); applyCollapse();
+  applyTheme();
   $('#header-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   // A browser that has never opened the app gets the start-here card instead of old release notes.
   if (!localStorage.getItem('bd.seeded') && !localStorage.getItem('bd.settings')) { S.tour = 'new'; S.newsSeen = RELEASES[0].id; saveSettings(); }

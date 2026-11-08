@@ -71,7 +71,8 @@ test('exercise tools live behind ⋯, and notes open from Add note', async ({ pa
   await page.click('#view [data-action="awNoteOpen"][data-i="0"]');
   await expect(page.locator('#view [data-input="awExNote"][data-i="0"]')).toBeFocused();
   await page.keyboard.type('Pause at the bottom');
-  await page.click('#view [data-action="awNoteOpen"]:not([data-i])');
+  await page.click('[data-action="workoutOptions"]');
+  await page.click('#modal [data-do="awNoteOpen"]');
   await expect(page.locator('#view textarea[data-f="notes"]')).toBeFocused();
   await page.evaluate(() => render());
   await expect(page.locator('#view [data-input="awExNote"][data-i="0"]')).toHaveValue('Pause at the bottom');

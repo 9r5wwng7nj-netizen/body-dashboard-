@@ -19,15 +19,15 @@ async function session(page,{previous=false,unit='lbs',theme='dark'}={}){
 for(const width of [390,393]) for(const theme of ['light','dark'])test(`${width}px ${theme}: first-time sets have clear cells and an unobscured exercise header`,async({page,browserName})=>{
  await page.setViewportSize({width,height:660});await session(page,{theme});
  const table=page.locator('.workout-matrix');await expect(table.locator('[data-col="previous"]')).toHaveCount(0);
- await expect(table.locator('caption')).toHaveText('Check a set to log it.');
+ await expect(table.locator('caption')).toHaveText('Check a set to log it. Tap its number for options.');
  expect(await page.locator('.workout-summary').evaluate(el=>getComputedStyle(el).position)).toBe('static');
  const first=table.locator('tbody tr').first();
  const metrics=await first.evaluate(row=>{
  const b=el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,width:r.width,height:r.height,scroll:el.scrollWidth,client:el.clientWidth};};
- return {weight:b(row.querySelector('[data-f="weight"]')),reps:b(row.querySelector('[data-f="reps"]')),done:b(row.querySelector('[data-action="awSetDone"]')),remove:b(row.querySelector('[data-action="awDelSet"]'))};});
+ return {weight:b(row.querySelector('[data-f="weight"]')),reps:b(row.querySelector('[data-f="reps"]')),done:b(row.querySelector('[data-action="awSetDone"]')),set:b(row.querySelector('[data-action="awSetType"]'))};});
  expect(metrics.reps.left-metrics.weight.right).toBeGreaterThanOrEqual(6);
  expect(metrics.done.left-metrics.reps.right).toBeGreaterThanOrEqual(4);
- for(const action of [metrics.done,metrics.remove]){expect(action.width).toBeGreaterThanOrEqual(44);expect(action.height).toBeGreaterThanOrEqual(44);}
+ for(const action of [metrics.done,metrics.set]){expect(action.width).toBeGreaterThanOrEqual(44);expect(action.height).toBeGreaterThanOrEqual(44);}
  expect(metrics.weight.width).toBeGreaterThan(70);expect(metrics.reps.width).toBeGreaterThan(70);
  await page.locator('.workout-exercise-head').scrollIntoViewIfNeeded();
  const header=await page.locator('.workout-exercise-head').boundingBox();
@@ -51,9 +51,10 @@ test('previous performance remains usable and full decimal values fit',async({pa
 });
 test('labeled load/reps controls fit narrow and enlarged layouts',async({page,browserName})=>{
  await page.setViewportSize({width:375,height:660});await session(page,{unit:'kg'});
+ await page.locator('.set-adjustments > summary').click();
  await expect(page.locator('.workout-stepper')).toContainText('Load (kg)');await expect(page.locator('.workout-stepper')).toContainText('Reps');
  for(const size of ['100%','200%']){
-  await page.evaluate(size=>{document.documentElement.style.fontSize=size;render();},size);
+  await page.evaluate(size=>{document.documentElement.style.fontSize=size;render();document.querySelector('.set-adjustments').open=true;},size);
   const sizes=await page.locator('.workout-stepper button').evaluateAll(buttons=>buttons.map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height,fits:el.scrollWidth<=el.clientWidth})));
   expect(sizes.every(b=>b.width>=44&&b.height>=44&&b.fits),JSON.stringify(sizes)).toBe(true);
   expect(await page.locator('#view').evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);

@@ -59,7 +59,7 @@ test('on a phone, Nutrition starts with Log food and one-tap recent foods', asyn
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
-test('on a phone, the bottom bar holds four sections around a + button for food, weight, a workout or a recipe link', async ({ page }) => {
+test('on a phone, the bottom bar holds four sections with quick adds in the header', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = await open(page);
   const bar = page.locator('#bottom-bar');
@@ -72,7 +72,7 @@ test('on a phone, the bottom bar holds four sections around a + button for food,
   const [viewBox, barBox] = await Promise.all([page.locator('#view').boundingBox(), bar.boundingBox()]);
   expect(viewBox.y + viewBox.height).toBeLessThanOrEqual(barBox.y + 1);
 
-  await bar.locator('[data-action="quickAdd"]').click();
+  await page.locator('#header-tools [data-action="quickAdd"]').click();
   expect(await page.locator('#modal [data-action="qaPick"]').allInnerTexts()).toEqual(['Food', 'Weight', 'Workout', 'Recipe from a link']);
   await page.click('#modal [data-what="weight"]');
   await page.fill('#qa-weight', '181.4');
@@ -80,27 +80,27 @@ test('on a phone, the bottom bar holds four sections around a + button for food,
   expect(await page.evaluate(() => round(toUnit(Store.get('nutrition')[ymd()].weight), 1))).toBe(181.4);
 
   // Food, a workout and a recipe link open their usual screens; food goes to today.
-  await bar.locator('[data-action="quickAdd"]').click();
+  await page.locator('#header-tools [data-action="quickAdd"]').click();
   await page.click('#modal [data-what="food"]');
   await expect(page.locator('#modal')).toContainText('Add to');
   expect(await page.evaluate(() => ui.lf.date === ymd())).toBe(true);
   await page.keyboard.press('Escape');
-  await bar.locator('[data-action="quickAdd"]').click();
+  await page.locator('#header-tools [data-action="quickAdd"]').click();
   await page.click('#modal [data-what="workout"]');
   await expect(bar.locator('[aria-current="page"]')).toHaveText('Workouts');
-  await bar.locator('[data-action="quickAdd"]').click();
+  await page.locator('#header-tools [data-action="quickAdd"]').click();
   await page.click('#modal [data-what="link"]');
   await expect(page.locator('#modal h3')).toHaveText('Save a recipe from a link');
   await page.keyboard.press('Escape');
 
-  // The four places can be changed (and must be four different sections); on a wide screen the bar is hidden.
+  // The chosen order is preserved at every width.
   await page.evaluate(() => { S.bar = ['recipes', 'nutrition', 'fitness', 'dashboard']; render(); });
   expect(await bar.locator('.bar-item').allInnerTexts()).toEqual(['Meals', 'Nutrition', 'Workouts', 'Dashboard']);
   await page.evaluate(() => { S.bar = ['tasks', 'tasks', 'nope', 'family']; render(); });
   expect(await bar.locator('.bar-item').allInnerTexts()).toEqual(['Dashboard', 'Workouts', 'Nutrition', 'Meals']);
   expect(await page.evaluate(() => SYNC_SETTINGS.includes('bar'))).toBe(true);
   await page.setViewportSize({ width: 1280, height: 900 });
-  await expect(bar).toBeHidden();
+  await expect(bar).toBeVisible();
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
@@ -166,7 +166,9 @@ test('in a workout on a phone, times type like a microwave, and the top bar and 
   await expect(time).toHaveValue('1:30');
   const bar = page.locator('[data-wctx="active"] > .card').first();
   expect((await bar.boundingBox()).height).toBeLessThan(120);
-  await expect(bar.locator('[data-action="awDiscard"]:visible')).toHaveCount(1);
+  await page.locator('[data-action="workoutOptions"]').click();
+  await expect(page.locator('#modal [data-do="awDiscard"]')).toBeVisible();
+  await page.keyboard.press('Escape');
   await page.evaluate(() => Timer.start(90));
   const timer = page.locator('#timer > div');
   expect((await timer.boundingBox()).height).toBeLessThan(60);

@@ -15,15 +15,15 @@ async function open(page) {
 }
 test('menu items show what needs attention today', async ({ page }) => {
   const errors = await open(page);
-  const chip = view => page.locator(`#nav [data-view="${view}"] .nav-count`);
-  await expect(page.locator('#nav .nav-count')).toHaveCount(0);
+  const chip = view => page.locator(`#bottom-bar [data-view="${view}"] .nav-count`);
+  await expect(page.locator('#bottom-bar .nav-count')).toHaveCount(0);
   // Every menu item can carry a count, whether or not it has anything to count yet.
   expect(await page.evaluate(() => VIEWS.filter(v => v.id).every(v => typeof NAV_COUNTS[v.id] === 'function'))).toBe(true);
-  await expect(page.locator('#menu-dot')).toBeHidden();
+  await expect(page.locator('#help-dot')).toBeHidden();
 
   // A workout in progress shows a dot.
   await page.evaluate(() => { Store.set('activeWorkout', { id: 'w', name: 'Workout', start: new Date().toISOString(), exercises: [] }); render(); });
-  await expect(page.locator('#nav [data-view="fitness"]')).toContainText('workout in progress');
+  await expect(page.locator('#bottom-bar [data-view="fitness"]')).toContainText('workout in progress');
 
   // Daily checks: quiet until that part of the app has been used, then about today only.
   for (const view of ['nutrition', 'recipes', 'dashboard']) await expect(chip(view)).toHaveCount(0);
@@ -32,8 +32,8 @@ test('menu items show what needs attention today', async ({ page }) => {
     Store.set('nutrition', { [old]: { weight: 80, entries: [] }, [y]: { entries: [{ id: 'e', name: 'Oats', kcal: 300 }] } });
     Store.set('mealPlan', { [y]: [{ id: 'm', text: 'Soup' }], [ymd()]: [{ id: 'l', text: 'Sandwiches', slot: 'lunch' }] }); render();
   });
-  await expect(chip('nutrition')).toHaveText('2 no food logged and no weigh-in today');
-  await expect(chip('recipes')).toHaveText('1 no dinner planned today');
+  await expect(chip('nutrition')).toHaveText('2');
+  await expect(chip('recipes')).toHaveText('1');
   // Several missed days still count once: nothing carries over.
   expect(await page.evaluate(() => NAV_COUNTS.nutrition().n + NAV_COUNTS.recipes().n)).toBe(3);
   await page.evaluate(() => {
@@ -44,8 +44,8 @@ test('menu items show what needs attention today', async ({ page }) => {
 
   // On a phone the menu is closed, so its button carries the dot.
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator('#menu-dot')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Open menu (items need attention)' })).toBeVisible();
+  await expect(page.locator('#bottom-bar [data-view="fitness"] .bar-badge')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Settings & Sync', exact: true })).toBeVisible();
   expect(errors, errors.join('\n')).toEqual([]);
 });
 

@@ -79,7 +79,10 @@ test('completed week counts use local Monday boundaries, exclude future dates an
   await expect(page.getByRole('dialog')).toContainText('2 completed this week');
   await page.keyboard.press('Escape');
   await page.evaluate(() => startWorkout({ name: 'Synthetic active', exercises: [] }));
-  await expect(page.locator('[data-wctx="active"]')).toContainText('2 completed this week');
+  await page.locator('[data-action="workoutOptions"]').click();
+  await expect(page.getByRole('dialog')).toContainText('2 completed this week');
+  await expect(page.getByRole('dialog')).toContainText('This active workout is not counted yet');
+  await page.keyboard.press('Escape');
   expect(await page.evaluate(() => completedWorkoutsThisWeek().length)).toBe(2);
   await page.evaluate(() => { ui.fitTab = 'history'; render(); });
   await expect(page.locator('#view')).toContainText('Future-dated');

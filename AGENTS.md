@@ -47,7 +47,7 @@ The tests use a fresh, empty browser profile every run. Never point a test at a 
 
 ## Architecture (all in `index.html`)
 
-The `<head>` holds the theme pre-paint script, compiled `assets/app.css`, and the pinned local Lucide bundle. The body holds the shell (sidebar `#nav`, header, `#view`, `#modal`, toasts) and one large `<script>`. Search for these banner comments:
+The `<head>` holds the theme pre-paint script, compiled `assets/app.css`, and the pinned local Lucide bundle. The body holds the shell (header, `#view`, bottom navigation, `#modal`, toasts) and one large `<script>`. Search for these banner comments:
 
 | Banner / marker | What's there |
 |---|---|
@@ -55,7 +55,7 @@ The `<head>` holds the theme pre-paint script, compiled `assets/app.css`, and th
 | `SETTINGS (localStorage)` | `SETTINGS_DEFAULT`, `S`, `loadSettings`/`saveSettings` (`bd.settings`) |
 | `STORAGE (IndexedDB primary…)` | `COLLECTIONS` (every data key and its default), the `Store` API, `LocalDb` (the `local` store sync keeps its base copy in) |
 | `UI PRIMITIVES` | `toast`, `Modal`, `modalShell`, `tabs`, `cardHead`, `emptyState`, `ui` |
-| `ROUTER / SHELL` | `VIEWS` (four), `NAV_COUNTS`, `render()`, `go(view)`, the phone bottom bar (`renderBar`, `S.bar`) and its + sheet (`QUICK_ADD`: food, weight, workout, recipe from a link) |
+| `ROUTER / SHELL` | `VIEWS` (four), `NAV_COUNTS`, `render()`, `go(view)`, bottom navigation at every width (`renderBar`, `S.bar`), focused-workout Minimize/Resume, and the header + sheet (`QUICK_ADD`: food, weight, workout, recipe from a link) |
 | `REST TIMER` | `Timer`, `beep()`, `notify()` |
 | `DASHBOARD (home)` | `renderDashboard()`, `DASH_CARDS` (today, nutrition, weight, training, meals), `dashToday()` (workout, food so far, weigh-in, dinner), `dashMeals()` |
 | `FITNESS` | workout logger, programs, exercise library, stats, Hevy CSV import/export |
@@ -98,3 +98,7 @@ From the "Body Dashboard Refresh" research page: four steps, each shipped with a
 4. **Extras:** plate math and warm-ups, a finish summary, "fits today" on recipes, cook-mode timers, a muscle map.
 
 Decisions: the big calorie number is **calories left** by default (`S.calBig`, switchable in Settings, drawn by `calCenter()` and `foodSoFar()`); RPE is hidden by default; **photo or "describe a meal" logging is planned for later through ChatGPT (the OpenAI API)**. When it is built, the request goes through the reader Worker or another server with the user's own key entered in Settings (never in the repo or a backup), and the result only fills in database foods the person can edit before saving.
+
+## Focused interface (2026-11-07)
+
+The product owner requested a simpler lifting interface using supplied screenshots as directional references, not an exact copy. There is no sidebar. Four bottom destinations use the existing `S.bar` order; header controls expose quick adds, help and settings. Active workout rendering hides section tabs and bottom navigation; the down arrow minimizes to History, and Resume retains the active record. Numbered sets open options; extra steppers expand on demand (`ui.stepOpen`, transient). Calendar/totals and full history details expand separately. Keep all original storage, record and backup formats.

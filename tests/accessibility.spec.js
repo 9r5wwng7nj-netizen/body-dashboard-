@@ -68,18 +68,17 @@ test('visible labels focus their fields and repeated dialog rendering retains in
   await expect(page.getByRole('textbox', { name: 'Your name (for greeting)' })).toBeFocused();
 });
 
-test('mobile sidebar is absent from tab order while closed', async ({ page }) => {
+test('bottom navigation and settings are reachable without a drawer', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await prepare(page);
-  expect(await page.locator('#sidebar').evaluate(el => el.inert)).toBe(true);
-  const menu = page.getByRole('button', { name: 'Open menu' });
-  await menu.focus(); await page.keyboard.press('Enter');
-  await expect(menu).toHaveAttribute('aria-expanded', 'true');
-  await expect(page.locator('#nav button').first()).toBeFocused();
-  await page.keyboard.press('Escape');
-  await expect(menu).toBeFocused();
-  await expect(menu).toHaveAttribute('aria-expanded', 'false');
-  expect(await page.locator('#sidebar').evaluate(el => el.inert)).toBe(true);
+  await expect(page.locator('#sidebar')).toHaveCount(0);
+  const settings = page.getByRole('button', { name: 'Settings & Sync', exact: true });
+  await settings.focus(); await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape'); await expect(settings).toBeFocused();
+  const workouts = page.locator('#bottom-bar [data-view="fitness"]');
+  await workouts.focus(); await page.keyboard.press('Enter');
+  await expect(page.locator('#view-title')).toBeFocused();
 });
 
 test('view sections retain keyboard focus and notices are announced', async ({ page }) => {

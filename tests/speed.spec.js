@@ -125,6 +125,7 @@ test.describe('on a phone', () => {
       await startWorkout({ name: 'Push', exercises: [{ id: uid(), name: 'Bench Press (Barbell)', notes: '', ss: false, rest: 90, targetReps: '', sets: [blankSet(), blankSet()] }] });
     });
     const card = page.locator('#view .card').filter({ hasText: 'Bench Press (Barbell)' }).first();
+    await card.locator('.set-adjustments > summary').click();
     const step = card.locator('[role="group"][aria-label^="Adjust set"]');
     await expect(step).toContainText('Next: set 1');
     await expect(step).toContainText('175');
@@ -135,9 +136,10 @@ test.describe('on a phone', () => {
     // Ticking the set moves the stepper on and starts the rest timer, shown across the screen above the menu.
     await card.locator('[data-action="awSetDone"]').first().click();
     await expect(step).toContainText('Next: set 2');
-    const timer = await page.locator('#timer').boundingBox(), bar = await page.locator('#bottom-bar').boundingBox();
+    const timer = await page.locator('#timer').boundingBox();
+    await expect(page.locator('#bottom-bar')).toBeHidden();
     expect(timer.width).toBeGreaterThan(350);
-    expect(timer.y + timer.height).toBeLessThanOrEqual(bar.y);
+    expect(timer.y + timer.height).toBeLessThanOrEqual(page.viewportSize().height);
     expect(errors, errors.join('\n')).toEqual([]);
   });
 });

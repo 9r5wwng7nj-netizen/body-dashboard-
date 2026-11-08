@@ -18,7 +18,7 @@ test('a new user is offered the tour, can walk through it, and is not shown old 
   await expect(page.locator('#view')).toContainText('New here? Take the two-minute tour');
   await expect(page.locator('#view')).not.toContainText('What’s new');
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator('#menu-dot')).toBeVisible();
+  await expect(page.locator('#help-dot')).toBeVisible();
 
   await page.click('[data-action="helpTour"]');
   const dialog = page.locator('#modal [role="dialog"]'), slides = await page.evaluate(() => TOUR.map(s => s.title));
@@ -35,7 +35,7 @@ test('a new user is offered the tour, can walk through it, and is not shown old 
 
   // Seen once: the card and the dot are gone, and stay gone after a reload.
   await expect(page.locator('#view')).not.toContainText('New here?');
-  await expect(page.locator('#menu-dot')).toBeHidden();
+  await expect(page.locator('#help-dot')).toBeHidden();
   await page.reload(); await ready(page);
   await expect(page.locator('#view')).not.toContainText('New here?');
   await expect(page.locator('#view')).not.toContainText('What’s new');

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 — Focused training and simpler navigation
+
+- Replaced the left drawer with four bottom destinations at every screen width, preserving the saved order. Quick adds, settings and help moved to the header.
+- Active workouts have a focused header with timer and Finish, flat exercise sections, and compact duration/volume/set totals. Minimize and Resume preserve the same session.
+- Set numbers open type/removal options, freeing space for load and reps. Extra adjustments expand only when needed and stay open while editing.
+- History previews exercises in a personal training feed, with calendar/totals and full set details available by expansion.
+- Kept existing records, storage, imports, photos and backups compatible. No social features, exercise-image service or sync was added.
+
 ## 2026-11-07 — iPhone workout spacing
 
 - The workout summary scrolls normally on phones, keeping exercise headings visible.
