@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-07 — iPhone workout spacing
+
+- The workout summary scrolls normally on phones, keeping exercise headings visible.
+- First-time exercises omit the empty Previous column; existing performance remains available when present.
+- Set fields and action targets have clearer separation, with one instruction for unchecked rows.
+- Load and reps steppers have separate labels and stack with enlarged text.
+- Logging, recovery, record identities and storage formats are unchanged.
+
 ## 2026-11-07 — Personal beta deployment
 
 - Prepared an allowlisted Pages package: app/runtime assets only, with a source-commit manifest and a worker cache generation per release.

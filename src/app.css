@@ -123,13 +123,28 @@ label:has(input:focus-visible) { outline: 2px solid #0f766e; outline-offset: 3px
 .workout-large-type input { width: 100%; }
 /* Keyboard numeric entry: the collapsed timer occupies document flow, never the field/commit button. */
 body:has([data-input="awSet"]:focus) #timer { position: static; margin: .5rem 1rem; width: auto; }
-/* At standard phone size allocate room for full decimal loads as well as 44px completion/delete controls. */
-@media (max-width: 639.98px) {
-  [data-wctx="active"] table { table-layout: fixed; }
-  [data-wctx="active"] th:first-child { width: 44px; }
-  [data-wctx="active"] th:nth-child(2) { width: 56px; }
-  [data-wctx="active"] th:last-child, [data-wctx="active"] th:nth-last-child(2) { width: 46px; }
+/* Keep the matrix's useful values readable while reserving distinct 44px action targets. */
+@media (max-width: 767.98px) {
+  [data-wctx="active"] > .workout-summary { position: static; }
 }
+@media (max-width: 639.98px) {
+  [data-wctx="active"] .workout-matrix { table-layout: fixed; }
+  [data-wctx="active"] th[data-col="set"] { width: 48px; }
+  [data-wctx="active"] th[data-col="previous"] { width: 52px; }
+  [data-wctx="active"] th[data-col="done"], [data-wctx="active"] th[data-col="remove"] { width: 48px; }
+  [data-wctx="active"] .workout-matrix tbody td { padding-top: 8px; padding-bottom: 8px; }
+  [data-wctx="active"] .workout-matrix td:has([data-input="awSet"]) { padding-left: 3px; padding-right: 3px; }
+}
+[data-action="awFillPrev"] { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.set-status-space { display: block; height: 1rem; line-height: 1rem; margin-top: 4px; }
+/* The table caption explains unchecked rows once; retain each row's full state for screen readers. */
+.workout-matrix [data-set-state="suggestion"] [data-row-save-state] { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.workout-stepper-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.workout-stepper-field:only-child { grid-column: 1 / -1; }
+.workout-stepper-controls { display: grid; grid-template-columns: minmax(44px, max-content) minmax(0, 1fr) minmax(44px, max-content); gap: 6px; align-items: center; }
+.workout-stepper-controls button { width: auto; min-width: 44px; min-height: 44px; padding-left: 4px; padding-right: 4px; }
+.workout-large-type .workout-stepper-fields { grid-template-columns: minmax(0, 1fr); }
+.workout-large-type .set-status-space { height: auto; min-height: 1rem; line-height: 1.4; }
 .workout-large-type .card { min-width: 0; }
 .workout-large-type [data-wctx="active"] .sticky { position: static; }
 .workout-large-type [data-wctx="active"] .sticky input { flex-basis: 100%; }
@@ -145,3 +160,5 @@ body:has([data-input="awSet"]:focus) #timer { position: static; margin: .5rem 1r
   #view-title { flex: 1; min-width: 5em; }
   #app-shell header > div { flex: 0 0 auto; max-width: 100%; flex-wrap: wrap; justify-content: flex-end; }
 }
+.workout-exercise-head [data-action="libEdit"] { max-width: 100%; overflow-wrap: anywhere; }
+.workout-large-type .workout-exercise-head > div:first-child { min-width: 0; flex-basis: 100%; }

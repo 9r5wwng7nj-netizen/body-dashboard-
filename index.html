@@ -1221,7 +1221,7 @@ const WorkoutCommands = {
   pending(value) { this.busy = value; for (const field of $$('[data-wctx="active"] input, [data-wctx="active"] textarea')) field.readOnly = value; for (const button of $$('[data-wctx="active"] button, [data-wctx="active"] select')) button.disabled = value; },
   async complete(el) {
     if (this.busy) return;
-    this.pending(true); el.disabled = true; el.setAttribute('aria-busy', 'true'); const row = el.closest('tr'); row?.setAttribute('data-set-state', 'pending'); const rowLabel = row?.querySelector('[data-row-save-state]'); if (rowLabel) rowLabel.textContent = 'Saving…';
+    this.pending(true); el.disabled = true; el.setAttribute('aria-busy', 'true'); const row = el.closest('tr'); row?.setAttribute('data-set-state', 'pending'); const rowLabel = row?.querySelector('[data-row-save-state]'); if (rowLabel) rowLabel.textContent = 'Saving';
     try {
       await Store.flushDirty();
       const active = structuredClone(Store.get('activeWorkout'));
@@ -1243,7 +1243,7 @@ const WorkoutCommands = {
       render();
       $(`[data-action="awSetDone"][data-i="${i}"][data-j="${j}"]`)?.focus({ preventScroll: true });
     } catch (e) { toast(e.message, 'error'); drawSaveRecovery(); }
-    finally { this.pending(false); el.disabled = false; el.removeAttribute('aria-busy'); if (row?.isConnected) { const set = Store.get('activeWorkout')?.exercises[+el.dataset.i]?.sets[+el.dataset.j]; const failed = [...WebWrites.pending.values()].some(p => p.purpose !== 'snapshot' && p.values.activeWorkout); const state = failed ? 'failed' : set?.draft ? 'draft' : set?.done ? 'committed' : 'suggestion'; row.dataset.setState = state; if (rowLabel) rowLabel.textContent = failed ? 'Not saved' : set?.draft ? 'Draft' : set?.done ? 'Saved' : 'Suggested'; } }
+    finally { this.pending(false); el.disabled = false; el.removeAttribute('aria-busy'); if (row?.isConnected) { const set = Store.get('activeWorkout')?.exercises[+el.dataset.i]?.sets[+el.dataset.j]; const failed = [...WebWrites.pending.values()].some(p => p.purpose !== 'snapshot' && p.values.activeWorkout); const state = failed ? 'failed' : set?.draft ? 'draft' : set?.done ? 'committed' : 'suggestion'; row.dataset.setState = state; if (rowLabel) rowLabel.textContent = failed ? 'Failed' : set?.draft ? 'Draft' : set?.done ? 'Saved' : 'Suggested'; } }
   },
   async finish() {
     if (this.busy) return;
@@ -1345,6 +1345,7 @@ function setBadge(s, n) {
 function exerciseCard(ex, i, w, ctx, grp) {
   const count = w.exercises.length, info = exInfo(ex.name), type = EX_TYPES[info.type] ? info.type : 'weight_reps', cols = typeCols(type);
   const prev = exerciseHistory(ex.name, ctx === 'edit' ? { before: w.start, exclude: w.id } : {})[0], prevSets = prev ? prev.ex.sets : [];
+  const showPrevious = ctx !== 'active' || prevSets.some(anyData);
   const head = c => c === 'weight' ? (type === 'assisted_bw' ? `−${S.unit}` : type === 'weighted_bw' ? `+${S.unit}` : S.unit) : c === 'reps' ? 'Reps' : c === 'duration' ? 'Time' : distUnit();
   const showRpe = S.rpe || ex.sets.some(s => s.rpe != null || s.draft?.rpe != null);
   const cell = (c, s, p, j) => {
@@ -1360,23 +1361,23 @@ function exerciseCard(ex, i, w, ctx, grp) {
   const rows = ex.sets.map((s, j) => {
     if (s.type !== 'warmup') n++; const p = prevSets[j], [lab, cls] = setBadge({ ...s, type: s.draft?.type || s.type }, n);
     return `<tr data-set-state="${s.draft ? 'draft' : s.done ? 'committed' : 'suggestion'}" class="${s.done && ctx !== 'edit' ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}">
-      <td class="py-1 pl-1 whitespace-nowrap"><button class="w-8 h-8 rounded-md text-xs font-bold ${cls}" data-action="awSetType" data-i="${i}" data-j="${j}" title="Tap to change set type (warm-up, drop, failure)">${lab}</button><span class="block text-[10px] muted" data-row-save-state>${s.draft ? 'Draft' : s.done ? 'Saved' : 'Suggested'}</span>${s.pr && s.pr.length ? `<span class="ml-0.5" title="${s.pr.map(k => PR_LABELS[k]).join(', ')}">🏆</span>` : ''}</td>
-      <td class="py-1 pr-1">${p ? `<button class="text-xs muted hover:text-brand-600 text-left whitespace-nowrap tabular-nums min-h-[2.75rem]" data-action="awFillPrev" data-i="${i}" data-j="${j}" title="Tap to copy into this set" aria-label="Previous from ${esc(wDate(prev.w))}: ${esc(setLabel(p, type))}. Copy into this set">${setShort(p, type)}</button>` : '<span class="text-xs muted">—</span>'}</td>
+      <td class="py-1 pl-1 whitespace-nowrap"><button class="w-8 h-8 rounded-md text-xs font-bold ${cls}" data-action="awSetType" data-i="${i}" data-j="${j}" title="Tap to change set type (warm-up, drop, failure)">${lab}</button><span class="set-status-space"><span class="text-xs muted" data-row-save-state>${s.draft ? 'Draft' : s.done ? 'Saved' : 'Suggested'}</span></span>${s.pr && s.pr.length ? `<span class="ml-0.5" title="${s.pr.map(k => PR_LABELS[k]).join(', ')}">🏆</span>` : ''}</td>
+      ${showPrevious ? `<td class="py-1 pr-1">${p ? `<button class="text-xs muted hover:text-brand-600 text-left whitespace-nowrap tabular-nums min-h-[2.75rem] min-w-11" data-action="awFillPrev" data-i="${i}" data-j="${j}" title="Tap to copy into this set" aria-label="Previous from ${esc(wDate(prev.w))}: ${esc(setLabel(p, type))}. Copy into this set">${setShort(p, type)}</button>` : '<span class="text-xs muted">—</span>'}</td>` : ''}
       ${cols.map(c => `<td data-field-label="${head(c)}" class="py-1 px-0.5 sm:px-1">${cell(c, s, p, j)}</td>`).join('')}
       ${showRpe ? `<td data-field-label="RPE" class="py-1 px-0.5 sm:px-1 w-12 sm:w-16"><input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="input h-11 px-1 py-1.5 text-center tabular-nums" value="${esc(s.draft?.rpe ?? s.rpe ?? '')}" placeholder="RPE" data-input="awSet" data-i="${i}" data-j="${j}" data-f="rpe" aria-label="RPE"></td>` : ''}
       ${ctx === 'edit' ? '' : `<td class="py-1 px-0.5 sm:px-1"><button class="w-11 h-11 rounded-lg grid place-items-center ${s.done ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-600'}" data-action="awSetDone" data-i="${i}" data-j="${j}" aria-label="${s.draft && s.done ? 'Save set changes' : s.done ? 'Undo completed set' : 'Complete set'}" title="${s.draft ? 'Draft: save changes' : s.done ? 'Saved on device; tap to undo' : 'Accept and save this set'}">${icon(s.draft && s.done ? 'save' : s.done ? 'undo-2' : 'check')}</button></td>`}
       <td class="py-1 pr-0.5"><button class="btn btn-ghost btn-sm px-1 text-slate-400" data-action="awDelSet" data-i="${i}" data-j="${j}" aria-label="Delete set">${icon('x', 'w-3.5 h-3.5')}</button></td></tr>`;
   }).join('');
-  return `<div class="card p-3 sm:p-4 ${grp ? 'border-l-4 border-l-violet-400 dark:border-l-violet-500' : ''}">
+  return `<div class="workout-exercise card p-3 sm:p-4 ${grp ? 'border-l-4 border-l-violet-400 dark:border-l-violet-500' : ''}">
     ${grp ? `<div class="text-[11px] font-semibold text-violet-600 dark:text-violet-300 mb-1 flex items-center gap-1">${icon('link', 'w-3 h-3')} Superset ${grp.label} · ${grp.pos}/${grp.size}${grp.pos < grp.size ? ' · go straight to the next exercise' : ' · rest after this one'}</div>` : ''}
-    <div class="flex flex-wrap items-center gap-1.5 mb-2">
+    <div class="workout-exercise-head flex flex-wrap items-center gap-2 mb-3">
       <div class="flex-1 min-w-[10rem]"><button class="font-semibold text-brand-700 dark:text-brand-300 hover:underline text-left" data-action="libEdit" data-name="${esc(ex.name)}" title="Exercise settings">${esc(ex.name)}</button>
         <div class="text-xs muted flex flex-wrap gap-x-2"><span>${esc(info.primary)} · ${typeLabel(type)}${info.countBW && BW_TYPES.has(type) ? ' · body weight counts' : ''}</span>${prev ? `<span>Last ${fmtDate(wDate(prev.w), { month: 'short', day: 'numeric' })}: ${setLabel(bestSet(prev.ex, type), type)}</span>` : '<span>First time logging this</span>'}${info.howto ? `<a href="${esc(webUrl(info.howto))}" target="_blank" rel="noopener" class="text-brand-600 dark:text-brand-400 underline">How-to</a>` : ''}</div></div>
       <label class="flex items-center gap-1 text-xs muted" title="Rest after each set">${icon('timer', 'w-3.5 h-3.5')}<select class="input py-1 px-1.5 w-auto text-xs" data-change="awRest" data-i="${i}" aria-label="Rest after each set">${restOptions(ex.rest)}</select></label>
       <button class="btn btn-ghost btn-sm" data-action="awExMenu" data-i="${i}" aria-label="More for ${esc(ex.name)}" title="Move, superset or remove">${icon('ellipsis', 'w-4 h-4')}</button>
     </div>
-    ${ex.notes || ui.noteOpen.has(ex) ? `<input class="input py-1.5 text-xs mb-2" placeholder="Exercise notes…" value="${esc(ex.notes)}" data-input="awExNote" data-i="${i}" aria-label="Notes for ${esc(ex.name)}">` : `<button class="text-xs text-brand-700 dark:text-brand-300 mb-1 min-h-[2.25rem] inline-flex items-center gap-1" data-action="awNoteOpen" data-i="${i}">${icon('plus', 'w-3 h-3')} Add note</button>`}
-    <div class="overflow-x-auto"><table class="w-full max-w-3xl text-sm"><thead><tr class="text-xs muted text-left"><th class="font-medium pl-1 w-9">Set</th><th class="font-medium">Previous</th>${cols.map(c => `<th class="font-medium text-center">${head(c)}</th>`).join('')}${showRpe ? '<th class="font-medium text-center">RPE</th>' : ''}${ctx === 'edit' ? '' : '<th class="w-10"></th>'}<th class="w-7"></th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${ex.notes || ui.noteOpen.has(ex) ? `<input class="input py-1.5 text-xs mb-2" placeholder="Exercise notes…" value="${esc(ex.notes)}" data-input="awExNote" data-i="${i}" aria-label="Notes for ${esc(ex.name)}">` : `<button class="text-xs text-brand-700 dark:text-brand-300 mb-2 min-h-11 inline-flex items-center gap-1" data-action="awNoteOpen" data-i="${i}">${icon('plus', 'w-3 h-3')} Add note</button>`}
+    <div class="workout-matrix-wrap overflow-x-auto"><table class="workout-matrix w-full max-w-3xl text-sm"><caption class="text-xs muted text-left mb-2">${ctx === 'active' ? 'Check a set to log it.' : 'Edit set values, then save the workout.'}</caption><thead><tr class="text-xs muted text-left"><th data-col="set" class="font-medium pl-1 w-9">Set</th>${showPrevious ? '<th data-col="previous" class="font-medium">Previous</th>' : ''}${cols.map(c => `<th data-col="${c}" class="font-medium text-center">${head(c)}</th>`).join('')}${showRpe ? '<th class="font-medium text-center">RPE</th>' : ''}${ctx === 'edit' ? '' : '<th data-col="done" class="w-10"><span class="sr-only">Log set</span></th>'}<th data-col="remove" class="w-7"><span class="sr-only">Remove set</span></th></tr></thead><tbody>${rows}</tbody></table></div>
     ${ctx === 'edit' ? '' : setStepper(ex, i, type, prevSets)}
     <button class="btn btn-sm w-full mt-2" data-action="awAddSet" data-i="${i}">${icon('plus', 'w-3.5 h-3.5')} Add set</button>
   </div>`;
@@ -1389,10 +1390,11 @@ function setStepper(ex, i, type, prevSets) {
   const n = ex.sets.slice(0, j + 1).filter(x => x.type !== 'warmup').length, [lab] = setBadge(ex.sets[j], n), p = prevSets[j], st = STEP_W();
   const w = stepStart(ex, j, 'weight', p), r = stepStart(ex, j, 'reps', p);
   const b = (f, d, label, aria) => `<button type="button" class="btn btn-sm w-11 shrink-0 tabular-nums" data-action="awStep" data-i="${i}" data-j="${j}" data-f="${f}" data-d="${d}" aria-label="${aria}">${label}</button>`;
-  return `<div class="mt-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 p-1.5" role="group" aria-label="Adjust set ${lab}">
-    <div class="text-xs muted px-1 pb-1">Next: set ${lab}</div><div class="flex items-center gap-1.5">
-    ${cols.includes('weight') ? `${b('weight', -st, `−${st}`, `${st} ${S.unit} less`)}<span class="flex-1 min-w-0 text-center font-semibold tabular-nums">${w != null ? wDisp(w) : '–'}</span>${b('weight', st, `+${st}`, `${st} ${S.unit} more`)}` : ''}
-    ${cols.includes('reps') ? `<span class="w-2"></span>${b('reps', -1, '−1', 'One rep fewer')}<span class="${cols.includes('weight') ? 'w-8' : 'flex-1'} text-center font-semibold tabular-nums">${r ?? '–'}</span>${b('reps', 1, '+1', 'One rep more')}` : ''}</div></div>`;
+  const field = (label, content) => `<div class="workout-stepper-field"><div class="text-xs muted mb-1">${label}</div><div class="workout-stepper-controls">${content}</div></div>`;
+  return `<div class="workout-stepper mt-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 p-2" role="group" aria-label="Adjust set ${lab}">
+    <div class="text-xs muted mb-2">Next: set ${lab}</div><div class="workout-stepper-fields">
+    ${cols.includes('weight') ? field(`Load (${S.unit})`, `${b('weight', -st, `−${st}`, `${st} ${S.unit} less`)}<span class="text-center font-semibold tabular-nums">${w != null ? wDisp(w) : '–'}</span>${b('weight', st, `+${st}`, `${st} ${S.unit} more`)}`) : ''}
+    ${cols.includes('reps') ? field('Reps', `${b('reps', -1, '−1', 'One rep fewer')}<span class="text-center font-semibold tabular-nums">${r ?? '–'}</span>${b('reps', 1, '+1', 'One rep more')}`) : ''}</div></div>`;
 }
 function fitActive(aw) {
   let done = 0, vol = 0;
@@ -1400,7 +1402,7 @@ function fitActive(aw) {
   const g = supersetGroups(aw.exercises);
   return `<div data-wctx="active" class="pb-20 md:pb-0">
   <p class="text-sm muted mb-3">${completedWorkoutsThisWeek().length} completed this week · ${workoutWeekRange()}. This active workout is not counted yet.</p>
-  <div class="card p-2.5 sm:p-4 mb-4 sticky top-0 z-10"><div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+  <div class="workout-summary card p-2.5 sm:p-4 mb-4 sticky top-0 z-10"><div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
     <input class="input text-base font-semibold flex-1 min-w-0 sm:min-w-[12rem]" value="${esc(aw.name)}" data-input="awField" data-f="name" aria-label="Workout name">
     <button class="btn btn-primary sm:order-last" data-action="awFinish">${icon('check')} Finish</button>
     <div class="w-full sm:w-auto flex items-center gap-x-3 sm:gap-4 text-sm tabular-nums"><span><span class="muted sm:block sm:text-xs">Time </span><span id="elapsed" class="font-semibold">0:00</span></span><span><span class="muted sm:block sm:text-xs">Volume </span><span class="font-semibold">${fmtNum(toUnit(vol))} ${S.unit}</span></span><span><span class="muted sm:block sm:text-xs">Sets </span><span class="font-semibold">${done}</span></span>
@@ -4257,6 +4259,10 @@ const A_SHARE = {
 // would notice; each device shows the newest one once, as a card on the dashboard. A slide can show
 // a picture from assets/whatsnew/ (give it alt text) and a `go` shortcut: [view, ui key, tab, label].
 const RELEASES = [
+  { id: '2026-11-07-workout-spacing', title: 'More breathing room while logging', slides: [
+    { title: 'Keep the exercise in view', body: '<p>On phones, the workout summary scrolls with the page so it no longer covers an exercise heading.</p>' },
+    { title: 'Clearer set rows and adjustments', body: '<p>Set rows have more space, empty Previous columns stay out of the way, and load/reps adjustments have separate labels. Unchecked sets still need your confirmation before they are logged.</p>' }
+  ] },
   { id: '2026-11-07-personal-beta', title: 'Personal web beta', slides: [
     { title: 'Ready for your iPhone test', body: '<p>This personal beta includes recoverable local workout logging and workout-history import. Wait for <strong>Ready offline</strong> before testing without a connection, and keep an exported backup.</p>' },
     { title: 'More room for larger text', body: '<p>Card headings and their actions wrap onto another line when needed, keeping them reachable with larger text on narrow screens.</p>' }
