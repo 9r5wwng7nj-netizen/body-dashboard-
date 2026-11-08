@@ -20,7 +20,15 @@ No storage keys, schemas, IndexedDB version/store names, IDs, data commands, nor
 - The existing theme color regression now expects Cobalt Air ink and checks browser metadata after light/dark/light transitions. The spacing fixture waits for the existing two-frame theme refresh before measuring current rows; its gap/size assertions are unchanged. The first run measured a replaced node and failed one spacing case; the final complete suites passed after that synchronization fix.
 - Eight actual-app synthetic screenshots cover Today, Train, Nutrition and active workouts in both themes. Visual review verified neutral/blue surfaces, committed/draft distinction and the settled navigation. The preview session was separate from personal browser profiles. Asset PNGs were regenerated from the existing SVG, not from a photo or new image service.
 
-Exact-source GitHub CI, staged package and live verification are recorded after the release gates finish. See `docs/BETA_RELEASE.md` for final identities and run links.
+## Published release
+
+- Tested source: `f4ea8bb87dc92d577aca7752d0aee8e1e3691b93`.
+- Exact-source [GitHub CI](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42444569513): 170 Chromium passed (59.2s), 63 WebKit passed (1.4m).
+- Deployment: `6734dd6d7a3528ed75a509d24456aa3bbf05000c`; [Pages deployment passed](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42444818083).
+- Both staged-package and live HTTPS checks passed in fresh Chromium and WebKit profiles: matching Cobalt Air light/dark/light canvas/ink/accent/browser chrome; offline accept/swap/minimize/resume/finish; duplicate-safe precise JSON import twice; byte-identical photo backup restoration/offline decoding; reload; original retired records unchanged. Zero page errors/network writes. Owned synthetic profiles were removed afterward.
+- All 15 public non-marker runtime hashes matched. The 17-file deployment includes no design documents, mock images, health records, backups or credentials. Main was retained and branches advanced normally without force push.
+
+See `docs/BETA_RELEASE.md` for release identities and safe update instructions.
 
 ## Limits
 

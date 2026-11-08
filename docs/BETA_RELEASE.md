@@ -2,32 +2,40 @@
 
 Published November 7, 2026 (America/New_York).
 
-**Warm Mineral personal beta — open on iPhone:** https://9r5wwng7nj-netizen.github.io/body-dashboard-/
+**Cobalt Air personal beta — open on iPhone:** https://9r5wwng7nj-netizen.github.io/body-dashboard-/
 
 ## Release identity
 
-- Tested source: `25d1c96bf8e10003323dc34c66720d2f7a46df0b`, branch `beta/personal-web`.
-- Deployment: `35d2c922fe396cdb46b1d4b807ff86c979e26340`, branch `gh-pages`, root folder.
-- [Passing source checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42441864544).
-- [Successful Pages build/deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42442129865).
+- Tested source: `f4ea8bb87dc92d577aca7752d0aee8e1e3691b93`, branch `beta/personal-web`.
+- Deployment: `6734dd6d7a3528ed75a509d24456aa3bbf05000c`, branch `gh-pages`, root folder.
+- [Passing source checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42444569513).
+- [Successful Pages build/deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42444818083).
 - [Public release manifest](https://9r5wwng7nj-netizen.github.io/body-dashboard-/release.json) records source and SHA-256 asset hashes.
 
 The deployment contains 17 allowlisted package files: app HTML, service worker, manifest, CSS, icons, pinned libraries/licenses, `.nojekyll` and the release manifest. No backups, credentials, certificates, local preview tools, tests or planning documents are in the Pages artifact. The public source branch contains reviewed code/tests and synthetic planning fixtures. Main was retained; no force push was used.
 
 `node scripts/package-beta.mjs EMPTY_OUTPUT_DIRECTORY SOURCE_COMMIT` creates this package. It refuses a nonempty destination and rejects unexpected backup/key/JSON files. The packaged worker gets a cache generation derived from the tested source commit, so later deployments can install a new complete shell without forcing reload over active work. Keep Pages configured to `gh-pages` at `/`.
 
-## Checks actually run
+## Checks actually run — Cobalt Air
 
-- Final local `npm test -- --workers=2`: **170 passed**, 43.6 seconds, including CSS/static checks.
-- Final local `npm run test:webkit`: **63 passed**, 44.9 seconds.
-- GitHub Linux runner on the exact tested source: **170 Chromium passed (1.1m)** and **63 WebKit passed (1.5m)**.
-- The first candidate's Linux WebKit run caught native progress-photo file-control overflow at 375px. The final source bounds that control, and the same unchanged layout assertions passed. A subsequent local run exposed transient button contrast during theme interpolation; foreground/background now change together. Three focused Safari repeats and the final full suites passed. No failing candidate was published.
-- Both engines passed the exact staged package and an expanded offline workflow: accept a set, safely swap, minimize/resume, finish, import fitness JSON twice without duplicates or lost precision, restore a full backup with byte-identical local PNG, decode the photo offline and reload. The staged localhost harness explicitly enabled its test-only `?pwa` switch.
-- All **15 non-marker runtime files** listed in the actual live release manifest matched their SHA-256 hashes. The release manifest was fetched separately; `.nojekyll` is a build marker.
-- Fresh, isolated persistent Chromium and WebKit profiles passed the expanded workflow against the **live HTTPS site**. Both confirmed three navigation roots, Ready offline, unchanged retired Pantry/Grocery/Freezer/gkit records, `body-dashboard` v1 and sync off, with **zero page errors and zero network writes**.
-- Synthetic records lived only in owned profiles, removed afterward. No personal browser profiles, health records or credentials were inspected during validation. Repository tests also cover recipe/progress photo preservation and failed-write recovery.
+- Final local `npm test -- --workers=2`: **170 passed (35.9s)**, including CSS build/static checks.
+- Final local `npm run test:webkit`: **63 passed (45.2s)**.
+- Exact-source GitHub Linux CI: **170 Chromium passed (59.2s)** and **63 WebKit passed (1.4m)**. No failing candidate was published.
+- Existing appearance regression verifies Cobalt Air light/dark/light ink and browser metadata. A spacing fixture now waits for the existing two-frame theme refresh before measuring rows; all gap/target-size assertions remain unchanged. The first local run measured a replaced node and failed one spacing case; the final complete suites passed after synchronization.
+- Both engines passed the exact staged package and expanded offline workflow: set acceptance, safe swap, minimize/resume, finish, workout JSON import twice without duplicates or lost precision, full backup/photo restoration, offline image decoding and reload. Both also verified Cobalt Air light/dark/light canvas, ink, accent and browser metadata. The staged localhost harness explicitly enabled its test-only `?pwa` switch.
+- **Live HTTPS verification passed in fresh Chromium and WebKit profiles.** All 15 non-marker runtime files matched their release-manifest SHA-256 hashes; the release manifest was fetched separately. Both engines repeated the theme and expanded offline workflow above, confirming three roots, unchanged retired inventory/gkit records, `body-dashboard` v1 and sync off, with **zero page errors and zero network writes**.
+- Synthetic records stayed in owned profiles, removed afterward. No personal browser profiles, existing health records or credentials were inspected. The full suite also covers failed-write recovery and byte-identical recipe/progress photo restoration.
+- Eight actual-app synthetic screenshots were reviewed for the selected appearance and logging hierarchy. Screenshots and engine checks do not establish physical iPhone acceptance.
 
-## Warm Mineral update
+## Cobalt Air update
+
+Bright neutral surfaces and cobalt actions in light mode pair with navy/neutral surfaces and periwinkle actions in dark mode. Text, fields, committed/draft sets, focus, navigation, resume surfaces, charts and calorie/macro graphics share semantic tokens. Overview cards use restrained 18px corners; fields/buttons use 10px corners. The existing vector mark and local PNG app icons are cobalt. Browser chrome follows Light/Dark/System before paint and on appearance changes.
+
+The existing calorie preference/ring, dense and enlarged-text logging layouts, explicit acceptance, timer behavior, commands and all stored records remain. This is a presentation update. No storage migration, service, font dependency, sync activation or new logging flow was introduced. Existing Home Screen icons may retain a cached icon until the platform refreshes them; never clear site data to update an icon.
+
+See [Cobalt Air implementation and verification](product-review/2026-11-07/COBALT_AIR_RELEASE.md).
+
+## Previous Warm Mineral product update
 
 - **Today / Train / Nutrition** replace long subnav rows while preserving legacy navigation/dashboard preferences. Train leads with routines; History and Progress are named pages. The active workout keeps its focused Minimize/Resume, timer and Finish controls.
 - A shared **offline exercise picker** supports browsing, aliases, muscle/equipment filters, recent context, ordered multi-select and explicit custom exercises, including routine editing and mid-session additions.
@@ -41,7 +49,7 @@ See `docs/product-review/2026-11-07/IMPLEMENTATION_REPORT.md` for behavior, pres
 
 ## Earlier beta history
 
-The prior focused-interface source was `fa734b77e064cae7b3e3b64502a427802bec7c0d`, deployed as `1682a2ae40b73edbea609601ddd860d55ddf638f`. It removed the sidebar and introduced focused workout logging. The initial beta source was `98515a08138b7453b4c0a60e05282ff6575b11d9`, deployed as `65af0a3788f36cc3fc17dcbd7262deaa5b98b0f4`. Warm Mineral advances the existing Pages branch normally; no force push or browser-data reset was used. Main remains unchanged. Personal reference screenshots are excluded from source and artifacts.
+The previous Warm Mineral source was `25d1c96bf8e10003323dc34c66720d2f7a46df0b`, deployed as `35d2c922fe396cdb46b1d4b807ff86c979e26340` (170 Chromium / 63 WebKit, plus staged/live offline and backup verification). The prior focused-interface source was `fa734b77e064cae7b3e3b64502a427802bec7c0d`, deployed as `1682a2ae40b73edbea609601ddd860d55ddf638f`. It removed the sidebar and introduced focused workout logging. The initial beta source was `98515a08138b7453b4c0a60e05282ff6575b11d9`, deployed as `65af0a3788f36cc3fc17dcbd7262deaa5b98b0f4`. Cobalt Air advances the existing Pages branch normally; no force push or browser-data reset was used. Main remains unchanged. Personal reference screenshots are excluded from source and artifacts.
 
 ## Records and updates
 
