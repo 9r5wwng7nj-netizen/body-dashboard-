@@ -16,7 +16,7 @@ Choose a day/week and expand an exercise. Edit names/notes, planned weekdays, re
 
 ## Validation and release gates
 
-Local `npm test` passed: static checks, four broker unit tests and 278 Chromium tests. The added editor scenarios cover save/reload/source re-import/full-backup restore, linked routine entry, retained active/history/max snapshots, shared picker, cancel, failed atomic saves, stale-tab refusal, corrected exports and 390px light/dark enlarged text. The added 36-workout mock Drive-adoption regression passed; it is not proof of real-provider recovery.
+Local `npm test` passed: static checks, four broker unit tests and 279 Chromium tests. The added editor scenarios cover save/reload/source re-import/full-backup restore, linked routine entry, retained active/history/max snapshots, shared picker, cancel, failed atomic saves, stale-tab refusal, corrected exports, exercise-expander keyboard access and 390px light/dark enlarged text. Editor dropdowns use 44px minimum targets; modal Tab navigation explicitly advances through visible controls to stay inside the dialog in WebKit as well as Chromium. The added 36-workout mock Drive-adoption regression passed; it is not proof of real-provider recovery.
 
 WebKit, staged package, GitHub checks and deployed-package results are recorded below when completed. Test profiles and content are synthetic. Physical iPhone/VoiceOver use remains owner-assisted verification.
 

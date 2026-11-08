@@ -512,17 +512,18 @@ function restoreFocus(snapshot, root = document) {
   return document.activeElement === element;
 }
 function focusableElements(root) {
-  return $$('button, a[href], input:not([type="hidden"]), select, textarea, iframe, [tabindex]', root).filter(el => !el.disabled && el.tabIndex >= 0 && !el.closest('[inert]') && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
+  return $$('button, a[href], input:not([type="hidden"]), select, textarea, summary, iframe, [tabindex]', root).filter(el => !el.disabled && el.tabIndex >= 0 && !el.closest('[inert]') && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden');
 }
 function modalBackground(inert) {
   for (const el of $$('#app-shell, #timer, #mini-player, .skip-link')) el.inert = inert;
 }
 function trapDialogTab(e, dialog) {
   if (e.key !== 'Tab') return;
-  const controls = focusableElements(dialog), first = controls[0], last = controls[controls.length - 1], active = document.activeElement;
-  if (!first) { e.preventDefault(); dialog.focus(); }
-  else if (e.shiftKey && (active === first || !controls.includes(active))) { e.preventDefault(); last.focus(); }
-  else if (!e.shiftKey && (active === last || !controls.includes(active))) { e.preventDefault(); first.focus(); }
+  const controls = focusableElements(dialog), active = controls.indexOf(document.activeElement);
+  e.preventDefault();
+  if (!controls.length) return dialog.focus();
+  const next = active < 0 ? (e.shiftKey ? controls.length - 1 : 0) : (active + (e.shiftKey ? -1 : 1) + controls.length) % controls.length;
+  controls[next].focus();
 }
 function toast(msg, type = 'ok') {
   const el = document.createElement('div');
@@ -1682,9 +1683,9 @@ function cpEditField(label,scope,key,value,attrs='',indices=''){return `<label c
 function cpEditSetFields(s,e,i,t,j){
   const at=`data-i="${i}" data-j="${j}"`,cols=EX_TYPES[e.classification.type].cols,numeric='type="number" inputmode="numeric" min="1" step="1"',decimal='type="number" inputmode="decimal" min="0.01" step="any"',p=cpEditField;
   return `<fieldset class="border border-slate-200 dark:border-slate-700 rounded-xl p-3 mt-2"><legend class="text-sm font-semibold">Set ${j+1}</legend><div class="grid sm:grid-cols-2 gap-3">
-    <label class="label min-w-0">Set kind<select class="input mt-1" data-change="cpEditInput" data-scope="target" data-key="kind" ${at}><option value="normal" ${t.kind!=='warmup'?'selected':''}>Working</option><option value="warmup" ${t.kind==='warmup'?'selected':''}>Warm-up</option></select></label>
+    <label class="label min-w-0">Set kind<select class="input min-h-11 mt-1" data-change="cpEditInput" data-scope="target" data-key="kind" ${at}><option value="normal" ${t.kind!=='warmup'?'selected':''}>Working</option><option value="warmup" ${t.kind==='warmup'?'selected':''}>Warm-up</option></select></label>
     ${cols.includes('reps')||t.repsMin!=null?p('Reps minimum','target','repsMin',t.repsMin,numeric,at)+p('Reps maximum (optional)','target','repsMax',t.repsMax,numeric,at):''}
-    ${e.classification.type==='weight_reps'||t.percentTM!=null?p('% of training max (optional)','target','percentTM',t.percentTM!=null?round(t.percentTM*100,4):'',decimal+' max="150"',at)+`<label class="label min-w-0">Training-max lift<select class="input mt-1" data-change="cpEditInput" data-scope="target" data-key="liftKey" ${at}><option value="">Manual load</option>${s.plan.lifts.map(l=>`<option value="${esc(l.key)}" ${t.liftKey===l.key?'selected':''}>${esc(l.label)}</option>`).join('')}</select></label>`:''}
+    ${e.classification.type==='weight_reps'||t.percentTM!=null?p('% of training max (optional)','target','percentTM',t.percentTM!=null?round(t.percentTM*100,4):'',decimal+' max="150"',at)+`<label class="label min-w-0">Training-max lift<select class="input min-h-11 mt-1" data-change="cpEditInput" data-scope="target" data-key="liftKey" ${at}><option value="">Manual load</option>${s.plan.lifts.map(l=>`<option value="${esc(l.key)}" ${t.liftKey===l.key?'selected':''}>${esc(l.label)}</option>`).join('')}</select></label>`:''}
     ${cols.includes('duration')||t.durationSec!=null?p('Duration (seconds)','target','durationSec',t.durationSec,decimal,at):''}
     ${cols.includes('distance')||t.distanceKm!=null?p(`Distance (${cpDistUnit(e.classification)})`,'target','distanceKm',cpDistDisplay(t.distanceKm,e.classification),decimal,at):''}
     ${p('Target RPE (optional)','target','rpeTarget',t.rpeTarget,'type="number" inputmode="decimal" min="0.5" max="10" step="0.5"',at)}
@@ -1695,8 +1696,8 @@ function cpEditDraw(){
   const s=ui.cpEdit;if(!s)return;const p=s.plan,d=p.days[s.day];
   Modal.open(modalShell('Edit program',`<p class="text-sm muted">Edit before training. Exercise changes affect every week; set targets below affect the selected week. Saved changes apply to future starts. Active workouts and completed history keep their snapshots. The original import is retained.</p>
     ${cpEditField('Program name','plan','name',p.name,'type="text" maxlength="200"')}<label class="label min-w-0 mt-3">Program notes<textarea class="input mt-1" rows="2" data-input="cpEditInput" data-scope="plan" data-key="notes">${esc(p.notes||'')}</textarea></label>
-    <div class="grid sm:grid-cols-2 gap-3 mt-3"><label class="label min-w-0">Training day<select class="input mt-1" data-change="cpEditDay">${p.days.map((x,i)=>`<option value="${i}" ${s.day===i?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label><label class="label min-w-0">Week to edit<select class="input mt-1" data-change="cpEditWeek">${p.weeks.map((x,i)=>`<option value="${i}" ${s.week===i?'selected':''}>Week ${i+1} · ${esc(x.name)}</option>`).join('')}</select></label></div>
-    <div class="grid sm:grid-cols-2 gap-3 mt-3">${cpEditField('Day name','day','name',d.name,'type="text" maxlength="200"')}<label class="label min-w-0">Planned weekday<select class="input mt-1" data-change="cpEditInput" data-scope="day" data-key="offset">${Array.from({length:7},(_,i)=>`<option value="${i}" ${d.offset===i?'selected':''}>${fmtDate(addDays(s.startDate,i),{weekday:'long'})}</option>`).join('')}</select></label></div><label class="label min-w-0 mt-3">Day notes<textarea class="input mt-1" rows="2" data-input="cpEditInput" data-scope="day" data-key="note">${esc(d.note||'')}</textarea></label>
+    <div class="grid sm:grid-cols-2 gap-3 mt-3"><label class="label min-w-0">Training day<select class="input min-h-11 mt-1" data-change="cpEditDay">${p.days.map((x,i)=>`<option value="${i}" ${s.day===i?'selected':''}>${esc(x.name)}</option>`).join('')}</select></label><label class="label min-w-0">Week to edit<select class="input min-h-11 mt-1" data-change="cpEditWeek">${p.weeks.map((x,i)=>`<option value="${i}" ${s.week===i?'selected':''}>Week ${i+1} · ${esc(x.name)}</option>`).join('')}</select></label></div>
+    <div class="grid sm:grid-cols-2 gap-3 mt-3">${cpEditField('Day name','day','name',d.name,'type="text" maxlength="200"')}<label class="label min-w-0">Planned weekday<select class="input min-h-11 mt-1" data-change="cpEditInput" data-scope="day" data-key="offset">${Array.from({length:7},(_,i)=>`<option value="${i}" ${d.offset===i?'selected':''}>${fmtDate(addDays(s.startDate,i),{weekday:'long'})}</option>`).join('')}</select></label></div><label class="label min-w-0 mt-3">Day notes<textarea class="input mt-1" rows="2" data-input="cpEditInput" data-scope="day" data-key="note">${esc(d.note||'')}</textarea></label>
     ${s.notice?`<p class="text-sm mt-3" role="status">${esc(s.notice)}</p>`:''}${s.error?`<p class="text-sm text-rose-600 dark:text-rose-300 mt-3" role="alert">${esc(s.error)} Your draft is retained.</p>`:''}
     <div class="space-y-3 mt-4">${d.exercises.map((e,i)=>`<details class="card p-3" ${s.open===i?'open':''}><summary class="min-h-11 flex items-center font-semibold cursor-pointer" data-action="cpEditExpand" data-i="${i}">${esc(e.name)} · ${e.targets[s.week].length} sets</summary><p class="text-xs muted mt-2">${esc(typeLabel(e.classification.type))} · ${esc(e.classification.primary)} · ${esc(e.classification.equipment)}</p>
       <div class="flex flex-wrap gap-2 mt-3"><button type="button" class="btn btn-sm" data-action="cpEditReplace" data-i="${i}">Replace exercise</button><button type="button" class="btn btn-sm" data-action="cpEditMove" data-i="${i}" data-direction="-1" ${i===0?'disabled':''}>Move up</button><button type="button" class="btn btn-sm" data-action="cpEditMove" data-i="${i}" data-direction="1" ${i===d.exercises.length-1?'disabled':''}>Move down</button><button type="button" class="btn btn-sm" data-action="cpEditRemove" data-i="${i}">Remove exercise</button></div>

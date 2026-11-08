@@ -89,5 +89,10 @@ test('original and recovery cycle exports download JSON content with JSON filena
 });
 
 for(const theme of['light','dark'])test(`program editor fits 390px and enlarged text in ${theme} mode`,async({page})=>{
- await imported(page);await page.evaluate(theme=>{S.theme=theme;applyTheme();},theme);await editProgram(page);await editPress(page);for(const size of[16,32]){await page.evaluate(size=>document.documentElement.style.fontSize=size+'px',size);const metrics=await page.locator('#modal [role="dialog"]').evaluate(el=>({width:el.clientWidth,scroll:el.scrollWidth}));expect(metrics.scroll).toBeLessThanOrEqual(metrics.width+2);expect(await page.locator('#modal input[type="number"]:not([inputmode])').count()).toBe(0);await expect(page.getByRole('button',{name:'Save program changes',exact:true})).toBeEnabled();}
+ await imported(page);await page.evaluate(theme=>{S.theme=theme;applyTheme();},theme);await editProgram(page);await editPress(page);for(const size of[16,32]){await page.evaluate(size=>document.documentElement.style.fontSize=size+'px',size);const metrics=await page.locator('#modal [role="dialog"]').evaluate(el=>({width:el.clientWidth,scroll:el.scrollWidth}));expect(metrics.scroll).toBeLessThanOrEqual(metrics.width+2);expect(await page.locator('#modal input[type="number"]:not([inputmode])').count()).toBe(0);for(const el of await page.locator('#modal select:visible').all())expect((await el.boundingBox()).height).toBeGreaterThanOrEqual(44);await expect(page.getByRole('button',{name:'Save program changes',exact:true})).toBeEnabled();}
+});
+
+
+test('program keyboard navigation includes exercise expanders and stays inside the editor',async({page})=>{
+ await imported(page);await editProgram(page);await page.getByLabel('Program name',{exact:true}).focus();await page.keyboard.press('Shift+Tab');await expect(page.getByRole('button',{name:'Close',exact:true})).toBeFocused();await page.keyboard.press('Shift+Tab');await expect(page.getByRole('button',{name:'Save program changes',exact:true})).toBeFocused();const summary=page.locator('summary[data-action="cpEditExpand"][data-i="1"]');await summary.focus();await page.keyboard.press('Enter');await expect(programField(page,'exercise','rest',1)).toBeVisible();await page.keyboard.press('Tab');await expect(page.locator('[data-action="cpEditReplace"][data-i="1"]')).toBeFocused();
 });
