@@ -44,3 +44,12 @@ All personal data stays in the browser. **Backward compatibility is the #1 rule.
 - Dates are local `YYYY-MM-DD` strings (`ymd()`). Weeks start on **Monday** (`startOfWeek()`). Timestamps are ISO strings.
 - IDs come from `uid()`. Records keep `id`, and where practical `created`/`updated`, which sync merges by.
 - Body and lift weights are stored in kg and shown in the person's unit.
+
+
+## Optional web recovery metadata (Sprint 1)
+
+The database remains `body-dashboard` v1 with `kv`, `photos`, and `local`. No existing collection or record identifier is renamed. Active sets may carry optional `draft` text and `draftUnits` so raw input survives a checkpoint without changing accepted kg/km/seconds or `done`. New active nested IDs are preserved when finishing; legacy history without nested IDs remains valid.
+
+The `local` store also holds version-1 `bd.web.*` metadata: intents, receipts, timer ownership, a staged training-import preview, and local actor/workspace/athlete defaults. Import receipts include source/target hashes, reconciliation counts and quarantined raw JSON strings. These are local recovery/scoping records, not server authorization or a coaching backend. The optional full-backup extension is `extensions.bdWeb: { version: 1, entries: [[key, value], ...] }`. Photos remain original blobs in `photos`, exported through the existing v2 photo envelope.
+
+See [the exact persistence contract](mobile-rebuild/outputs/D_WEB_PERSISTENCE_CONTRACT.md) and [validation report](mobile-rebuild/outputs/D_SPRINT_1_REPORT.md). Old exports remain accepted; training-only import does not consume unrelated Life Dashboard collections or settings.

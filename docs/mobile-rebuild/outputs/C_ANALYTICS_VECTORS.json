@@ -1,0 +1,41 @@
+{
+  "syntheticOnly": true,
+  "tolerance": 1e-9,
+  "e1rm": [
+    {"id":"single", "loadKg":80, "reps":1, "expectedKg":80},
+    {"id":"five", "loadKg":80, "reps":5, "expectedKg":93.33333333333334},
+    {"id":"current", "loadKg":82.5, "reps":5, "expectedKg":96.25},
+    {"id":"ten", "loadKg":80, "reps":10, "expectedKg":106.66666666666666},
+    {"id":"outside-policy", "loadKg":80, "reps":11, "expectedKg":null},
+    {"id":"missing", "loadKg":null, "reps":5, "expectedKg":null},
+    {"id":"known-zero", "loadKg":0, "reps":5, "expectedKg":null},
+    {"id":"failed-zero-reps", "loadKg":80, "reps":0, "kind":"failure", "expectedKg":null},
+    {"id":"warmup", "loadKg":80, "reps":5, "kind":"warmup", "expectedKg":null},
+    {"id":"undone", "loadKg":80, "reps":5, "state":"undone", "expectedKg":null},
+    {"id":"unknown-basis", "loadKg":80, "reps":5, "loadBasis":"unknown", "expectedKg":null},
+    {"id":"bodyweight", "loadKg":20, "reps":5, "trackingType":"weighted_bw", "expectedKg":null}
+  ],
+  "comparison": {"currentKg":96.25,"baselineKg":93.33333333333334,"expectedDeltaKg":2.916666666666657,"expectedPercent":3.1249999999999893},
+  "ewma": [
+    {"id":"empty","readings":[],"expectedTrendKg":[]},
+    {"id":"seed","readings":[{"id":"w1","day":"2026-11-01","kg":80,"at":1}],"expectedTrendKg":[80]},
+    {"id":"week","readings":[{"id":"w1","day":"2026-11-01","kg":82,"at":1},{"id":"w2","day":"2026-11-08","kg":80,"at":2}],"expectedTrendKg":[82,81]},
+    {"id":"long-gap","readings":[{"id":"w1","day":"2026-11-01","kg":80,"at":1},{"id":"w2","day":"2026-11-29","kg":84,"at":2}],"expectedTrendKg":[80,83.75]},
+    {"id":"out-of-order","readings":[{"id":"w3","day":"2026-11-15","kg":80,"at":3},{"id":"w1","day":"2026-11-01","kg":80,"at":1},{"id":"w2","day":"2026-11-08","kg":84,"at":2}],"expectedTrendKg":[80,82,81]},
+    {"id":"same-day-last","readings":[{"id":"am","day":"2026-11-01","kg":80,"at":1},{"id":"pm","day":"2026-11-01","kg":82,"at":2},{"id":"next","day":"2026-11-08","kg":80,"at":3}],"expectedTrendKg":[82,81]},
+    {"id":"explicit-primary","primary":{"2026-11-01":"am"},"readings":[{"id":"am","day":"2026-11-01","kg":80,"at":1},{"id":"pm","day":"2026-11-01","kg":82,"at":2},{"id":"next","day":"2026-11-08","kg":80,"at":3}],"expectedTrendKg":[80,80]},
+    {"id":"edited-earlier","readings":[{"id":"w1","day":"2026-11-01","kg":84,"at":1},{"id":"w2","day":"2026-11-08","kg":80,"at":2},{"id":"w3","day":"2026-11-15","kg":80,"at":3}],"expectedTrendKg":[84,82,81]},
+    {"id":"deleted-middle","readings":[{"id":"w1","day":"2026-11-01","kg":80,"at":1},{"id":"w3","day":"2026-11-15","kg":84,"at":3}],"expectedTrendKg":[80,83]},
+    {"id":"future-filter","through":"2026-11-07","readings":[{"id":"w1","day":"2026-11-01","kg":80,"at":1},{"id":"w2","day":"2026-11-08","kg":84,"at":2}],"expectedTrendKg":[80]},
+    {"id":"pounds-converted","readings":[{"id":"w1","day":"2026-11-01","kg":81.6466266,"at":1}],"expectedTrendKg":[81.6466266]}
+  ],
+  "calendarDays": [{"from":"2026-10-31","to":"2026-11-01","expected":1}],
+  "week": {"today":"2026-11-07","monday":"2026-11-02","sunday":"2026-11-08","sessions":[
+    {"id":"mon","day":"2026-11-02","state":"completed","performedSets":1},
+    {"id":"sat","day":"2026-11-07","state":"completed","performedSets":2},
+    {"id":"future","day":"2026-11-08","state":"completed","performedSets":1},
+    {"id":"active","day":"2026-11-07","state":"active","performedSets":1},
+    {"id":"empty","day":"2026-11-07","state":"completed","performedSets":0},
+    {"id":"prior","day":"2026-11-01","state":"completed","performedSets":1}],"expectedIds":["mon","sat"]},
+  "unknownNutrients":{"values":[30,0,null],"expectedKnown":30,"expectedUnknownContributors":1}
+}

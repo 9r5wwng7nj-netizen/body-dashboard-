@@ -17,7 +17,7 @@ async function prepare(page) {
     return route.abort(); // Bible downloads, APIs, embeds: not needed for a smoke test
   });
   await page.goto(APP);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   return errors;
 }
 
@@ -47,7 +47,7 @@ test('data is saved and survives a reload', async ({ page }) => {
   await page.evaluate(() => { ensureDay(ymd()).weight = 80; Store.save('nutrition'); Store.get('recipes').push({ id: 'smoke-recipe', title: 'Smoke test chili', ingredients: '', steps: '' }); Store.save('recipes'); Store.flushDirty(); });
   await page.waitForTimeout(300);
   await page.reload();
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   const got = await page.evaluate(() => ({ weight: day(ymd()).weight, recipe: Store.get('recipes').some(r => r.title === 'Smoke test chili') }));
   expect(got).toEqual({ weight: 80, recipe: true });
   expect(errors, errors.join('\n')).toEqual([]);

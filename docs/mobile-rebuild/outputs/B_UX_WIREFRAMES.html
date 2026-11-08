@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Body Dashboard · iPhone UX wireframes</title>
+<style>
+/* Design document only. No application behavior, external resources or storage. */
+:root{font-family:system-ui,-apple-system,sans-serif;color-scheme:light;--canvas:#F3F6F6;--surface:#FFFFFF;--raised:#EEF4F4;--text:#102A32;--muted:#4A6068;--line:#738C94;--accent:#006C67;--on-accent:#FFFFFF;--error:#B42335;--caution:#8A4B00;--scale:1}
+body[data-theme="dark"]{color-scheme:dark;--canvas:#07141B;--surface:#10232C;--raised:#16303B;--text:#F0F5F6;--muted:#AEC1C7;--line:#66838D;--accent:#8DE4D5;--on-accent:#062A28;--error:#FFB4BE;--caution:#F6C779}
+body[data-text="large"]{--scale:2}
+*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--text);font-size:calc(17px * var(--scale));line-height:1.35}h1,h2,h3,p,figure{margin:0}h1{font-size:calc(28px * var(--scale));line-height:1.22}h2,h3{font-size:calc(20px * var(--scale));line-height:1.3}small,.small{font-size:calc(13px * var(--scale));line-height:1.4;color:var(--muted)}.intro{max-width:920px;margin:auto;padding:28px 16px;display:grid;gap:12px}.board{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(390px,100%),390px));justify-content:center;align-items:start;gap:28px;padding:0 16px 28px}.study{min-width:0;display:grid;gap:10px}.caption{font-size:calc(13px * var(--scale));color:var(--muted);overflow-wrap:anywhere}.phone{width:100%;max-width:390px;border:1px solid var(--line);background:var(--surface);border-radius:24px;overflow:hidden}.safe{height:24px;background:var(--raised)}.screen{padding:16px;display:grid;gap:16px;min-width:0}.top{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.top h2{flex:1;min-width:0}.group{display:grid;gap:8px;min-width:0}.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}.between{justify-content:space-between}.muted{color:var(--muted)}.number{font-variant-numeric:tabular-nums}.hero{font-size:calc(36px * var(--scale));font-weight:700;line-height:1.15}.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}button,input,select{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:10px;min-height:44px;min-width:44px}button{padding:10px 12px;line-height:1.25;white-space:normal;overflow-wrap:anywhere;cursor:default}input{font-variant-numeric:tabular-nums;padding:8px;width:100%;font-size:calc(20px * var(--scale));min-width:0}input::placeholder{color:var(--muted);opacity:1}label{display:grid;gap:6px;min-width:0}select{padding:8px;width:100%}.wide{width:100%}.panel{background:var(--raised);border-radius:14px;padding:12px;display:grid;gap:10px;min-width:0}.status{font-size:calc(13px * var(--scale));line-height:1.4}.failure{color:var(--error)}.caution{color:var(--caution)}.rule{border-top:1px solid var(--line);padding-top:12px}.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;border-top:1px solid var(--line);padding:8px 8px 16px}.tabs button{font-size:calc(13px * var(--scale));padding:8px 4px;border:0;min-height:44px}.tabs .selected{background:var(--raised);font-weight:700}.timer{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px;background:var(--raised);min-height:52px}.timer strong{flex:1}.matrix{display:grid;gap:8px}.matrix-head,.set-fields{display:grid;grid-template-columns:44px 88px 80px 64px 50px;gap:8px;align-items:center}.matrix-head{font-size:13px;color:var(--muted)}.set-fields{min-height:52px}.set-fields button{padding:8px 2px;width:100%;min-width:0}.set-fields .previous{font-size:17px;line-height:1.2}.set-fields label>span{display:none}.set-fields .complete{font-size:20px}.set-status{margin-top:4px;font-size:13px;line-height:1.4;color:var(--muted)}.set-heading{display:none}.set-type{font-size:17px}.suggestion .complete{border-style:dashed}.set-fields input{font-size:20px}.actions{display:flex;flex-wrap:wrap;gap:8px}.actions>*{flex:1 1 100px}.macro-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.macro-grid>div{display:grid;gap:4px;min-width:0}.meal{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:12px}.keyboard{background:var(--raised);padding:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.key{padding:12px;text-align:center;background:var(--surface);border-radius:8px;min-width:0}.toolbar{padding:8px 16px;display:flex;flex-wrap:wrap;gap:8px;border-top:1px solid var(--line)}.toolbar button{flex:1 1 64px}.facts{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}.facts>div{padding:10px;background:var(--raised);border-radius:10px;display:grid;gap:4px;min-width:0}.chart{width:100%;height:auto;display:block;color:var(--muted)}.chart text{font-family:system-ui,sans-serif;font-size:13px;fill:currentColor}.chart .trend{stroke:var(--accent);stroke-width:4;fill:none}.chart .raw{stroke:var(--line);stroke-width:1.5;fill:var(--surface)}.chart .axis{stroke:var(--line);stroke-width:1}.chart .trend-dot{fill:var(--accent)}.legend{display:flex;gap:16px;flex-wrap:wrap}.pill{border:1px solid var(--line);border-radius:24px;padding:4px 10px;width:fit-content;font-size:calc(13px * var(--scale))}.notice{padding:12px;border-left:3px solid var(--line);font-size:calc(13px * var(--scale));color:var(--muted)}.safe-bottom{height:20px;background:var(--raised)}.checklist{margin:0;padding-left:22px}.checklist li+li{margin-top:8px}a{color:var(--accent)}:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+/* The design's compact budget is 358px. Border is drawn inset, not in that budget. */
+.phone{border:0;box-shadow:inset 0 0 0 1px var(--line)}
+@media(max-width:421px){.board{padding-left:0;padding-right:0;gap:24px}.study>.caption{padding:0 16px}.phone{border-radius:0}.intro{padding-top:20px}}
+@media(max-width:389px){.matrix-head{display:none}.set-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.set-heading{display:block;font-weight:600}.set-fields .set-type{grid-column:1/-1;text-align:left}.set-fields .previous{grid-column:1/-1}.set-fields label>span{display:block;font-size:13px;color:var(--muted)}.set-fields .complete{grid-column:1/-1}.set-fields .complete::after{content:' Complete set';font-size:17px}.set-block{padding:12px;background:var(--raised);border-radius:12px}.set-status{font-size:13px}.matrix{gap:16px}}
+body[data-text="large"] .matrix-head{display:none}body[data-text="large"] .set-fields{display:flex;flex-direction:column;align-items:stretch;gap:12px}body[data-text="large"] .set-heading{display:block;font-weight:600}body[data-text="large"] .set-fields label>span{display:block;font-size:26px;color:var(--muted)}body[data-text="large"] .set-fields .previous,body[data-text="large"] .set-type{font-size:34px}body[data-text="large"] .set-fields input,body[data-text="large"] .set-fields .complete{font-size:40px}body[data-text="large"] .set-fields .complete::after{content:' Complete set';font-size:34px}body[data-text="large"] .set-block{padding:12px;background:var(--raised);border-radius:12px}body[data-text="large"] .set-status{font-size:26px}body[data-text="large"] .macro-grid,body[data-text="large"] .facts{grid-template-columns:minmax(0,1fr)}body[data-text="large"] .tabs{grid-template-columns:repeat(2,minmax(0,1fr))}body[data-text="large"] .row,body[data-text="large"] .top{align-items:stretch}body[data-text="large"] .top h2{flex-basis:100%}body[data-text="large"] .chart{display:none}body[data-text="large"] .keyboard{font-size:26px}body[data-text="large"] .actions>*{flex-basis:100%}
+</style>
+<style>
+body[data-text="large"] .set-fields .complete[aria-checked="true"]::after{content:' Undo completion'}
+</style>
+</head>
+<body data-theme="light" data-text="default">
+<header class="intro">
+  <p class="small">BODY DASHBOARD / UX CONTRACT B / NOVEMBER 7, 2026</p>
+  <h1>Log quickly. Know what saved.</h1>
+  <p>Eight static iPhone wireframes. Synthetic content; controls are illustrations. Reference width 390 logical points. The specification defines behavior, recovery and accessible alternatives.</p>
+  <p class="small">This is an HTML/CSS planning artifact, not a working app or native screenshot. No network, storage, timers or import run here. See <a href="B_UX_SPEC.md">UX specification</a> and <a href="B_UX_VALIDATION.md">validation limits</a>. Dark and enlarged variants are exercised by the layout check.</p>
+</header>
+<main class="board">
+<section class="study" aria-labelledby="w1-label">
+  <h2 id="w1-label" class="caption">W1 / Training matrix</h2>
+  <div class="phone" id="training">
+    <div class="safe" aria-hidden="true"></div>
+    <div class="screen">
+      <div class="top"><button aria-label="Minimize active workout">Back</button><h3>Push A</h3><button>Finish</button></div>
+      <p class="small">3 sets saved · Device only</p>
+      <div class="group"><div class="top"><h3>Bench press</h3><button aria-label="Bench press options">More</button></div><p class="small">Barbell · total load including bar · kg<br>Previous: Nov 2 · Push A · same variant</p></div>
+      <div class="matrix">
+        <div class="matrix-head" aria-hidden="true"><span>Set</span><span>Previous</span><span>kg</span><span>Reps</span><span>Done</span></div>
+        <div class="set-block"><div class="set-heading">Set 1 · Working</div><div class="set-fields"><button class="set-type" aria-label="Set 1, working type">1</button><span class="previous">80 × 5</span><label><span>Load kg</span><input aria-label="Bench press set 1 total load kilograms" value="82.5" inputmode="decimal" readonly></label><label><span>Reps</span><input aria-label="Bench press set 1 repetitions" value="5" inputmode="numeric" readonly></label><button class="complete primary" role="checkbox" aria-checked="true" aria-label="Undo completion of set 1, saved 82.5 kilograms by 5 reps">✓</button></div><p class="set-status">Saved on device</p></div>
+        <div class="set-block suggestion"><div class="set-heading">Set 2 · Working</div><div class="set-fields"><button class="set-type" aria-label="Set 2, working type">2</button><span class="previous">80 × 5</span><label><span>Load kg</span><input aria-label="Bench press set 2 load, suggested 80 kilograms" placeholder="80" inputmode="decimal" readonly></label><label><span>Reps</span><input aria-label="Bench press set 2 reps, suggested 5" placeholder="5" inputmode="numeric" readonly></label><button class="complete" role="checkbox" aria-checked="false" aria-label="Complete set 2 using 80 kilograms by 5 reps">○</button></div><p class="set-status">Suggested from Nov 2 · not completed</p></div>
+        <div class="set-block"><div class="set-heading">Set 3 · Working</div><div class="set-fields"><button class="set-type" aria-label="Set 3, working type">3</button><span class="previous">80 × 5</span><label><span>Load kg</span><input aria-label="Bench press set 3 load kilograms" value="82.5" inputmode="decimal" readonly></label><label><span>Reps</span><input aria-label="Bench press set 3 repetitions" value="6" inputmode="numeric" readonly></label><button class="complete" role="checkbox" aria-checked="false" aria-label="Complete set 3 using 82.5 kilograms by 6 reps">○</button></div><p class="set-status">Draft saved · not completed</p></div>
+      </div>
+      <div class="panel"><p class="small">Adjust set 3 · load kg</p><div class="actions"><button aria-label="Decrease set 3 load by 2.5 kilograms">−2.5</button><button aria-label="Increase set 3 load by 2.5 kilograms">+2.5</button><button>Details</button></div></div>
+      <div class="actions"><button>Add set</button><button>Add exercise</button></div>
+    </div>
+    <div class="timer"><strong class="number">Rest 1:12</strong><button>+15 sec</button><button>Skip</button></div>
+    <nav class="tabs" aria-label="W1 main tabs"><button class="selected" aria-current="page">Train</button><button>Diet</button><button>Progress</button><button>History</button></nav>
+  </div>
+  <p class="caption">358pt inner width: 44 / 88 / 80 / 64 / 50, four 8pt gaps. Suggestions never count. Saved draft differs from completed observation. Other saved sets are above the excerpt.</p>
+</section>
+<section class="study" aria-labelledby="w2-label">
+  <h2 id="w2-label" class="caption">W2 / Timer with numeric entry</h2>
+  <div class="phone" id="timer">
+    <div class="safe" aria-hidden="true"></div>
+    <div class="screen">
+      <div class="top"><h3>Push A · set 3</h3><button>Minimize</button></div>
+      <div class="panel"><div class="row between"><strong class="number">Rest 1:12</strong><button>Expand timer</button></div><p class="small">Timer moves above editing content.</p></div>
+      <h3>Bench press</h3><p class="small">Total load including bar · kg</p>
+      <label>Load kg<input value="82.5" inputmode="decimal" aria-label="Set 3 load kilograms" readonly></label><label>Repetitions<input value="6" inputmode="numeric" aria-label="Set 3 repetitions" readonly></label>
+      <button class="primary wide">Complete set 3</button><p class="small">Draft saved · not completed</p>
+      <div class="panel"><strong class="failure">Alternate failure state</strong><p>Not saved · input retained.</p><button>Retry set save</button><p class="small">A failed row remains unchecked. Other rows remain usable.</p></div>
+    </div>
+    <div class="toolbar" role="group" aria-label="Illustrated keyboard toolbar"><button>−2.5</button><button>+2.5</button><button>Next</button><button>Done</button></div>
+    <div class="keyboard" role="group" aria-label="Illustrated keypad, not native"><span class="key">1</span><span class="key">2</span><span class="key">3</span><span class="key">4</span><span class="key">5</span><span class="key">6</span><span class="key">7</span><span class="key">8</span><span class="key">9</span><span class="key">.</span><span class="key">0</span><span class="key">⌫</span></div>
+    <div class="safe-bottom" aria-hidden="true"></div>
+  </div><p class="caption">Content grows and scrolls; keyboard geometry is illustrative. Next moves focus; Done saves the draft and dismisses. Neither silently completes a set. No tab bar behind the keyboard.</p>
+</section>
+<section class="study" aria-labelledby="w3-label">
+  <h2 id="w3-label" class="caption">W3 / Finish summary</h2>
+  <div class="phone" id="finish"><div class="safe" aria-hidden="true"></div><div class="screen">
+    <p class="pill">Saved on device</p><h3>Push A complete</h3><p>Sat Nov 7 · 44 minutes</p>
+    <div class="facts"><div><strong>12</strong><small>Working sets</small></div><div><strong>2</strong><small>Warm-up sets</small></div></div>
+    <div class="panel"><h3>3 completed this week</h3><p class="small">Mon Nov 2–Sun Nov 8 · through today<br>Active workouts excluded</p></div>
+    <div class="group"><h3>Bench press</h3><p>82.5kg × 5 · total barbell load</p><strong class="number">Estimated 1RM 96.3kg</strong><p class="small">+2.9kg (+3.1%) vs Nov 2<br>Baseline 80kg × 5 · Epley estimate</p></div>
+    <div class="notice">Pre-finish review appears only for unresolved drafts or errors. A pending/failed write blocks a false success message. Untouched suggestions are excluded.</div>
+    <button class="primary wide">Done</button><button>Review session</button>
+  </div><div class="safe-bottom" aria-hidden="true"></div></div><p class="caption">Summary follows a committed session finish. Backdated edits refresh the same Monday-based weekly count everywhere. Source dates and estimate qualifiers stay visible.</p>
+</section>
+<section class="study" aria-labelledby="w4-label">
+  <h2 id="w4-label" class="caption">W4 / Diet day</h2>
+  <div class="phone" id="diet"><div class="safe" aria-hidden="true"></div><div class="screen">
+    <div class="top"><h3>Sat Nov 7</h3><button>Day actions</button></div><p class="pill">In progress · partial day</p>
+    <div class="group"><p class="small">Energy left · kcal</p><p class="hero number">950</p><p class="small">1,450 logged / 2,400 target</p></div>
+    <div class="macro-grid"><div><strong>P 105g</strong><small>/ 180g</small></div><div><strong>C 150g</strong><small>/ 240g</small></div><div><strong>F 52g</strong><small>/ 75g</small></div></div>
+    <div class="actions"><button class="primary">Log food</button><button>Saved meal</button><button>Quick macros</button></div>
+    <div class="meal"><h3>Breakfast · 600 kcal</h3><p>Oat bowl · 1.5 servings</p><p class="small">P30 · C82.5 · F18 grams</p><button>Edit breakfast entry</button></div>
+    <div class="meal"><h3>Lunch · 650 kcal</h3><p>Rice bowl · 1 meal</p><p class="small">P50 · C50 · F24 grams</p></div>
+    <div class="meal"><h3>Snack · 200 kcal</h3><p>Yogurt snack · 1 portion</p><p class="small">P25 · C17.5 · F10 grams</p></div>
+    <p class="small">Dinner unlogged · not zero</p><button>Mark day complete</button>
+    <div class="notice">When a contributor is unknown: “1,450 kcal known + ?”. Calories left then becomes Unknown. Completion describes logging coverage, not nutritional adequacy.</div>
+  </div><div class="timer"><button class="wide">Resume Push A · 3 sets saved · Rest 1:12</button></div><nav class="tabs" aria-label="W4 main tabs"><button>Train</button><button class="selected" aria-current="page">Diet</button><button>Progress</button><button>History</button></nav></div><p class="caption">Saved meals reuse portion snapshots. Day completeness is optional and corrections reopen the status. No photo, account or network required for saved-food/manual logging.</p>
+</section>
+<section class="study" aria-labelledby="w5-label">
+  <h2 id="w5-label" class="caption">W5 / Saved-food portion entry</h2>
+  <div class="phone" id="portion"><div class="safe" aria-hidden="true"></div><div class="screen">
+    <div class="top"><h3>Oat bowl</h3><button>Cancel</button></div><p class="small">Saved meal · this consumption only</p>
+    <label>Quantity<input value="1.5" inputmode="decimal" aria-label="Oat bowl quantity" readonly></label>
+    <label>Unit<select aria-label="Oat bowl portion unit"><option>Servings</option></select></label>
+    <div class="actions"><button>½ serving</button><button>1 serving</button><button>2 servings</button></div>
+    <div class="panel"><p class="small">This portion · 1.5 servings</p><strong class="number">600 kcal</strong><p>P30 · C82.5 · F18 grams</p></div>
+    <p class="small">Per serving: 400 kcal · P20 · C55 · F12</p><button>Breakfast · Sat Nov 7</button><button class="primary wide">Log portion</button>
+    <p class="small">Changing this quantity preserves the saved meal definition and older food entries.</p>
+  </div><div class="safe-bottom" aria-hidden="true"></div></div><p class="caption">Quantity keeps the raw decimal while editing. Preview uses known conversion evidence. Unavailable volume/mass conversion is explained rather than guessed.</p>
+</section>
+<section class="study" aria-labelledby="w6-label">
+  <h2 id="w6-label" class="caption">W6 / Progress</h2>
+  <div class="phone" id="progress"><div class="safe" aria-hidden="true"></div><div class="screen">
+    <div class="top"><h3>Progress</h3><button>Log weight</button></div><div class="actions"><button>Strength</button><button class="primary">Bodyweight</button></div>
+    <div class="group"><p class="small">Latest measurement · Nov 7</p><p class="hero number">80kg</p><strong>EWMA 81kg</strong><p class="small">Through Nov 7 · 7-day half-life</p></div>
+    <figure class="group"><svg class="chart" viewBox="0 0 358 220" role="img" aria-label="Two measurements: 82 kilograms October 31 and 80 kilograms November 7; EWMA 82 then 81 kilograms. No daily measurements in between."><path class="axis" d="M42 18V180H330"/><text x="2" y="40">82kg</text><text x="2" y="110">81kg</text><text x="2" y="180">80kg</text><path class="trend" d="M65 35L310 105"/><circle class="raw" cx="65" cy="35" r="6"/><circle class="raw" cx="310" cy="175" r="6"/><circle class="trend-dot" cx="310" cy="105" r="4"/><text x="44" y="208">Oct 31</text><text x="280" y="208">Nov 7</text></svg><figcaption class="small">2 readings: 82kg on Oct 31, 80kg on Nov 7. EWMA changes from 82kg to 81kg. Connecting line is a trend guide, not daily readings.</figcaption></figure>
+    <div class="actions"><button>View measurements</button><button>Trend method</button></div><div class="notice">Empty: invite first measurement. One reading: show its date with no change claim. Sparse/stale data: expose dates and gaps. Enlarged text has the same observation list.</div>
+    <button>Resume Push A · 3 sets saved</button>
+  </div><nav class="tabs" aria-label="W6 main tabs"><button>Train</button><button>Diet</button><button class="selected" aria-current="page">Progress</button><button>History</button></nav></div><p class="caption">Illustrated graph uses actual observation dates only. Strength view names estimate, comparable load basis, baseline and delta. Joint/fatigue observations remain subjective context.</p>
+</section>
+<section class="study" aria-labelledby="w7-label">
+  <h2 id="w7-label" class="caption">W7 / Workout history detail</h2>
+  <div class="phone" id="history"><div class="safe" aria-hidden="true"></div><div class="screen">
+    <div class="top"><button>History</button><h3>Push A</h3><button>More</button></div><p>Nov 7 · 8:00–8:44</p><p class="small">Recorded local day · native session<br>12 working + 2 warm-up sets · Saved</p><button>Source details</button>
+    <h3>Bench press</h3><p class="small">Barbell · total load including bar · kg</p><div class="panel"><strong>Set 1 · 82.5kg × 5</strong><p class="small">RPE not recorded</p></div><div class="panel"><strong>Set 2 · 80kg × 5</strong><p class="small">RPE 8 · recorded observation</p></div>
+    <p class="small">Remaining sets continue below.</p><button class="primary wide">Repeat as new session</button><button>Edit record</button><div class="notice">Repeat creates suggestions only. Previous RPE and joint observations are not current facts. Source timezone/load ambiguity remains visible on imported history.</div>
+  </div><div class="safe-bottom" aria-hidden="true"></div></div><p class="caption">Read mode protects historical interpretation. Amending a saved record uses separate draft/pending state, preserves identity and recomputes affected comparisons after commit.</p>
+</section>
+<section class="study" aria-labelledby="w8-label">
+  <h2 id="w8-label" class="caption">W8 / Import preview and reconciliation</h2>
+  <div class="phone" id="import"><div class="safe" aria-hidden="true"></div><div class="screen">
+    <div class="top"><h3>Import workout history</h3><button>Cancel</button></div><p>Example fitness JSON<br><span class="small">Body Dashboard · training only</span></p><p>120 workouts · Nov 2020–Nov 2026</p>
+    <div class="panel"><p>Source loads: kg<br>Display preference: lbs</p><p class="small">Grouping: America/New_York<br>Assumed at import; original timezone missing</p><button>Review timezone</button></div>
+    <div class="facts"><div><strong>100</strong><small>New workouts</small></div><div><strong>16</strong><small>Exact duplicates</small></div></div>
+    <button>Review 2 changed source records</button><button>Review 2 records needing repair</button><div class="notice">Workouts and supplied routine/metadata only. Other sections and photos stay in the original file. Nothing is uploaded.</div>
+    <button class="primary wide">Review import decisions</button>
+    <div class="panel"><strong>Example after review</strong><p>Add 100 · Update 1 · Skip 17 · Retain 2 for repair</p><p class="small">One changed record kept current; one uses source revision. Counts reconcile to 120.</p><button>Import 101 selected workouts</button></div>
+    <div class="group rule"><strong>Example result after commit</strong><p>100 added · 1 updated<br>17 skipped · 2 retained issues</p><p class="small">2,400 sets added · 24 source sets in updated workout</p><button>View imported history</button><button>Review retained issues</button></div>
+  </div><div class="safe-bottom" aria-hidden="true"></div></div><p class="caption">Review and result are separate states combined here for comparison. Conflicts require explicit choices. Restart checks the job receipt before retry; no partially published workouts.</p>
+</section>
+</main>
+<footer class="intro"><p class="small">Design targets, not achieved app behavior. Native safe areas, real Dynamic Type/VoiceOver, save recovery and performance require the built iPhone app. Agent C has not been run.</p></footer>
+</body>
+</html>

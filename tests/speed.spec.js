@@ -13,7 +13,7 @@ async function open(page) {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   page.on('dialog', d => d.accept());
   await page.goto(APP);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   await page.evaluate(() => A.helpDismiss({ dataset: { what: 'tour' } }));
   return errors;
 }
@@ -118,11 +118,11 @@ test.describe('on a phone', () => {
 
   test('+/− change the next set, starting from last time, and the rest timer is a bar above the menu', async ({ page }) => {
     const errors = await open(page);
-    await page.evaluate(() => {
+    await page.evaluate(async () => {
       S.unit = 'lbs';
       const s = new Date(); s.setDate(s.getDate() - 2);
       Store.set('workouts', [{ id: 'w1', name: 'Push', start: s.toISOString(), end: new Date(s.getTime() + 36e5).toISOString(), exercises: [{ name: 'Bench Press (Barbell)', sets: [{ type: 'normal', weight: 175 * LB, reps: 8 }, { type: 'normal', weight: 175 * LB, reps: 8 }] }] }]);
-      startWorkout({ name: 'Push', exercises: [{ id: uid(), name: 'Bench Press (Barbell)', notes: '', ss: false, rest: 90, targetReps: '', sets: [blankSet(), blankSet()] }] });
+      await startWorkout({ name: 'Push', exercises: [{ id: uid(), name: 'Bench Press (Barbell)', notes: '', ss: false, rest: 90, targetReps: '', sets: [blankSet(), blankSet()] }] });
     });
     const card = page.locator('#view .card').filter({ hasText: 'Bench Press (Barbell)' }).first();
     const step = card.locator('[role="group"][aria-label^="Adjust set"]');
@@ -130,7 +130,7 @@ test.describe('on a phone', () => {
     await expect(step).toContainText('175');
     await step.locator('[data-f="weight"][data-d="5"]').click();
     await step.locator('[data-f="reps"][data-d="-1"]').click();
-    expect(await page.evaluate(() => { const s = Store.get('activeWorkout').exercises[0].sets[0]; return [round(toUnit(s.weight), 1), s.reps]; })).toEqual([180, 7]);
+    expect(await page.evaluate(() => { const s = workoutDraftValues(Store.get('activeWorkout').exercises[0].sets[0]); return [round(toUnit(s.weight), 1), s.reps]; })).toEqual([180, 7]);
     await expect(card.locator('[data-f="weight"]').first()).toHaveValue('180');
     // Ticking the set moves the stepper on and starts the rest timer, shown across the screen above the menu.
     await card.locator('[data-action="awSetDone"]').first().click();

@@ -1,0 +1,80 @@
+{
+  "kind": "host-sqlite-reference-only",
+  "status": "passed",
+  "environment": {
+    "python": "3.9.6",
+    "sqlite": "3.54.0",
+    "os": "Darwin",
+    "os_release": "27.2.0",
+    "machine": "arm64"
+  },
+  "dataset": {
+    "primary_set_identities": 100000,
+    "primary_food_entries": 10000,
+    "session_identities": 5000,
+    "additional_foreign_set": 1,
+    "warmup_iterations": 25
+  },
+  "schema_tables": 41,
+  "seed_seconds": 1.67,
+  "journal_mode": "WAL",
+  "synchronous": "FULL",
+  "timings": {
+    "exercise_20_rows": {
+      "samples": 300,
+      "p50_ms": 0.0337,
+      "p95_ms": 0.0362,
+      "rows_returned": 20
+    },
+    "history_50_rows": {
+      "samples": 300,
+      "p50_ms": 3.9336,
+      "p95_ms": 4.2183,
+      "rows_returned": 50
+    },
+    "diet_day": {
+      "samples": 300,
+      "p50_ms": 0.045,
+      "p95_ms": 0.0507,
+      "rows_returned": 32
+    },
+    "intent_then_observation_pointer_receipt": {
+      "samples": 300,
+      "p50_ms": 0.2504,
+      "p95_ms": 1.3769
+    }
+  },
+  "query_plans": {
+    "exercise_20_rows": [
+      "SEARCH s USING INDEX sets__session_exercise_id (session_exercise_id=?)",
+      "SEARCH o USING INDEX sqlite_autoindex_set_observations_1 (id=?)",
+      "SEARCH p USING INDEX sqlite_autoindex_publication_batches_1 (id=?)",
+      "SEARCH op USING INDEX sqlite_autoindex_publication_batches_1 (id=?)",
+      "USE TEMP B-TREE FOR ORDER BY"
+    ],
+    "history_50_rows": [
+      "SEARCH v USING INDEX session_versions__athlete_id (athlete_id=?)",
+      "SEARCH s USING INDEX sqlite_autoindex_sessions_1 (id=?)",
+      "SEARCH p USING INDEX sqlite_autoindex_publication_batches_1 (id=?)",
+      "SEARCH vp USING INDEX sqlite_autoindex_publication_batches_1 (id=?)",
+      "USE TEMP B-TREE FOR ORDER BY"
+    ],
+    "diet_day": [
+      "SEARCH v USING INDEX food_entry_versions__recorded_day (recorded_day=?)",
+      "SEARCH f USING INDEX sqlite_autoindex_food_entries_1 (id=?)",
+      "SEARCH p USING INDEX sqlite_autoindex_publication_batches_1 (id=?)",
+      "SEARCH vp USING INDEX sqlite_autoindex_publication_batches_1 (id=?)"
+    ]
+  },
+  "checks": [
+    "SQL failed-batch rollback",
+    "seven negative scope/read/write/relationship checks in reference harness",
+    "nullable zero preservation and additive SQL migration rehearsal",
+    "publication gate hides staged history then reveals on commit",
+    "host SIGKILL after commit persists; pre-commit SIGKILL rolls back"
+  ],
+  "integrity_check": "ok",
+  "native_adapter_tested": false,
+  "native_ui_latency_ms": null,
+  "native_commit_latency_ms": null
+}

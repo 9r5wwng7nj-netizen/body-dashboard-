@@ -91,7 +91,7 @@ test('view sections retain keyboard focus and notices are announced', async ({ p
   await expect(button).toBeFocused();
   await expect(button).toHaveAttribute('aria-pressed', 'true');
   await page.evaluate(() => { toast('Saved successfully'); toast('Could not save', 'error'); });
-  await expect(page.getByRole('status')).toHaveText('Saved successfully');
+  await expect(page.locator('#status-announcement')).toHaveText('Saved successfully');
   await expect(page.getByRole('alert')).toHaveText('Could not save');
 });
 

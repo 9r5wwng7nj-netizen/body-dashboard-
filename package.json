@@ -9,7 +9,8 @@
     "build:css": "tailwindcss -i src/app.css -o assets/app.css --minify",
     "check": "node scripts/check.mjs",
     "test": "npm run build:css && node scripts/check.mjs && playwright test",
-    "test:install": "playwright install chromium"
+    "test:install": "playwright install chromium",
+    "test:webkit": "playwright test --config=playwright.webkit.config.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.47.0",

@@ -106,3 +106,42 @@ label:has(input:focus-visible) { outline: 2px solid #0f766e; outline-offset: 3px
   input[type=checkbox], input[type=radio] { width: 1.25rem; height: 1.25rem; }
   .text-\[10px\], .text-\[11px\] { font-size: 12px; }
 }
+
+/* Draft state is separate from accepted performance; the text label is also exposed to assistive tools. */
+[data-set-state="draft"] { outline: 1px dashed #b45309; outline-offset: -1px; }
+.dark [data-set-state="draft"] { outline-color: #fbbf24; }
+@media (pointer: coarse) {
+  [data-action="awSetType"], [data-action="awDelSet"] { min-width: 44px; min-height: 44px; }
+}
+/* Large text: turn each dense row into a labeled, vertically flowing detail card. */
+.workout-large-type table, .workout-large-type tbody { display: block; }
+.workout-large-type thead { display: none; }
+.workout-large-type tr { display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem 0; border-bottom: 1px solid #64748b; }
+.workout-large-type td { display: block; flex: 1 1 6rem; }
+.workout-large-type td:has(input) { flex-basis: 100%; }
+.workout-large-type td:has(input)::before { content: attr(data-field-label); display: block; font-size: .875rem; }
+.workout-large-type input { width: 100%; }
+/* Keyboard numeric entry: the collapsed timer occupies document flow, never the field/commit button. */
+body:has([data-input="awSet"]:focus) #timer { position: static; margin: .5rem 1rem; width: auto; }
+/* At standard phone size allocate room for full decimal loads as well as 44px completion/delete controls. */
+@media (max-width: 639.98px) {
+  [data-wctx="active"] table { table-layout: fixed; }
+  [data-wctx="active"] th:first-child { width: 44px; }
+  [data-wctx="active"] th:nth-child(2) { width: 56px; }
+  [data-wctx="active"] th:last-child, [data-wctx="active"] th:nth-last-child(2) { width: 46px; }
+}
+.workout-large-type .card { min-width: 0; }
+.workout-large-type [data-wctx="active"] .sticky { position: static; }
+.workout-large-type [data-wctx="active"] .sticky input { flex-basis: 100%; }
+.workout-large-type [data-wctx="active"] .sticky button { white-space: normal; }
+.workout-large-type [data-wctx="active"] .sticky .tabular-nums { flex-wrap: wrap; }
+.workout-large-type [data-wctx="active"] form { flex-wrap: wrap; }
+.workout-large-type [data-wctx="active"] form input { min-width: 0; flex-basis: 100%; }
+.workout-large-type [data-wctx="active"] [role="group"][aria-label^="Adjust"] > div { flex-wrap: wrap; }
+[data-action="awSetType"], [data-action="awDelSet"] { min-width: 44px; min-height: 44px; }
+/* Offline readiness has its own strip, leaving the page title readable on narrow screens. */
+@media (max-width: 639.98px) {
+  #app-shell header { flex-wrap: wrap; }
+  #view-title { flex: 1; min-width: 5em; }
+  #app-shell header > div { flex: 0 0 auto; max-width: 100%; flex-wrap: wrap; justify-content: flex-end; }
+}

@@ -6,7 +6,16 @@ This file is the shared brief for **Claude Code** (via `CLAUDE.md`) and **OpenAI
 
 A personal, offline-first training and diet app: **Workouts**, **Nutrition** and **Recipes & Meals**, with a Dashboard. It was started on 2026-11-07 from a copy of Life Dashboard (commit `718c52f`), keeping only the fitness and diet sections; Scripture, Journal, Media, Marriage & Family, Tasks, the Obsidian bridge, YouTube, the Claude connector and the Morning brief were removed. Life Dashboard itself is untouched and lives on in its own repo.
 
-The application UI and about 4,200 lines (about 0.5 MB, many of them very long) of vanilla JavaScript are in `index.html`; pinned runtime libraries and compiled Tailwind CSS live in `vendor/` and `assets/`. There is no framework or application server. All data lives in the user's browser (IndexedDB). Opening `index.html` from disk (`file://`) works and is how most tests run.
+The application UI and about 4,900 lines (many of them very long) of vanilla JavaScript are in `index.html`; pinned runtime libraries and compiled Tailwind CSS live in `vendor/` and `assets/`. There is no framework or application server. All data lives in the user's browser (IndexedDB). Opening `index.html` from disk (`file://`) works and is how most tests run.
+
+## Active delivery decision — 2026-11-07
+
+- Build the **free web app on GitHub Pages first**, optimized for iPhone Safari and Home Screen use, by extending this existing application. Preserve offline logging, workout-history import, existing records/photos and backup compatibility.
+- The active requirements are [docs/mobile-rebuild/MASTER_PRD.md](docs/mobile-rebuild/MASTER_PRD.md), [WEB_FIRST_PLAN.md](docs/mobile-rebuild/WEB_FIRST_PLAN.md) and the revised [Agent D web handoff](docs/mobile-rebuild/PROMPT_D_DEV_TEAM_SPRINT_1.md). The directory name is historical.
+- Expo/React Native, WatermelonDB/SQLite, Xcode/CocoaPods and App Store distribution are deferred. Their archived A–C platform instructions and native D prompt do not override this decision. Do not create a native project or port C's 41-table schema for this sprint.
+- Retain the existing navigation/components and Store/IndexedDB namespaces. Add browser recovery/import behavior compatibly; validate hosted service workers, WebKit and actual iPhone use rather than treating `file://` or Chromium alone as PWA acceptance.
+- The zero-required-hosting-cost target assumes GitHub Free/public repository/default Pages domain within current limits. No paid dependency, account connection or production sync. Personal records/backups never go into GitHub or build artifacts.
+- The product owner authorized publication as a personal beta on 2026-11-07. Run final checks, publish only the allowlisted runtime files at the existing project address, and preserve all browser storage/record identities. Keep backups, credentials and preview certificates out of GitHub and deployment artifacts. See `docs/mobile-rebuild/outputs/D_SPRINT_1_REPORT.md` for results and release gates.
 
 ## Golden rules
 

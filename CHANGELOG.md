@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-11-07 — Web workout Sprint 1 (local, unpublished)
+
+- Added durable intent/receipt recovery, stale-tab protection and honest degraded-storage status.
+- Separated raw set drafts from accepted performance; finish now excludes unchecked rows and preserves nested IDs.
+- Added training JSON import preview, explicit conflict choices, retained quarantine and atomic retry/reconciliation.
+- Made rest deadlines owned by completed sets and offline shell updates wait for open tabs to close.
+- Added Chromium/WebKit hosted-path, accessibility, photo restoration and synthetic scale checks. Physical iPhone/VoiceOver acceptance remains open; see the D sprint report.
+
+
+## 2026-11-07 — Clearer daily logging and save recovery
+
+- Today has direct Log food, Start/Resume workout and Log weight actions, explicit unlogged states and compact dinner access. Existing calorie, card visibility and ordering preferences are preserved.
+- Completed workouts this week use one local Monday-through-today calculation across Dashboard, Workouts and the finish summary. Backdating and edits recalculate it; active and future-dated records stay separate.
+- The dashboard weight chart reuses the seven-calendar-day average, with bold trend segments, faint measurements, units, measurement dates and a text summary. Empty and single-reading histories are explicit, and long gaps stay disconnected.
+- Recipe cards retain their titles, available nutrition per serving and recipe access with missing or failed photos. Existing local photo storage and remote links are preserved.
+- Failed collection writes stay pending with Retry save and Export backup. Newer edits are not acknowledged by an older save. The top bar reports saving/saved status; weight success notices wait for persistence.
+- Workout history and active state commit together in IndexedDB. In localStorage fallback mode history writes first; a partially saved finish can leave an active copy, and finishing it again replaces the same record by ID.
+- Pending changes are recoverable in the open tab. Closing it before a successful save or export can still lose them; this update adds no sync service or persistent recovery journal.
+
 ## 2026-11-07 — Faster logging (refresh step 2)
 
 - On phones, dialogs open as sheets from the bottom; drag the handle or title bar down to close.

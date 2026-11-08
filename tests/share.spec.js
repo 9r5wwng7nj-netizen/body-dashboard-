@@ -9,7 +9,7 @@ async function open(page, query = '') {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   await page.route('**/*', route => (/^(file|data|blob):/.test(route.request().url()) ? route.continue() : route.abort()));
   await page.goto(APP + query);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   await page.evaluate(() => { S.tour = 'done'; saveSettings(); });
   return errors;
 }
@@ -85,7 +85,7 @@ test('with the link reader, a recipe page fills in the whole recipe', async ({ b
   });
   try {
     await page.goto(`${base}/index.html`);
-    await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+    await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
     await page.evaluate(() => { S.tour = 'done'; saveSettings(); Store.set('recipes', []); });
     await openSheet(page);
     await page.fill('#sh-text', 'https://blog.example/recipes/best-chili');

@@ -6,13 +6,17 @@ import path from 'node:path';
 
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 
-export function serveRepo() {
+export function serveRepo({ prefix = '/' } = {}) {
   const root = path.resolve('.');
   const server = http.createServer(async (req, res) => {
-    const file = path.join(root, decodeURIComponent(new URL(req.url, 'http://x').pathname));
+    const urlPath = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    if (!urlPath.startsWith(prefix)) return res.writeHead(404).end();
+    const file = path.join(root, urlPath.slice(prefix.length) || 'index.html');
     if (!file.startsWith(root + path.sep)) return res.writeHead(403).end();
     try {
-      const body = await readFile(file);
+      if (server.failPaths?.some(part => urlPath.endsWith(part))) return res.writeHead(503).end();
+      let body = await readFile(file);
+      if (file.endsWith('/sw.js') && server.revision) body = Buffer.from(body.toString().replace("GENERATION = 'v2'", "GENERATION = 'v" + server.revision + "'"));
       res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' }).end(body);
     } catch { res.writeHead(404).end(); }
   });

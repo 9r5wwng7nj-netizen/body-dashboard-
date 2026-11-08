@@ -9,7 +9,7 @@ async function open(page) {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   page.on('dialog', d => d.accept());
   await page.goto(APP);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   await page.evaluate(() => A.helpDismiss({ dataset: { what: 'tour' } })); // the start-here card has its own test
   return errors;
 }

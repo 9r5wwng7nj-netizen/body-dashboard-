@@ -64,7 +64,7 @@ async function tab(context, { connected = true, answer = () => true } = {}) {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   page.on('dialog', d => { asked.push(d.message()); return answer(d.message()) ? d.accept() : d.dismiss(); });
   await page.goto(`${base}/index.html`);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   await page.evaluate(([token, on]) => { DRIVE.clientId = 'test-client'; if (on) localStorage.setItem('bd.sync', JSON.stringify({ on: true, token, exp: Date.now() + 3600e3, ...JSON.parse(localStorage.getItem('bd.sync') || '{}') })); }, [TOKEN, connected]);
   return { page, errors, asked, context };
 }
@@ -151,7 +151,7 @@ test('two devices converge, including deletions, and private items stay on the d
 
   // The synced records are still there after a reload.
   await phone.page.reload();
-  await phone.page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await phone.page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   expect(await titles(phone.page)).toEqual(expected);
   expect([...laptop.errors, ...phone.errors]).toEqual([]);
   await laptop.context.close(); await phone.context.close();
@@ -234,7 +234,7 @@ test('Google sign-in round trip stores the token and rejects an unexpected reply
   await d.page.evaluate(() => localStorage.setItem('bd.sync', JSON.stringify({ on: true, state: 'expected' })));
   await d.page.goto('about:blank'); // a fresh load, as when arriving from a link
   await d.page.goto(`${base}/index.html#access_token=forged&expires_in=3599&state=other`);
-  await d.page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await d.page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   expect(await d.page.evaluate(() => [syncMeta().token || '', location.hash])).toEqual(['', '']);
   await d.context.close();
 });
@@ -243,7 +243,7 @@ test('file copy offers no sync and makes no sync requests', async ({ page }) => 
   const requests = [];
   page.on('request', r => { if (/google/.test(r.url())) requests.push(r.url()); });
   await page.goto(pathToFileURL(path.resolve('index.html')).href);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   await page.evaluate(() => { DRIVE.clientId = 'test-client'; Store.get('recipes').push({ id: 'local-only', title: 'Local only', ingredients: '', steps: '' }); Store.save('recipes'); return Store.flushDirty(); });
   await page.evaluate(() => openSettings());
   await expect(page.locator('#sync-box')).toContainText('not in a copy opened as a file');
@@ -267,7 +267,7 @@ test('daily copies: one per day for a week, then one a week, and nothing older',
 
 test('adding back what is missing restores deleted records and leaves newer edits alone', async ({ page }) => {
   await page.goto(pathToFileURL(path.resolve('index.html')).href);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   const r = await page.evaluate(() => {
     Store.data.recipes = [{ id: 't1', title: 'Edited since' }, { id: 't3', title: 'Added since' }];
     Store.data.nutrition = { '2026-10-01': { entries: [{ id: 'e1', name: 'Oats' }] } };

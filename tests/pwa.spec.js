@@ -12,7 +12,7 @@ test('hosted copy is installable and reopens offline', async ({ page }) => {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   try {
     await page.goto(`${base}/index.html?pwa`);
-    await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+    await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
 
     const manifest = await (await page.request.get(`${base}/manifest.webmanifest`)).json();
     expect(manifest.display).toBe('standalone');
@@ -30,7 +30,7 @@ test('hosted copy is installable and reopens offline', async ({ page }) => {
   }
 
   await page.reload();
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   await expect(page.locator('#view-title')).toHaveText('Dashboard');
   expect(await page.evaluate(() => Store.get('recipes').some(r => r.title === 'Saved before going offline'))).toBe(true);
   expect(await page.evaluate(() => fetch(XLSX_SCRIPT).then(r => r.ok))).toBe(true); // spreadsheet import still loads
@@ -39,6 +39,6 @@ test('hosted copy is installable and reopens offline', async ({ page }) => {
 
 test('file copy never registers a service worker', async ({ page }) => {
   await page.goto(pathToFileURL(path.resolve('index.html')).href);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   expect(await page.evaluate(async () => (await navigator.serviceWorker?.getRegistrations?.().catch(() => []) || []).length)).toBe(0);
 });

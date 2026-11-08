@@ -33,7 +33,7 @@ async function open(page) {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   await page.route('**/*', route => (/^(file|data|blob):/.test(route.request().url()) ? route.continue() : route.abort()));
   await page.goto(APP);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   return errors;
 }
 

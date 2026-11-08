@@ -1,0 +1,148 @@
+{
+  "accessDate": "2026-11-07",
+  "nativeBuildStatus": "not_run_toolchain_unavailable",
+  "host": {
+    "macOS": "27.2",
+    "build": "26B123",
+    "node": "24.21.0",
+    "npm": "11.19.0",
+    "developerDirectory": "/Library/Developer/CommandLineTools",
+    "xcodeFoundInApplications": false,
+    "simctlAvailable": false,
+    "cocoaPodsAvailable": false
+  },
+  "packages": [
+    {
+      "name": "expo",
+      "observedLatest": "58.0.23",
+      "registry": "https://registry.npmjs.org/expo/latest",
+      "integrity": "sha512-FRpmfd1mdjWS9bRSMoZkwpF8ugbN+w6BDtNs+DYEio7rdSguTJ6fs/gaeWSeN60AJAbz80Uj36AMWtpHkShG0g=="
+    },
+    {
+      "name": "react-native",
+      "observedLatest": "0.88.1",
+      "registry": "https://registry.npmjs.org/react-native/latest",
+      "integrity": "sha512-wajWcLZ93GCN7k4Uwh4CS4L2Ah8ohcvkOXnvIYmh4Yvuqho5j3APZ9qozK+nQrHWSgauq4h8D3HN5DKK84SrHA=="
+    },
+    {
+      "name": "react",
+      "observedLatest": "19.3.1",
+      "registry": "https://registry.npmjs.org/react/latest",
+      "integrity": "sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw=="
+    },
+    {
+      "name": "@nozbe/watermelondb",
+      "observedLatest": "0.28.0",
+      "registry": "https://registry.npmjs.org/@nozbe%2fwatermelondb/latest",
+      "integrity": "sha512-40ttcqPOLCTGnbfCQAXSEo8J4KlH/QQhwTfTb9E21CyX/driMEZueiJSI2rSkHICZrI2vnu52aRubNbI3UAzQQ=="
+    },
+    {
+      "name": "typescript",
+      "observedLatest": "7.0.2",
+      "registry": "https://registry.npmjs.org/typescript/latest",
+      "integrity": "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="
+    },
+    {
+      "name": "create-expo-app",
+      "observedLatest": "5.0.0",
+      "registry": "https://registry.npmjs.org/create-expo-app/latest",
+      "integrity": "sha512-hXTDzZcSqt8lywdJMCuaBpWu8Be9Fv54EW7+2k+WokZsp0dlqi03dRIDpxWKLD0mlFnucitoatH4ne+LVdbIrg=="
+    },
+    {
+      "name": "expo-template-blank-typescript",
+      "observedLatest": "58.0.32",
+      "registry": "https://registry.npmjs.org/expo-template-blank-typescript/latest",
+      "integrity": "sha512-D8ztgxf125v6cOIMuwZwujLqOH9mLH/ZBEWufeunipMzOn+mJi09oI2nPFFCRQlGo7ur3glNSVsGYbRx68OsTw=="
+    },
+    {
+      "name": "expo-sqlite",
+      "observedLatest": "58.0.15",
+      "registry": "https://registry.npmjs.org/expo-sqlite/latest",
+      "integrity": "sha512-jokbgUHPD1zvpFT/LeJaCoOTsd0QXXWzbthVPCMyMMn+/IZAMqQu79OxYzck5G5wlc+t+vTuEESGMY8r1n3VTA=="
+    }
+  ],
+  "candidatePins": {
+    "expo": "58.0.23",
+    "react-native": "0.88.1",
+    "react": "19.3.0",
+    "@nozbe/watermelondb": "0.28.0",
+    "@nozbe/simdjson": "3.9.4",
+    "typescript": "6.0.3",
+    "expo-dev-client": "58.0.18",
+    "expo-template-blank-typescript": "58.0.32"
+  },
+  "additionalVerifiedMetadata": [
+    {
+      "name": "@babel/plugin-proposal-decorators",
+      "version": "7.28.0",
+      "registry": "https://registry.npmjs.org/@babel%2fplugin-proposal-decorators/7.28.0",
+      "integrity": "sha512-zOiZqvANjWDUaUS9xMxbMcK/Zccztbe/6ikvUXaG9nsPH3w6qh5UaPGAnirI/WhIbZ8m3OHU0ReyPrknG+ZKeg==",
+      "peerDependencies": {
+        "@babel/core": "^7.0.0-0"
+      }
+    },
+    {
+      "name": "expo-dev-client",
+      "version": "58.0.18",
+      "registry": "https://registry.npmjs.org/expo-dev-client/58.0.18",
+      "integrity": "sha512-1oTxhWiZAdFK1zXDWE047cjSw0S3xOATMso8fxXnjK9YvpaG1mGQpCMUVanXvXmiwmqDCHlVXW0myAKBSRzATQ==",
+      "peerDependencies": {
+        "expo": "*"
+      }
+    },
+    {
+      "name": "@nozbe/simdjson",
+      "version": "3.9.4",
+      "registry": "https://registry.npmjs.org/@nozbe%2fsimdjson/3.9.4",
+      "integrity": "sha512-/3oCP8GBpdyeiBMEnuI6S0yl0yekD6Qxfed67hZqU1GIVn3o/vZgE8qANm69THfw7JgHLS9zjx56F/dO3q+koA==",
+      "peerDependencies": {}
+    },
+    {
+      "name": "typescript",
+      "version": "6.0.3",
+      "registry": "https://registry.npmjs.org/typescript/6.0.3",
+      "integrity": "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==",
+      "peerDependencies": {}
+    }
+  ],
+  "pinnedSourceHashes": {
+    "native/shared/Database.cpp": "ca1b5e00d3fc9c4db32bbc78c351797366ef93545c5996131952635f196e20e3",
+    "native/shared/Database-batch.cpp": "bb2fd21cef9e65821ac8e2e602872e6b067847a4a84059dcfbb0b529b27245a5",
+    "src/Database/index.js": "a3df8d5e878d714161d62f504f844c883e8c8c8595bbcb53d9abe027ae956be2",
+    "src/sync/index.js": "578e38a7ffc9ec6b2902caadf3a6930ff0033563bfbc469fa72531f5ffc1a847",
+    "src/sync/impl/helpers.js": "df10bde2e861efbcdb54b1b6d4bcfc8e89a7f45abfef80df62c608f55a62201a",
+    "WatermelonDB.podspec": "8d22162704a25ca413aed9c3fb6110d01581398cf53ad2b2c48a2d6b51d68f46"
+  },
+  "sourceComparison": [
+    {
+      "path": "native/shared/Database.cpp",
+      "url": "https://raw.githubusercontent.com/Nozbe/WatermelonDB/v0.28.0/native/shared/Database.cpp",
+      "npmMatchesGitTag": true
+    },
+    {
+      "path": "native/shared/Database-batch.cpp",
+      "url": "https://raw.githubusercontent.com/Nozbe/WatermelonDB/v0.28.0/native/shared/Database-batch.cpp",
+      "npmMatchesGitTag": true
+    },
+    {
+      "path": "src/Database/index.js",
+      "url": "https://raw.githubusercontent.com/Nozbe/WatermelonDB/v0.28.0/src/Database/index.js",
+      "npmMatchesGitTag": true
+    },
+    {
+      "path": "src/sync/index.js",
+      "url": "https://raw.githubusercontent.com/Nozbe/WatermelonDB/v0.28.0/src/sync/index.js",
+      "npmMatchesGitTag": true
+    },
+    {
+      "path": "src/sync/impl/helpers.js",
+      "url": "https://raw.githubusercontent.com/Nozbe/WatermelonDB/v0.28.0/src/sync/impl/helpers.js",
+      "npmMatchesGitTag": true
+    },
+    {
+      "path": "WatermelonDB.podspec",
+      "url": "https://raw.githubusercontent.com/Nozbe/WatermelonDB/v0.28.0/WatermelonDB.podspec",
+      "npmMatchesGitTag": true
+    }
+  ]
+}

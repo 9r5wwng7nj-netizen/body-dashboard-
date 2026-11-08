@@ -10,7 +10,7 @@ async function open(page) {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   page.on('dialog', d => d.accept());
   await page.goto(APP);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   await page.evaluate(() => A.helpDismiss({ dataset: { what: 'tour' } }));
   return errors;
 }
@@ -116,16 +116,16 @@ test('the Today card gathers the workout, food so far, the weigh-in and dinner',
   const card = page.locator('#view .card').filter({ has: page.locator('h3', { hasText: /^Today$/ }) });
   await expect(card).toContainText('Push ✓');
   // Calories left is the default; Settings can switch to calories eaten.
-  await expect(card).toContainText('1,900 kcal left');
+  await expect(card).toContainText('1,900 kcal left', { useInnerText: true });
   await expect(card).toContainText('150 g protein to go');
   await page.evaluate(() => { S.calBig = 'eaten'; render(); });
-  await expect(card).toContainText('500 of');
+  await expect(card).toContainText('500 of', { useInnerText: true });
   await expect(card).toContainText('30 of');
   await expect(card).toContainText('✓', { useInnerText: true });
   await expect(card).toContainText('Chicken tacos');
   await page.evaluate(() => { Store.set('nutrition', {}); render(); });
   await expect(card).toContainText('Nothing logged yet');
-  await expect(card).toContainText('Not yet today');
+  await expect(card).toContainText('No weigh-in logged today');
   // The card can be hidden like any other.
   await page.evaluate(() => { S.hiddenCards = ['today']; render(); });
   await expect(page.locator('#view h3', { hasText: /^Today$/ })).toHaveCount(0);
@@ -152,14 +152,17 @@ test('in a workout on a phone, times type like a microwave, and the top bar and 
   const errors = await open(page);
   expect(await page.evaluate(() => ['45', '90', '130', '0130', '1500', '10000', '1:30', '2 min', '90s', '1h', '', '0'].map(parseTimeEntry)))
     .toEqual([45, 90, 90, 90, 900, 3600, 90, 120, 90, 3600, null, null]);
-  await page.evaluate(() => {
-    A.startEmpty(); const aw = Store.get('activeWorkout');
+  await page.evaluate(async () => {
+    await A.startEmpty(); const aw = Store.get('activeWorkout');
     aw.exercises.push({ id: uid(), name: 'Plank', notes: '', sets: [blankSet()] }); Store.save('activeWorkout'); render();
   });
   const time = page.locator('#view input[data-f="duration"]').first();
   await time.fill('130');
-  expect(await page.evaluate(() => Store.get('activeWorkout').exercises[0].sets[0].duration)).toBe(90);
+  expect(await page.evaluate(() => workoutDraftValues(Store.get('activeWorkout').exercises[0].sets[0]).duration)).toBe(90);
   await page.evaluate(() => render());
+  await expect(time).toHaveValue('130'); // draft text stays intact until explicit acceptance
+  await page.getByRole('button', { name: 'Complete set', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Undo completed set', exact: true })).toBeVisible();
   await expect(time).toHaveValue('1:30');
   const bar = page.locator('[data-wctx="active"] > .card').first();
   expect((await bar.boundingBox()).height).toBeLessThan(120);

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { existsSync } from 'node:fs';
 
 const APP = pathToFileURL(path.resolve('index.html')).href;
-const ready = page => page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+const ready = page => page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
 async function open(page) {
   const errors = [];
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));

@@ -70,15 +70,17 @@
     </div>
   </aside>
   <div class="flex-1 flex flex-col min-w-0">
-    <header class="h-14 shrink-0 flex items-center gap-2 px-3 md:px-6 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
+    <header class="min-h-14 shrink-0 flex items-center gap-2 px-3 md:px-6 py-2 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur">
       <button class="btn btn-ghost md:hidden relative" data-action="openSidebar" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false"><i data-lucide="menu" class="w-5 h-5"></i><span id="menu-dot" class="hidden absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900"></span></button>
       <h1 id="view-title" tabindex="-1" class="font-semibold truncate"></h1>
       <div class="ml-auto flex items-center gap-2">
+        <span id="save-state" class="text-xs muted" role="status" aria-live="polite"></span>
         <span id="header-date" class="hidden sm:inline text-sm muted"></span>
         <button id="sync-btn" class="btn btn-sm hidden" data-action="syncNow"></button>
         <button class="btn btn-sm" data-action="showTimer" title="Rest timer"><i data-lucide="timer" class="w-4 h-4"></i><span class="hidden sm:inline">Timer</span></button>
       </div>
     </header>
+    <div id="save-recovery" class="hidden shrink-0 border-b border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/40 px-3 md:px-6 py-2" role="status" aria-live="polite" aria-atomic="true"></div>
     <main id="view" tabindex="-1" aria-labelledby="view-title" class="flex-1 overflow-y-auto scroll-thin"></main>
     <nav id="bottom-bar" aria-label="Quick navigation" class="md:hidden shrink-0 flex items-stretch px-1 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur"></nav>
   </div>
@@ -210,7 +212,7 @@ const COLLECTIONS = {
   recipes: [], mealPlan: {}, grocery: [], pantry: [], freezer: [], gkit: {}
 };
 const Store = {
-  db: null, data: {}, dirty: new Set(), t: null,
+  db: null, ready: false, data: {}, dirty: new Set(), revisions: new Map(), failed: new Set(), flushing: null, t: null,
   async init() {
     try {
       this.db = await new Promise((res, rej) => {
@@ -218,12 +220,18 @@ const Store = {
         r.onupgradeneeded = () => { const db = r.result; for (const name of ['kv', 'photos', 'local']) if (!db.objectStoreNames.contains(name)) db.createObjectStore(name); };
         r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
       });
-    } catch (e) { console.warn('IndexedDB unavailable — falling back to localStorage', e); this.db = null; }
+    } catch (e) {
+      this.db = null;
+      if (localStorage.getItem('bd.storageMode') === 'indexeddb' || (localStorage.getItem('bd.seeded') && !Object.keys(localStorage).some(k => k.startsWith('bd.data.')))) throw new Error('Saved IndexedDB data is unavailable. It has not been reset; reopen this browser with storage available.');
+      console.warn('IndexedDB unavailable — falling back to localStorage', e);
+    }
+    if (this.db) { try { localStorage.setItem('bd.storageMode', 'indexeddb'); } catch {} }
     const keys = Object.keys(COLLECTIONS), values = await this.readMany(keys);
     for (const [i, k] of keys.entries()) {
       const v = values[i];
       this.data[k] = v === undefined ? structuredClone(COLLECTIONS[k]) : v;
     }
+    await WebWrites.init();
   },
   readMany(keys) {
     if (!this.db) return Promise.all(keys.map(k => this.read(k)));
@@ -235,29 +243,187 @@ const Store = {
     });
   },
   read(k) {
-    if (!this.db) { try { const s = localStorage.getItem('bd.data.' + k); return Promise.resolve(s == null ? undefined : JSON.parse(s)); } catch (e) { return Promise.resolve(undefined); } }
-    return new Promise(res => { const q = this.db.transaction('kv', 'readonly').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); });
+    if (!this.db) { try { const s = localStorage.getItem('bd.data.' + k); return Promise.resolve(s == null ? undefined : JSON.parse(s)); } catch (e) { return Promise.reject(e); } }
+    return this.readMany([k]).then(values => values[0]);
   },
-  write(k, v) {
-    if (!this.db) { try { localStorage.setItem('bd.data.' + k, JSON.stringify(v)); } catch (e) { toast('Storage is full — export a backup!', 'error'); } return Promise.resolve(); }
-    return new Promise(res => {
-      const tx = this.db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k);
-      tx.oncomplete = res; tx.onerror = () => { toast('Save failed: ' + tx.error, 'error'); res(); };
-    });
-  },
+  write(k, v) { return WebWrites.snapshot({ [k]: v }); },
+  writeWorkoutPair(values) { return WebWrites.snapshot(values); },
   get(k) { return this.data[k]; },
   set(k, v) { this.data[k] = v; this.save(k); },
-  save(k) { this.dirty.add(k); clearTimeout(this.t); this.t = setTimeout(() => this.flushDirty(), 250); },
-  flushDirty() { const ks = [...this.dirty]; this.dirty.clear(); if (ks.length) syncTouch(); return Promise.all(ks.map(k => this.write(k, this.data[k]))); },
-  async flushAll() { clearTimeout(this.t); this.dirty.clear(); await Promise.all(Object.keys(this.data).map(k => this.write(k, this.data[k]))); }
+  save(k) {
+    this.dirty.add(k); this.revisions.set(k, (this.revisions.get(k) || 0) + 1);
+    clearTimeout(this.t); this.t = setTimeout(() => this.flushDirty().catch(() => {}), 250);
+    drawSaveRecovery();
+  },
+  flushDirty() {
+    clearTimeout(this.t);
+    if (this.flushing) return this.flushing;
+    if (!this.dirty.size) return Promise.resolve();
+    // One writer drains snapshots in order. A completed snapshot only acknowledges its own revision.
+    this.flushing = this.drain().finally(() => { this.flushing = null; drawSaveRecovery(); });
+    drawSaveRecovery();
+    return this.flushing;
+  },
+  async drain() {
+    try { syncTouch(); }
+    catch (e) {
+      for (const k of this.dirty) this.failed.add(k);
+      drawSaveRecovery();
+      throw new Error('Changes could not be saved because sync settings could not be updated. Retry saving or export a backup before closing.');
+    }
+    while (this.dirty.size) {
+      const errors = [];
+      const paired = this.dirty.has('workouts') && this.dirty.has('activeWorkout');
+      if (paired) {
+        const keys = ['workouts', 'activeWorkout'], revisions = keys.map(k => this.revisions.get(k));
+        try {
+          await this.writeWorkoutPair(Object.fromEntries(keys.map(k => [k, structuredClone(this.data[k])])));
+          keys.forEach((k, i) => { if (this.revisions.get(k) === revisions[i]) this.dirty.delete(k); this.failed.delete(k); });
+        } catch (e) { keys.forEach(k => this.failed.add(k)); errors.push(e); }
+      }
+      for (const k of [...this.dirty]) {
+        if (paired && ['workouts', 'activeWorkout'].includes(k)) continue;
+        const revision = this.revisions.get(k);
+        try {
+          await this.write(k, structuredClone(this.data[k]));
+          if (this.revisions.get(k) === revision) this.dirty.delete(k);
+          this.failed.delete(k);
+        } catch (e) { this.failed.add(k); errors.push(e); }
+        drawSaveRecovery();
+      }
+      if (errors.length) throw new Error('Changes could not be saved on this device. Retry saving or export a backup before closing.');
+    }
+  },
+  async flushAll() {
+    for (const k of Object.keys(this.data)) { this.dirty.add(k); this.revisions.set(k, (this.revisions.get(k) || 0) + 1); }
+    await this.flushDirty();
+  }
+
+};
+
+// All web writes use this queue. Intents and receipts are optional local metadata, never a new database.
+const webJSON = value => JSON.stringify(value) ?? 'undefined';
+async function webDigest(value) {
+  const bytes = new TextEncoder().encode(webJSON(value));
+  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), n => n.toString(16).padStart(2, '0')).join('');
+}
+const WebWrites = {
+  bases: {}, pending: new Map(), tail: Promise.resolve(), busy: false, conflict: false,
+  run(fn) { const result = this.tail.then(fn); this.tail = result.catch(() => {}); return result; },
+  async init() {
+    const keys = Object.keys(COLLECTIONS), values = await Store.readMany(keys);
+    keys.forEach((k, i) => { this.bases[k] = values[i]; });
+    this.pending.clear();
+    if (Store.db) {
+      this.context = await new Promise((resolve, reject) => {
+        const tx = Store.db.transaction('local', 'readwrite'), local = tx.objectStore('local'), q = local.get('bd.web.context'); let context;
+        q.onsuccess = () => { context = q.result || { version: 1, actorId: uid(), workspaceId: uid(), athleteId: uid() }; if (!q.result) local.put(context, 'bd.web.context'); };
+        tx.oncomplete = () => resolve(context); tx.onerror = tx.onabort = () => reject(tx.error || new Error('Could not read local ownership context'));
+      });
+    }
+    if (Store.db) for (const [key, value] of await idbEntries('local')) {
+      if (key.startsWith('bd.web.intent.') && value?.version === 1) this.pending.set(value.id, value);
+    }
+  },
+  async snapshot(values) {
+    if (!Store.db) {
+      for (const [k, v] of Object.entries(values)) localStorage.setItem('bd.data.' + k, JSON.stringify(v));
+      return;
+    }
+    return this.run(async () => {
+      const receipt = await this.apply(values, 'snapshot');
+      if (receipt.alreadyCommitted) { const keys = Object.keys(values), saved = await Store.readMany(keys); keys.forEach((key, i) => { this.bases[key] = structuredClone(saved[i]); }); if (keys.some((key, i) => webJSON(saved[i]) !== webJSON(values[key]))) throw new Error('An older save already completed and newer records exist. Export pending input, then reload the saved copy.'); }
+      return receipt;
+    });
+  },
+  async command(values, purpose, extra = {}, expected) {
+    if (!Store.db) throw new Error('This action needs IndexedDB. Export your data and reopen in a browser with storage available.');
+    await Store.flushDirty();
+    const bases = expected || Object.fromEntries(Object.keys(values).map(k => [k, structuredClone(this.bases[k])]));
+    return this.run(async () => {
+      this.busy = true; drawSaveRecovery();
+      try {
+        const receipt = await this.apply(values, purpose, extra, bases);
+        if (receipt.alreadyCommitted) {
+          const keys = Object.keys(values), saved = await Store.readMany(keys);
+          keys.forEach((key, i) => { this.bases[key] = structuredClone(saved[i]); Store.data[key] = saved[i] === undefined ? structuredClone(COLLECTIONS[key]) : saved[i]; });
+          if (receipt.canceled) throw new Error('This action was replaced by a newer review. Refresh the review before trying again.');
+        } else for (const [k, v] of Object.entries(values)) Store.data[k] = structuredClone(v);
+        return receipt;
+      } finally { this.busy = false; drawSaveRecovery(); }
+    });
+  },
+  async apply(values, purpose, extra = {}, bases = this.bases, replay = null) {
+    const keys = Object.keys(values), hashes = {};
+    for (const k of keys) hashes[k] = await webDigest(bases[k]);
+    let intent = replay || [...this.pending.values()].find(x => x.purpose === purpose && webJSON(x.values) === webJSON(values));
+    if (!intent) intent = { version: 1, id: uid(), purpose, values: structuredClone(values), expected: hashes, extra: { context: this.context, ...extra }, at: new Date().toISOString() };
+    // Never replay a completion over a newer draft or another outstanding command.
+    if (!replay && [...this.pending.values()].some(x => x.id !== intent.id && x.purpose !== 'snapshot' && keys.some(k => k in x.values))) throw new Error('Recover the pending action before changing these records.');
+    this.pending.set(intent.id, intent); drawSaveRecovery();
+    await LocalDb.put('bd.web.intent.' + intent.id, intent);
+    return this.commitIntent(intent);
+  },
+  async commitIntent(intent) {
+    const existing = await LocalDb.get('bd.web.receipt.' + intent.id);
+    if (existing) { await LocalDb.del('bd.web.intent.' + intent.id); this.pending.delete(intent.id); return { ...existing, alreadyCommitted: true }; }
+    const keys = Object.keys(intent.values), current = await Store.readMany(keys), expected = {};
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i]; expected[k] = webJSON(current[i]);
+      if (await webDigest(current[i]) !== intent.expected[k] && !(intent.purpose === 'snapshot' && webJSON(current[i]) === webJSON(intent.values[k]))) {
+        this.conflict = true;
+        throw new Error('Another tab changed these records. Export pending input, then reload the saved copy and review it.');
+      }
+    }
+    const receipt = { version: 1, id: intent.id, purpose: intent.purpose, at: new Date().toISOString(), ...intent.extra };
+    await new Promise((resolve, reject) => {
+      const tx = Store.db.transaction(['kv', 'local'], 'readwrite'), kv = tx.objectStore('kv'), local = tx.objectStore('local');
+      let conflict = false, left = keys.length;
+      tx.oncomplete = resolve;
+      tx.onerror = tx.onabort = () => reject(new Error(conflict ? 'Another tab changed these records. Export pending input, then reload the saved copy.' : 'Changes could not be saved. Retry save or export a backup.'));
+      for (const k of keys) {
+        const q = kv.get(k);
+        q.onsuccess = () => {
+          if (webJSON(q.result) !== expected[k]) { conflict = true; this.conflict = true; tx.abort(); return; }
+          if (--left) return;
+          try {
+          for (const [key, value] of Object.entries(intent.values)) kv.put(value, key);
+          local.put(receipt, 'bd.web.receipt.' + intent.id);
+          if (intent.purpose === 'import-workouts') local.delete('bd.web.import-preview');
+          if ('timer' in intent.extra) local.put({ ...(intent.extra.timer || { end: 0, total: 0, source: null }), at: Date.now() }, 'bd.web.timer');
+          for (const old of this.pending.values()) if (old.id === intent.id || (old.purpose === 'snapshot' && Object.keys(old.values).every(key => keys.includes(key)))) local.delete('bd.web.intent.' + old.id);
+          } catch (e) { try { tx.abort(); } catch {} reject(new Error('Changes could not be saved. Retry save or export a backup.')); }
+        };
+      }
+    });
+    for (const [k, value] of Object.entries(intent.values)) this.bases[k] = structuredClone(value);
+    for (const old of [...this.pending.values()]) if (old.id === intent.id || (old.purpose === 'snapshot' && Object.keys(old.values).every(k => keys.includes(k)))) this.pending.delete(old.id);
+    return receipt;
+  },
+  async retry() {
+    await this.run(async () => {
+      for (const intent of [...this.pending.values()]) {
+        await LocalDb.put('bd.web.intent.' + intent.id, intent);
+        const receipt = await this.commitIntent(intent);
+        if (intent.purpose === 'amend-workout' && ui.editW?.id === intent.extra.workoutId) { ui.editW = null; ui.fitTab = 'history'; }
+        const keys = Object.keys(intent.values), saved = receipt.alreadyCommitted ? await Store.readMany(keys) : keys.map(k => intent.values[k]);
+        for (const [i, k] of keys.entries()) { const value = saved[i]; this.bases[k] = structuredClone(value);
+          // Keep newer edits in this tab; drain them after recovery of the earlier intent.
+          if (!Store.dirty.has(k)) Store.data[k] = value === undefined ? structuredClone(COLLECTIONS[k]) : structuredClone(value);
+        }
+      }
+    });
+    await Store.flushDirty();
+    await Timer.restore(); render(); drawSaveRecovery();
+  }
 };
 
 function idbEntries(store) {
   if (!Store.db || !Store.db.objectStoreNames.contains(store)) return Promise.resolve([]);
-  return new Promise((res, rej) => {
-    const out = [], q = Store.db.transaction(store, 'readonly').objectStore(store).openCursor();
-    q.onsuccess = () => { const c = q.result; if (!c) return res(out); out.push([c.key, c.value]); c.continue(); };
-    q.onerror = () => rej(q.error);
+  return new Promise((resolve, reject) => {
+    const out = [], tx = Store.db.transaction(store, 'readonly'), q = tx.objectStore(store).openCursor();
+    q.onsuccess = () => { const cursor = q.result; if (!cursor) return; out.push([cursor.key, cursor.value]); cursor.continue(); };
+    tx.oncomplete = () => resolve(out); tx.onerror = tx.onabort = () => reject(tx.error || q.error || new Error('Could not read saved assets'));
   });
 }
 function idbClear(store) {
@@ -272,12 +438,33 @@ function idbClear(store) {
 // A small key-value store beside the records. Sync keeps the last copy both sides agreed on here (SYNC_BASE).
 const LocalDb = {
   ok() { return !!(Store.db && Store.db.objectStoreNames.contains('local')); },
-  get(k) { return new Promise(res => { const q = Store.db.transaction('local', 'readonly').objectStore('local').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); },
-  put(k, d) { return new Promise((res, rej) => { const t = Store.db.transaction('local', 'readwrite'); t.objectStore('local').put(d, k); t.oncomplete = res; t.onerror = () => rej(t.error); }); },
-  del(k) { return new Promise(res => { const t = Store.db.transaction('local', 'readwrite'); t.objectStore('local').delete(k); t.oncomplete = res; t.onerror = res; }); }
+  get(k) { return new Promise((res, rej) => { const tx = Store.db.transaction('local', 'readonly'), q = tx.objectStore('local').get(k); let value; q.onsuccess = () => { value = q.result; }; tx.oncomplete = () => res(value); tx.onerror = tx.onabort = () => rej(tx.error || new Error('Could not read recovery metadata')); }); },
+  put(k, d) { return new Promise((res, rej) => { const t = Store.db.transaction('local', 'readwrite'); t.objectStore('local').put(d, k); t.oncomplete = res; t.onerror = t.onabort = () => rej(t.error || new Error('Recovery checkpoint failed')); }); },
+  del(k) { return new Promise((res, rej) => { const t = Store.db.transaction('local', 'readwrite'); t.objectStore('local').delete(k); t.oncomplete = res; t.onerror = t.onabort = () => rej(t.error || new Error('Could not update recovery metadata')); }); }
 };
-window.addEventListener('pagehide', () => Store.flushDirty());
-document.addEventListener('visibilitychange', () => { if (document.hidden) Store.flushDirty(); });
+function drawSaveRecovery() {
+  const box = $('#save-recovery'); if (!box) return;
+  const state = $('#save-state');
+  const pending = Store.failed.size || (WebWrites.pending.size && ((!Store.flushing && !WebWrites.busy) || box.childElementCount));
+  const message = pending && !Store.flushing && !WebWrites.busy ? 'Not saved' : Store.dirty.size || WebWrites.busy || WebWrites.pending.size ? 'Saving…' : Store.db ? 'Saved on device' : 'Fallback storage · back up often';
+  if (state && state.textContent !== message) state.textContent = message;
+  box.classList.toggle('hidden', !pending);
+  if (!pending) { if (box.contains(document.activeElement)) $('#view-title')?.focus(); box.replaceChildren(); return; }
+  // Keep controls mounted while a retry runs, so keyboard focus survives another failure.
+  if (!box.childElementCount) box.innerHTML = `<div class="flex flex-wrap items-center gap-2 text-sm"><p class="flex-1 min-w-0"><strong>Changes not saved.</strong> Keep this tab open until saved. A checkpoint may be recoverable after reopening; Retry save or export a backup. If another tab changed records, export then reload the saved copy.</p><button type="button" class="btn btn-primary min-h-11" data-action="retrySave">Retry save</button><button type="button" class="btn min-h-11" data-action="exportAll">Export backup</button><button type="button" class="btn min-h-11" data-action="reloadSaved">Reload saved copy</button></div>`;
+  const retry = $('[data-action="retrySave"]', box);
+  retry.setAttribute('aria-disabled', String(!!Store.flushing));
+  retry.textContent = Store.flushing ? 'Retrying…' : 'Retry save';
+}
+async function savedNotice(message) {
+  try { await Store.flushDirty(); toast(message); }
+  catch (e) { toast(e.message, 'error'); }
+}
+window.addEventListener('pagehide', () => { Store.flushDirty().catch(() => {}); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) Store.flushDirty().catch(() => {}); });
+window.addEventListener('beforeunload', e => {
+  if (Store.dirty.size) { e.preventDefault(); e.returnValue = ''; }
+});
 
 /* =====================================================================
    UI PRIMITIVES
@@ -603,6 +790,9 @@ async function workoutWake() {
 }
 document.addEventListener('visibilitychange', () => workoutWake());
 function afterRender(focused) {
+  const view = $('#view'), style = getComputedStyle(view), contentWidth = view.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+  const needsRpe = S.rpe || Store.get('activeWorkout')?.exercises.some(ex => ex.sets.some(set => set.rpe != null || set.draft?.rpe != null));
+  view.classList.toggle('workout-large-type', parseFloat(getComputedStyle(document.documentElement).fontSize) >= 24 || contentWidth < 345 || (contentWidth < 600 && needsRpe));
   clearInterval(tickIv);
   const aw = Store.get('activeWorkout');
   if (aw && $('#elapsed')) { const upd = () => { const e = $('#elapsed'); if (e) e.textContent = fmtClock((Date.now() - new Date(aw.start)) / 1000); }; upd(); tickIv = setInterval(upd, 1000); }
@@ -638,10 +828,10 @@ function beep() {
 }
 function notify(title, body) { try { if ('Notification' in window && Notification.permission === 'granted' && document.hidden) new Notification(title, { body }); } catch (e) {} }
 const Timer = {
-  end: 0, total: 0, iv: null, visible: false, flash: false,
+  end: 0, total: 0, iv: null, visible: false, flash: false, source: null, collapsed: false,
   running() { return this.end > Date.now(); },
   remaining() { return Math.max(0, Math.ceil((this.end - Date.now()) / 1000)); },
-  start(sec) { unlockAudio(); this.total = sec; this.end = Date.now() + sec * 1000; this.visible = true; this.flash = false; this.persist(); this.loop(); this.draw(); },
+  start(sec) { this.source = null; this.collapsed = false; unlockAudio(); this.total = sec; this.end = Date.now() + sec * 1000; this.visible = true; this.flash = false; this.persist(); this.loop(); this.draw(); },
   add(d) { if (!this.running()) return this.start(Math.max(d, 15)); this.end = Math.max(Date.now() + 1000, this.end + d * 1000); this.total = Math.max(this.total + d, this.remaining()); this.persist(); this.draw(); },
   stop() { this.end = 0; this.persist(); clearInterval(this.iv); this.iv = null; document.title = 'Body Dashboard'; this.draw(); },
   loop() { clearInterval(this.iv); this.iv = setInterval(() => { if (this.end && Date.now() >= this.end) this.done(); else this.tick(); }, 250); },
@@ -651,8 +841,17 @@ const Timer = {
     notify('Rest is over', 'Time for your next set 💪');
     this.flash = true; this.visible = true; this.draw(); setTimeout(() => { this.flash = false; this.draw(); }, 4500);
   },
-  persist() { localStorage.setItem('bd.timer', JSON.stringify({ end: this.end, total: this.total })); },
-  restore() { try { const t = JSON.parse(localStorage.getItem('bd.timer') || '{}'); if (t.end > Date.now()) { this.end = t.end; this.total = t.total; this.visible = true; this.loop(); this.draw(); } } catch (e) {} },
+  persist() { const value = { end: this.end, total: this.total, source: this.source, at: Date.now() }; try { localStorage.setItem('bd.timer', JSON.stringify(value)); } catch { toast('Timer changes are only in this tab; storage is unavailable.', 'error'); } if (Store.db) WebWrites.run(() => LocalDb.put('bd.web.timer', value)).catch(() => toast('Timer changes could not be saved.', 'error')); },
+  adopt(t) { this.end = t.end; this.total = t.total; this.source = t.source; this.visible = true; this.loop(); this.draw(); },
+  async restore() {
+    try {
+      const local = JSON.parse(localStorage.getItem('bd.timer') || '{}'), durable = Store.db ? await LocalDb.get('bd.web.timer') : null;
+      const t = durable && (durable.at || 0) >= (local.at || 0) ? durable : local;
+      if (t.end > Date.now()) this.adopt(t);
+      else if (t.end) { this.end = 0; this.source = t.source || null; clearInterval(this.iv); this.iv = null; this.persist(); this.visible = true; this.draw(); toast('Rest ended while the app was away. Background alerts are not guaranteed.'); }
+      else { this.end = 0; this.source = null; clearInterval(this.iv); this.iv = null; this.visible = false; document.title = 'Body Dashboard'; this.draw(); }
+    } catch { toast('Could not restore the timer. Logging is still available.', 'error'); }
+  },
   tick() {
     const rem = this.remaining(), tx = $('#timer-text'), bar = $('#timer-bar');
     if (tx) tx.textContent = fmtClock(rem); if (bar) bar.style.width = `${this.total ? rem / this.total * 100 : 0}%`;
@@ -663,12 +862,13 @@ const Timer = {
     if (!this.visible) { el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
     const run = this.running(), rem = this.remaining();
+    if (this.collapsed) { el.innerHTML = `<button class="btn btn-primary min-h-11" data-action="timerExpand" aria-label="Expand rest timer"><span id="timer-text">${fmtClock(rem)}</span> Rest</button>`; return; }
     el.innerHTML = `<div class="card relative overflow-hidden p-1.5 pl-3 shadow-2xl flex items-center gap-1.5 ${this.flash ? 'timer-flash border-brand-500' : ''}" role="group" aria-label="Rest timer">
       <div id="timer-text" class="text-xl font-bold tabular-nums min-w-[3.25rem] ${this.flash ? 'text-brand-600' : ''}">${run ? fmtClock(rem) : (this.flash ? 'Go!' : '0:00')}</div>
       ${run
         ? `<button class="btn btn-sm" data-action="timerAdd" data-v="-15" aria-label="15 seconds less">−15</button><button class="btn btn-sm" data-action="timerAdd" data-v="15" aria-label="15 seconds more">+15</button><button class="btn btn-sm btn-primary" data-action="timerStop">Skip</button>`
         : [60, 90, 120, 180].map(s => `<button class="btn btn-sm" data-action="timerStart" data-v="${s}" aria-label="Rest ${fmtClock(s)}">${fmtClock(s)}</button>`).join('')}
-      <button class="btn btn-ghost btn-sm px-1.5" data-action="hideTimer" aria-label="Hide timer">${icon('x', 'w-3.5 h-3.5')}</button>
+      <button class="btn btn-ghost btn-sm px-1.5" data-action="timerCollapse" aria-label="Collapse timer">${icon('x', 'w-3.5 h-3.5')}</button>
       <div class="absolute inset-x-0 bottom-0 h-1 bg-slate-200 dark:bg-slate-800"><div id="timer-bar" class="h-full bg-brand-500 transition-all duration-300" style="width:${run && this.total ? rem / this.total * 100 : 0}%"></div></div></div>`;
     refreshIcons();
   }
@@ -707,30 +907,62 @@ function foodSoFar(tot, T) {
   return `${left < 0 ? `${fmtNum(-left)} kcal over` : `${fmtNum(left)} kcal left`} · ${pLeft > 0 ? `${fmtNum(pLeft)} g protein to go` : 'protein target reached'}`;
 }
 function dashToday() {
-  const t = ymd(), rows = [];
-  const row = (ic, label, text, attrs, done) => rows.push(`<button type="button" class="w-full flex items-center gap-3 rounded-lg px-2 py-1.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800" ${attrs}>${icon(ic, 'w-4 h-4 shrink-0 ' + (done ? 'text-emerald-600 dark:text-emerald-400' : 'text-brand-700 dark:text-brand-300'))}<span class="min-w-0 flex-1"><span class="block text-xs muted">${label}</span><span class="block text-sm font-medium truncate">${text}</span></span></button>`);
-  const aw = Store.get('activeWorkout'), lw = W()[0];
-  if (aw) row('activity', 'Workout in progress', esc(aw.name || 'Workout'), 'data-action="go" data-view="fitness"');
-  else if (lw && wDate(lw) === t) row('dumbbell', 'Workout', `${esc(lw.name || 'Workout')} ✓`, 'data-action="go" data-view="fitness"', true);
-  else {
-    const f = routineFolders().find(x => x.name && x.routines.length && programInfo(x.name) && !/complete|Starts/.test(programInfo(x.name))), next = f && nextInFolder(f);
-    if (next) row('dumbbell', `Workout · ${esc(f.name)} · ${esc(programInfo(f.name))}`, `Next: ${esc(next.name)}`, 'data-action="go" data-view="fitness"');
-    else if (lw) row('dumbbell', 'Workout', `Last: ${esc(lw.name || 'Workout')}, ${fmtDate(wDate(lw), { weekday: 'short', month: 'short', day: 'numeric' })}`, 'data-action="go" data-view="fitness"');
+  const t = ymd(), tot = dayTotals(t), T = targetsFor(t), logged = day(t).entries.length;
+  const aw = Store.get('activeWorkout'), completed = completedWorkoutsThisWeek(), todayCount = completed.filter(w => wDate(w) === t).length;
+  const todayWorkout = completed.filter(w => wDate(w) === t).sort((a, b) => new Date(b.start) - new Date(a.start))[0];
+  const pLeft = Math.round(T.p - tot.p), proteinText = S.calBig === 'eaten' ? `${fmtNum(tot.p)} of ${fmtNum(T.p)} g protein` : pLeft > 0 ? `${fmtNum(pLeft)} g protein to go` : 'Protein target reached';
+  const wt = day(t).weight, din = tonightMeals();
+  return `<div class="card md:col-span-2 border-brand-300 dark:border-brand-800" data-dash-card="today">${cardHead('sun', 'Today')}
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div class="rounded-xl bg-brand-50 dark:bg-brand-950/40 p-3 flex flex-col items-start gap-3">
+        <div class="text-sm font-semibold">Food today</div>
+        <div>${logged ? calCenter(tot, T, false) : `<p class="text-lg font-semibold">Nothing logged yet</p><p class="text-sm muted">Target: ${fmtNum(T.cal)} kcal</p>`}</div>
+        <p class="text-sm muted">${logged ? `${proteinText} · totals from logged food` : 'Log food to see your daily totals.'}</p>
+        <button class="btn btn-primary w-full mt-auto" data-action="qaPick" data-what="food">${icon('plus')} Log food</button>
+      </div>
+      <div class="space-y-3">
+        <div><p class="text-sm font-semibold">${aw ? 'Workout in progress' : todayCount ? `${todayCount} workout${todayCount === 1 ? '' : 's'} completed today` : 'No workout logged today'}</p>
+          ${aw ? `<p class="text-sm muted break-words">${esc(aw.name || 'Workout')} · active workouts are counted when finished</p>` : todayWorkout ? `<p class="text-sm muted break-words">${esc(todayWorkout.name || 'Workout')} ✓</p>` : ''}
+          <p class="text-sm muted">${completed.length} completed this week</p>
+          <button class="btn w-full mt-2" data-action="dashWorkout">${icon(aw ? 'play' : 'dumbbell')} ${aw ? 'Resume workout' : 'Start workout'}</button></div>
+        <div class="border-t border-slate-200 dark:border-slate-800 pt-3"><p class="text-sm font-semibold">Weight today</p><p class="text-sm muted">${wt != null ? wFmt(wt) : 'No weigh-in logged today'}</p>
+          <button class="btn w-full mt-2" data-action="qaPick" data-what="weight">${icon('scale')} Log weight</button></div>
+      </div>
+    </div>
+    <button class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 w-full min-h-11 flex items-center gap-2 text-sm text-left" data-action="goRecTab" data-tab="plan">${icon('chef-hat', 'w-4 h-4 shrink-0 muted')}<span class="min-w-0 break-words"><strong>Dinner</strong> · ${din.length ? din.slice(0, 2).map(it => esc(planItemLabel(it))).join(' · ') + (din.length > 2 ? ` · +${din.length - 2} more` : '') : 'Not planned yet'}</span>${icon('chevron-right', 'w-4 h-4 ml-auto shrink-0 muted')}</button>
+  </div>`;
+}
+function dashWeight() {
+  const t = ymd(), tr = trendSeries().filter(p => p.d <= t), last = tr.at(-1);
+  const shown = last ? tr.filter(p => p.d >= addDays(last.d, -29)) : [];
+  const count = last ? tr.filter(p => p.d >= addDays(last.d, -6)).length : 0;
+  const date = d => fmtDate(d, { month: 'short', day: 'numeric', year: 'numeric' });
+  let chart = '';
+  if (shown.length) {
+    const width = 320, height = 130, left = 45, right = 10, top = 10, bottom = 14;
+    const values = shown.flatMap(p => [toUnit(p.w), toUnit(p.t)]), low = Math.min(...values), high = Math.max(...values), pad = (high - low) * .15 || 1;
+    const first = shown[0], span = daysBetween(first.d, last.d);
+    const X = p => span ? left + daysBetween(first.d, p.d) / span * (width - left - right) : (left + width - right) / 2;
+    const Y = n => top + (high + pad - toUnit(n)) / (high - low + pad * 2) * (height - top - bottom);
+    // Do not draw a continuous average across gaps longer than its seven-day window.
+    const segments = []; shown.forEach(p => { const seg = segments.at(-1); if (!seg || daysBetween(seg.at(-1).d, p.d) > 6) segments.push([p]); else seg.push(p); });
+    chart = `<svg viewBox="0 0 ${width} ${height}" class="w-full h-auto text-brand-700 dark:text-brand-300" aria-hidden="true">
+      ${[low, high].filter((v, i, a) => !i || v !== a[0]).map(v => `<text x="0" y="${Y(fromUnit(v)) + 4}" fill="currentColor" font-size="12">${fmtNum(v, 1)}</text>`).join('')}
+      ${shown.map(p => `<circle data-weight-reading="${p.d}" cx="${X(p)}" cy="${Y(p.w)}" r="3.5" fill="currentColor" opacity=".3"/>`).join('')}
+      ${segments.map(seg => seg.length > 1 ? `<polyline data-weight-trend fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${seg.map(p => `${X(p)},${Y(p.t)}`).join(' ')}"/>` : `<circle data-weight-trend cx="${X(seg[0])}" cy="${Y(seg[0].t)}" r="3" fill="currentColor"/>`).join('')}
+      </svg><div class="flex justify-between gap-2 text-xs muted"><span>${date(first.d)}</span>${span ? `<span>${date(last.d)}</span>` : ''}</div>`;
   }
-  const tot = dayTotals(t), T = targetsFor(t), logged = (day(t).entries || []).length;
-  row('apple', 'Food', logged ? foodSoFar(tot, T) : 'Nothing logged yet', 'data-action="go" data-view="nutrition"', logged && tot.cal >= T.cal * 0.9);
-  const wt = day(t).weight;
-  row('scale', 'Weigh-in', wt != null ? `${wFmt(wt)} ✓` : 'Not yet today', 'data-action="goNutTab" data-tab="trend"', wt != null);
-  const din = tonightMeals();
-  row('chef-hat', 'Dinner', din.length ? din.slice(0, 2).map(it => esc(planItemLabel(it))).join(' · ') : 'Not planned yet', `data-action="goRecTab" data-tab="plan"`);
-  return `<div class="card">${cardHead('sun', 'Today')}<div class="-mx-2 space-y-0.5">${rows.join('')}</div></div>`;
+  return `<div class="card" data-dash-card="weight">${cardHead('scale', 'Body weight', `<button class="btn btn-sm btn-ghost" data-action="goNutTab" data-tab="trend">Trend ${icon('chevron-right', 'w-3.5 h-3.5')}</button>`)}
+    ${last ? `<div class="text-xs muted">7-day average · ${S.unit}</div><div class="text-2xl font-bold tabular-nums">${wFmt(last.t)}</div>
+      <figure class="mt-2">${chart}<figcaption class="text-sm muted mt-3">Latest measurement: ${wFmt(last.w)} on ${date(last.d)}. Seven-day average: ${wFmt(last.t)}, using ${count} reading${count === 1 ? '' : 's'} available in that window.${tr.length === 1 ? ' One reading so far; more readings will show how it changes.' : ''}</figcaption></figure>
+      <p class="text-xs muted mt-2">Bold: seven-day average · faint dots: measurements. Gaps over six days stay disconnected.</p>` : '<p class="text-sm muted">No weigh-ins logged yet. Log your weight to start a trend.</p>'}
+    <div class="mt-3"><label class="label" for="dash-weight">Today’s weight (${S.unit})</label><input id="dash-weight" type="number" step="0.1" inputmode="decimal" class="input" value="${wDisp(day(t).weight)}" data-change="nutWeightToday"></div>
+  </div>`;
 }
 function renderDashboard() {
   const t = ymd(), tot = dayTotals(t), T = targetsFor(t);
-  const tr = trendSeries(), last = tr[tr.length - 1];
-  const wk = last ? trendAt(tr, addDays(last.d, -7)) : null;
-  const aw = Store.get('activeWorkout'), ws = W(), lw = ws[0];
-  const weekCount = ws.filter(w => wDate(w) >= startOfWeek()).length;
+  const aw = Store.get('activeWorkout'), ws = W(), lw = completedWorkoutHistory().sort((a, b) => new Date(b.start) - new Date(a.start))[0];
+  const weekCount = completedWorkoutsThisWeek().length;
   const hr = new Date().getHours(), greet = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
   const hasData = ws.length || Object.keys(N()).length;
   const sm = syncMeta(), copied = sm.on && sm.copied && daysBetween(sm.copied, t) <= 7; // a recent daily copy in Drive counts as a backup
@@ -738,19 +970,16 @@ function renderDashboard() {
   const needBackup = hasData && !copied && !later && (!S.lastExport || Date.now() - new Date(S.lastExport) > 7 * 864e5);
   const cards = {
     today: () => dashToday(),
-    nutrition: () => `<div class="card">${cardHead('apple', 'Nutrition today', `<button class="btn btn-sm btn-ghost" data-action="go" data-view="nutrition">Log ${icon('chevron-right', 'w-3.5 h-3.5')}</button>`)}
+    nutrition: () => `<div class="card" data-dash-card="nutrition">${cardHead('apple', 'Nutrition today', `<button class="btn btn-sm btn-ghost" data-action="go" data-view="nutrition">Log ${icon('chevron-right', 'w-3.5 h-3.5')}</button>`)}
+      ${day(t).entries.length ? '' : '<p class="text-sm muted mb-3">No food logged yet. Totals below reflect logged food only.</p>'}
       <div class="flex items-center gap-4"><div class="relative shrink-0">${ring(tot.cal / T.cal, '#0d9488', 108, 11)}<div class="absolute inset-0 grid place-items-center text-center"><div>${calCenter(tot, T, true)}</div></div></div>
       <div class="flex-1 space-y-2">${miniBar('Protein', tot.p, T.p, '#e11d48')}${miniBar('Carbs', tot.c, T.c, '#f59e0b')}${miniBar('Fat', tot.f, T.f, '#6366f1')}</div></div>
     </div>`,
-    weight: () => `<div class="card">${cardHead('scale', 'Body weight', `<button class="btn btn-sm btn-ghost" data-action="goNutTab" data-tab="trend">Trend ${icon('chevron-right', 'w-3.5 h-3.5')}</button>`)}
-      <div class="flex items-end gap-4"><div><div class="text-xs muted">7-day trend</div><div class="text-2xl font-bold tabular-nums">${last ? wFmt(last.t) : '–'}</div>
-      ${last && wk != null ? `<div class="text-xs ${last.t - wk > 0 ? 'text-amber-600' : 'text-emerald-600'}">${last.t - wk > 0 ? '▲' : '▼'} ${fmtNum(Math.abs(toUnit(last.t) - toUnit(wk)), 1)} ${S.unit} this week</div>` : '<div class="text-xs muted">Log weigh-ins to see a trend</div>'}</div>
-      <div class="flex-1">${sparkline(tr.slice(-30).map(p => p.t))}</div></div>
-      <div class="flex items-center gap-2 mt-3"><input type="number" step="0.1" inputmode="decimal" class="input" placeholder="Today's weight (${S.unit})" value="${wDisp(day(t).weight)}" data-change="nutWeightToday"><span class="text-xs muted shrink-0">${day(t).weight != null ? 'Logged ✓' : ''}</span></div>
-    </div>`,
-    training: () => `<div class="card">${cardHead('dumbbell', 'Training', `<button class="btn btn-sm btn-ghost" data-action="go" data-view="fitness">Open ${icon('chevron-right', 'w-3.5 h-3.5')}</button>`)}
-      ${aw ? `<div class="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 p-3 flex items-center gap-3"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span><div class="flex-1"><div class="font-medium">${esc(aw.name)}</div><div class="text-xs muted">In progress since ${new Date(aw.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div></div><button class="btn btn-sm btn-primary" data-action="go" data-view="fitness">Resume</button></div>`
-        : `<div class="grid grid-cols-2 gap-2 mb-3"><div class="stat"><div class="text-xs muted">This week</div><div class="text-xl font-bold">${weekCount}</div></div><div class="stat"><div class="text-xs muted">Last workout</div><div class="text-sm font-semibold truncate">${lw ? esc(lw.name) : '—'}</div><div class="text-xs muted">${lw ? fmtDate(wDate(lw), { month: 'short', day: 'numeric' }) : ''}</div></div></div>
+    weight: () => dashWeight(),
+    training: () => `<div class="card" data-dash-card="training">${cardHead('dumbbell', 'Training', `<button class="btn btn-sm btn-ghost" data-action="go" data-view="fitness">Open ${icon('chevron-right', 'w-3.5 h-3.5')}</button>`)}
+      <p class="text-sm font-semibold mb-2">${weekCount} completed this week</p><p class="text-xs muted mb-3">${workoutWeekRange()} · future-dated records excluded</p>
+      ${aw ? `<div class="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 p-3 flex items-center gap-3"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span><div class="flex-1"><div class="font-medium">${esc(aw.name)}</div><div class="text-xs muted">In progress since ${new Date(aw.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div></div><button class="btn btn-sm btn-primary" data-action="dashWorkout">Resume</button></div>`
+        : `<div class="grid grid-cols-2 gap-2 mb-3"><div class="stat"><div class="text-xs muted">Completed this week</div><div class="text-xl font-bold">${weekCount}</div></div><div class="stat"><div class="text-xs muted">Last workout</div><div class="text-sm font-semibold truncate">${lw ? esc(lw.name) : '—'}</div><div class="text-xs muted">${lw ? fmtDate(wDate(lw), { month: 'short', day: 'numeric' }) : ''}</div></div></div>
         <div class="flex flex-wrap gap-1.5">${Store.get('routines').slice(0, 4).map(r => `<button class="btn btn-sm" data-action="startRoutine" data-id="${r.id}">${icon('play', 'w-3 h-3')} ${esc(r.name)}</button>`).join('')}<button class="btn btn-sm" data-action="startEmpty">${icon('plus', 'w-3 h-3')} Empty</button></div>`}
     </div>`,
     meals: () => dashMeals()
@@ -862,6 +1091,27 @@ const fmtPace = kmPerSec => kmPerSec ? `${fmtClock((S.unit === 'lbs' ? 1.609344 
 const W = () => Store.get('workouts');
 const wDate = w => ymd(new Date(w.start));
 const blankSet = (type = 'normal') => ({ id: uid(), type, weight: null, reps: null, rpe: null, done: false });
+// Conservative optional analytics contract; existing charts retain their established method.
+function estimatedStrength({ loadKg, reps, kind = 'normal', state = 'committed', loadBasis = 'external', trackingType = 'weight_reps' }) {
+  if (!Number.isFinite(loadKg) || loadKg <= 0 || !Number.isInteger(reps) || reps < 1 || reps > 10 || kind === 'warmup' || state !== 'committed' || loadBasis !== 'external' || trackingType !== 'weight_reps') return null;
+  return reps === 1 ? loadKg : loadKg * (1 + reps / 30);
+}
+function strengthDelta(currentKg, baselineKg) {
+  if (!(currentKg > 0) || !(baselineKg > 0)) return null;
+  return { deltaKg: currentKg - baselineKg, percent: (currentKg - baselineKg) / baselineKg * 100 };
+}
+function weightEWMA(readings, { through = ymd(), primary = {}, halfLifeDays = 7 } = {}) {
+  const days = new Map();
+  for (const r of [...readings].filter(r => /^\d{4}-\d{2}-\d{2}$/.test(r.day) && r.day <= through && Number.isFinite(r.kg) && r.kg > 0).sort((a, b) => (a.at || 0) - (b.at || 0))) {
+    if (!days.has(r.day) || primary[r.day] === r.id || days.get(r.day).id !== primary[r.day]) days.set(r.day, r);
+  }
+  let previous = null, trend = null;
+  return [...days.values()].sort((a, b) => a.day.localeCompare(b.day)).map(r => {
+    const gap = previous == null ? null : daysBetween(previous, r.day);
+    trend = trend == null ? r.kg : trend + (1 - Math.pow(2, -gap / halfLifeDays)) * (r.kg - trend);
+    previous = r.day; return { ...r, trendKg: trend, gapDays: gap, method: `EWMA, ${halfLifeDays}-day half-life`, estimated: true };
+  });
+}
 const e1rm = (kg, reps) => (kg && reps) ? (reps === 1 ? kg : kg * (1 + reps / 30)) : 0; // Epley
 const workSets = ex => ex.sets.filter(s => s.type !== 'warmup');
 const VOL_TYPES = new Set(['weight_reps', 'weighted_bw']);
@@ -948,9 +1198,78 @@ function muscleSets(ws) {
   return out;
 }
 
-function startWorkout(aw) {
+function setWorkoutDraft(set, field, text) {
+  (set.draft ||= {})[field] = String(text);
+  (set.draftUnits ||= {})[field] = S.unit;
+}
+function workoutDraftValues(set) {
+  const out = { ...set };
+  for (const [field, raw] of Object.entries(set.draft || {})) {
+    const text = String(raw), value = text.trim() === '' ? null : Number(text), unit = set.draftUnits?.[field] || S.unit;
+    out[field] = field === 'type' ? text : field === 'duration' ? parseTimeEntry(text) : field === 'weight' ? value == null ? null : value * (unit === 'lbs' ? LB : 1) : field === 'distance' ? value == null ? null : value * (unit === 'lbs' ? 1.609344 : 1) : value;
+  }
+  return out;
+}
+function workoutDraftText(set, field) {
+  const raw = set.draft?.[field];
+  if (raw == null || !['weight', 'distance'].includes(field) || !set.draftUnits?.[field] || set.draftUnits[field] === S.unit || String(raw).trim() === '' || !Number.isFinite(Number(raw))) return raw;
+  const value = workoutDraftValues(set)[field];
+  return String(field === 'weight' ? toUnit(value) : S.unit === 'lbs' ? value / 1.609344 : value);
+}
+const WorkoutCommands = {
+  busy: false,
+  pending(value) { this.busy = value; for (const field of $$('[data-wctx="active"] input, [data-wctx="active"] textarea')) field.readOnly = value; for (const button of $$('[data-wctx="active"] button, [data-wctx="active"] select')) button.disabled = value; },
+  async complete(el) {
+    if (this.busy) return;
+    this.pending(true); el.disabled = true; el.setAttribute('aria-busy', 'true'); const row = el.closest('tr'); row?.setAttribute('data-set-state', 'pending'); const rowLabel = row?.querySelector('[data-row-save-state]'); if (rowLabel) rowLabel.textContent = 'Saving…';
+    try {
+      await Store.flushDirty();
+      const active = structuredClone(Store.get('activeWorkout'));
+      if (!active) return;
+      const i = +el.dataset.i, j = +el.dataset.j, ex = active.exercises[i], original = ex.sets[j], type = exInfo(ex.name).type;
+      ex.id ||= uid(); original.id ||= uid();
+      const undo = original.done && !original.draft;
+      let timer;
+      if (undo) { original.done = false; original.pr = []; if (Timer.source === original.id) timer = null; }
+      else {
+        const set = workoutDraftValues(original), previous = exerciseHistory(ex.name)[0]?.ex.sets[j], above = ex.sets[j - 1];
+        for (const field of typeCols(type)) if (!(field in (original.draft || {})) && set[field] == null) set[field] = previous?.[field] ?? above?.[field] ?? (field === 'reps' ? parseInt(ex.targetReps) || null : field === 'duration' ? parseClock(ex.targetReps) : null);
+        if (!fullData(set, type) || typeCols(type).some(f => !Number.isFinite(set[f]) || set[f] < 0 || ((f === 'duration' || f === 'distance') && set[f] <= 0)) || (typeCols(type).includes('reps') && (!Number.isInteger(set.reps) || (set.reps === 0 && set.type !== 'failure'))) || (set.rpe != null && (!Number.isFinite(set.rpe) || set.rpe < 1 || set.rpe > 10))) throw new Error('Enter valid values for every required field. RPE is optional (1–10).');
+        delete set.draft; delete set.draftUnits; set.done = true; ex.sets[j] = set; set.pr = checkPR(active, i, j);
+        if (!original.done && !ex.ss && +ex.rest > 0) timer = { end: Date.now() + +ex.rest * 1000, total: +ex.rest, source: set.id, at: Date.now() };
+      }
+      await WebWrites.command({ activeWorkout: active }, undo ? 'undo-set' : original.done ? 'amend-set' : 'complete-set', timer === undefined ? {} : { timer });
+      if (timer !== undefined) { if (timer) Timer.adopt(timer); else Timer.stop(); }
+      render();
+      $(`[data-action="awSetDone"][data-i="${i}"][data-j="${j}"]`)?.focus({ preventScroll: true });
+    } catch (e) { toast(e.message, 'error'); drawSaveRecovery(); }
+    finally { this.pending(false); el.disabled = false; el.removeAttribute('aria-busy'); if (row?.isConnected) { const set = Store.get('activeWorkout')?.exercises[+el.dataset.i]?.sets[+el.dataset.j]; const failed = [...WebWrites.pending.values()].some(p => p.purpose !== 'snapshot' && p.values.activeWorkout); const state = failed ? 'failed' : set?.draft ? 'draft' : set?.done ? 'committed' : 'suggestion'; row.dataset.setState = state; if (rowLabel) rowLabel.textContent = failed ? 'Not saved' : set?.draft ? 'Draft' : set?.done ? 'Saved' : 'Suggested'; } }
+  },
+  async finish() {
+    if (this.busy) return;
+    this.pending(true);
+    try {
+      await Store.flushDirty();
+      const aw = Store.get('activeWorkout'); if (!aw) return;
+      const exercises = aw.exercises.map(e => ({ ...e, sets: e.sets.filter(s => s.done && anyData(s)).map(({ draft, draftUnits, done, ...set }) => set) })).filter(e => e.sets.length);
+      if (!exercises.length) { toast('Complete at least one set before finishing. Unchecked drafts stay available.', 'error'); return; }
+      const w = { ...aw, end: new Date().toISOString(), exercises };
+      const history = structuredClone(W()), existing = history.findIndex(x => x.id === w.id);
+      if (existing < 0) history.push(w); else history[existing] = w;
+      history.sort((a, b) => new Date(b.start) - new Date(a.start));
+      await WebWrites.command({ workouts: history, activeWorkout: null }, 'finish-workout', { timer: null });
+      Timer.stop(); Timer.visible = false; Timer.draw(); ui.fitTab = 'history'; render(); workoutSummaryModal(w);
+    } catch (e) { toast(e.message, 'error'); drawSaveRecovery(); }
+    finally { this.pending(false); }
+  }
+};
+
+async function startWorkout(aw) {
   if (Store.get('activeWorkout') && !confirm('Replace the workout that is in progress?')) return;
-  Store.set('activeWorkout', { id: uid(), start: new Date().toISOString(), notes: '', routineId: null, name: defaultWorkoutName(), exercises: [], ...aw });
+  if (WorkoutCommands.busy) return;
+  WorkoutCommands.busy = true;
+  try { await WebWrites.command({ activeWorkout: { id: uid(), start: new Date().toISOString(), notes: '', routineId: null, name: defaultWorkoutName(), exercises: [], ...aw } }, 'start'); }
+  catch (e) { toast(e.message, 'error'); return; } finally { WorkoutCommands.busy = false; }
   ui.fitTab = 'workout'; ui.editW = null; unlockAudio(); go('fitness');
 }
 function workoutFromRoutine(r) {
@@ -959,6 +1278,19 @@ function workoutFromRoutine(r) {
 function weeklyStreak() {
   const weeks = new Set(W().map(w => startOfWeek(wDate(w)))); let k = startOfWeek(); if (!weeks.has(k)) k = addDays(k, -7);
   let n = 0; while (weeks.has(k)) { n++; k = addDays(k, -7); } return n;
+}
+// Saved history is completed work, including legacy/imported records without an explicit end.
+// Derive from records every time so edits/backdating never leave a stale counter. Active work lives separately.
+function completedWorkoutHistory(today = ymd()) {
+  return W().filter(w => Number.isFinite(new Date(w.start).getTime()) && wDate(w) <= today);
+}
+function completedWorkoutsThisWeek(today = ymd()) {
+  const monday = startOfWeek(today);
+  return completedWorkoutHistory(today).filter(w => wDate(w) >= monday);
+}
+function workoutWeekRange(today = ymd()) {
+  const monday = startOfWeek(today), format = d => fmtDate(d, { month: 'short', day: 'numeric' });
+  return `Mon ${format(monday)}–Sun ${format(addDays(monday, 6))}`;
 }
 
 // Routine folders & programs
@@ -994,12 +1326,12 @@ function routineCard(r, isNext) {
 }
 function fitWorkoutTab() {
   const aw = Store.get('activeWorkout'); if (aw) return fitActive(aw);
-  const ws = W(), thisWeek = ws.filter(w => wDate(w) >= startOfWeek()), folders = routineFolders();
+  const ws = W(), thisWeek = completedWorkoutsThisWeek(), folders = routineFolders();
   return `<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-    <div class="stat"><div class="text-xs muted">Workouts this week</div><div class="text-2xl font-bold">${thisWeek.length}</div></div>
+    <div class="stat"><div class="text-xs muted">Completed this week</div><div class="text-2xl font-bold">${thisWeek.length}</div></div>
     <div class="stat"><div class="text-xs muted">Volume this week</div><div class="text-2xl font-bold">${fmtNum(toUnit(sum(thisWeek.map(workoutVolume))))}<span class="text-sm font-medium muted"> ${S.unit}</span></div></div>
-    <div class="stat"><div class="text-xs muted">Weekly streak</div><div class="text-2xl font-bold">${weeklyStreak()}<span class="text-sm font-medium muted"> wks</span></div></div>
     <div class="stat"><div class="text-xs muted">All-time workouts</div><div class="text-2xl font-bold">${ws.length}</div></div></div>
+  <p class="text-xs muted mb-4">${workoutWeekRange()}. Counts use the recorded workout date; active and future-dated workouts are excluded.</p>
   <div class="flex flex-wrap items-center gap-2 mb-4"><h3 class="font-semibold mr-auto">Start a workout</h3><button class="btn" data-action="logPast">${icon('calendar-plus')} Log past workout</button><button class="btn btn-primary" data-action="startEmpty">${icon('plus')} Empty workout</button></div>
   ${folders.map(f => { const next = f.name ? nextInFolder(f) : null, pi = f.name ? programInfo(f.name) : null; return `<div class="mb-6"><div class="flex flex-wrap items-center gap-2 mb-2">${icon(f.name ? 'folder' : 'clipboard-list', 'w-4 h-4 muted')}<span class="font-semibold text-sm">${esc(f.name || 'My routines')}</span>${pi ? `<span class="chip">${pi}</span>` : ''}</div>
     <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">${f.routines.map(r => routineCard(r, next && next.id === r.id)).join('')}</div></div>`; }).join('')}
@@ -1014,23 +1346,25 @@ function exerciseCard(ex, i, w, ctx, grp) {
   const count = w.exercises.length, info = exInfo(ex.name), type = EX_TYPES[info.type] ? info.type : 'weight_reps', cols = typeCols(type);
   const prev = exerciseHistory(ex.name, ctx === 'edit' ? { before: w.start, exclude: w.id } : {})[0], prevSets = prev ? prev.ex.sets : [];
   const head = c => c === 'weight' ? (type === 'assisted_bw' ? `−${S.unit}` : type === 'weighted_bw' ? `+${S.unit}` : S.unit) : c === 'reps' ? 'Reps' : c === 'duration' ? 'Time' : distUnit();
-  const showRpe = S.rpe || ex.sets.some(s => s.rpe != null && s.rpe !== '');
+  const showRpe = S.rpe || ex.sets.some(s => s.rpe != null || s.draft?.rpe != null);
   const cell = (c, s, p, j) => {
-    const base = `class="input h-11 px-1 sm:px-2 py-1.5 text-center tabular-nums" data-input="awSet" data-i="${i}" data-j="${j}" data-f="${c}" aria-label="${head(c)}"`;
-    if (c === 'weight') return `<input type="number" inputmode="decimal" step="any" ${base} value="${wDisp(s.weight)}" placeholder="${p && p.weight != null ? wDisp(p.weight) : S.unit}">`;
-    if (c === 'reps') return `<input type="number" inputmode="numeric" step="1" ${base} value="${s.reps ?? ''}" placeholder="${esc(p?.reps ?? (ex.targetReps || 'reps'))}">`;
+    const base = `class="input h-11 px-1 sm:px-2 py-1.5 text-center tabular-nums min-w-0" data-input="awSet" data-i="${i}" data-j="${j}" data-f="${c}" aria-label="${head(c)}"`;
+    const raw = workoutDraftText(s, c);
+    if (raw != null) return `<input type="text" inputmode="${c === 'reps' || c === 'duration' ? 'numeric' : 'decimal'}" ${base} value="${esc(raw)}" placeholder="${head(c)}">`;
+    if (c === 'weight') return `<input type="text" inputmode="decimal" ${base} value="${wDisp(s.weight)}" placeholder="${p && p.weight != null ? wDisp(p.weight) : S.unit}">`;
+    if (c === 'reps') return `<input type="text" inputmode="numeric" ${base} value="${s.reps ?? ''}" placeholder="${esc(p?.reps ?? (ex.targetReps || 'reps'))}">`;
     if (c === 'duration') return `<input type="text" inputmode="numeric" ${base} value="${s.duration ? fmtClock(s.duration) : ''}" placeholder="${p?.duration ? fmtClock(p.duration) : esc(ex.targetReps || 'm:ss')}">`;
-    return `<input type="number" inputmode="decimal" step="any" ${base} value="${distDisp(s.distance)}" placeholder="${p?.distance ? distDisp(p.distance) : distUnit()}">`;
+    return `<input type="text" inputmode="decimal" ${base} value="${distDisp(s.distance)}" placeholder="${p?.distance ? distDisp(p.distance) : distUnit()}">`;
   };
   let n = 0;
   const rows = ex.sets.map((s, j) => {
-    if (s.type !== 'warmup') n++; const p = prevSets[j], [lab, cls] = setBadge(s, n);
-    return `<tr class="${s.done && ctx !== 'edit' ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}">
-      <td class="py-1 pl-1 whitespace-nowrap"><button class="w-8 h-8 rounded-md text-xs font-bold ${cls}" data-action="awSetType" data-i="${i}" data-j="${j}" title="Tap to change set type (warm-up, drop, failure)">${lab}</button>${s.pr && s.pr.length ? `<span class="ml-0.5" title="${s.pr.map(k => PR_LABELS[k]).join(', ')}">🏆</span>` : ''}</td>
-      <td class="py-1 pr-1">${p ? `<button class="text-xs muted hover:text-brand-600 text-left whitespace-nowrap tabular-nums min-h-[2.75rem]" data-action="awFillPrev" data-i="${i}" data-j="${j}" title="Tap to copy into this set" aria-label="Previous: ${esc(setLabel(p, type))}. Copy into this set">${setShort(p, type)}</button>` : '<span class="text-xs muted">—</span>'}</td>
-      ${cols.map(c => `<td class="py-1 px-0.5 sm:px-1">${cell(c, s, p, j)}</td>`).join('')}
-      ${showRpe ? `<td class="py-1 px-0.5 sm:px-1 w-12 sm:w-16"><input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="input h-11 px-1 py-1.5 text-center tabular-nums" value="${s.rpe ?? ''}" placeholder="RPE" data-input="awSet" data-i="${i}" data-j="${j}" data-f="rpe" aria-label="RPE"></td>` : ''}
-      ${ctx === 'edit' ? '' : `<td class="py-1 px-0.5 sm:px-1"><button class="w-11 h-11 rounded-lg grid place-items-center ${s.done ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-600'}" data-action="awSetDone" data-i="${i}" data-j="${j}" aria-label="Complete set">${icon('check')}</button></td>`}
+    if (s.type !== 'warmup') n++; const p = prevSets[j], [lab, cls] = setBadge({ ...s, type: s.draft?.type || s.type }, n);
+    return `<tr data-set-state="${s.draft ? 'draft' : s.done ? 'committed' : 'suggestion'}" class="${s.done && ctx !== 'edit' ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}">
+      <td class="py-1 pl-1 whitespace-nowrap"><button class="w-8 h-8 rounded-md text-xs font-bold ${cls}" data-action="awSetType" data-i="${i}" data-j="${j}" title="Tap to change set type (warm-up, drop, failure)">${lab}</button><span class="block text-[10px] muted" data-row-save-state>${s.draft ? 'Draft' : s.done ? 'Saved' : 'Suggested'}</span>${s.pr && s.pr.length ? `<span class="ml-0.5" title="${s.pr.map(k => PR_LABELS[k]).join(', ')}">🏆</span>` : ''}</td>
+      <td class="py-1 pr-1">${p ? `<button class="text-xs muted hover:text-brand-600 text-left whitespace-nowrap tabular-nums min-h-[2.75rem]" data-action="awFillPrev" data-i="${i}" data-j="${j}" title="Tap to copy into this set" aria-label="Previous from ${esc(wDate(prev.w))}: ${esc(setLabel(p, type))}. Copy into this set">${setShort(p, type)}</button>` : '<span class="text-xs muted">—</span>'}</td>
+      ${cols.map(c => `<td data-field-label="${head(c)}" class="py-1 px-0.5 sm:px-1">${cell(c, s, p, j)}</td>`).join('')}
+      ${showRpe ? `<td data-field-label="RPE" class="py-1 px-0.5 sm:px-1 w-12 sm:w-16"><input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="input h-11 px-1 py-1.5 text-center tabular-nums" value="${esc(s.draft?.rpe ?? s.rpe ?? '')}" placeholder="RPE" data-input="awSet" data-i="${i}" data-j="${j}" data-f="rpe" aria-label="RPE"></td>` : ''}
+      ${ctx === 'edit' ? '' : `<td class="py-1 px-0.5 sm:px-1"><button class="w-11 h-11 rounded-lg grid place-items-center ${s.done ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-600'}" data-action="awSetDone" data-i="${i}" data-j="${j}" aria-label="${s.draft && s.done ? 'Save set changes' : s.done ? 'Undo completed set' : 'Complete set'}" title="${s.draft ? 'Draft: save changes' : s.done ? 'Saved on device; tap to undo' : 'Accept and save this set'}">${icon(s.draft && s.done ? 'save' : s.done ? 'undo-2' : 'check')}</button></td>`}
       <td class="py-1 pr-0.5"><button class="btn btn-ghost btn-sm px-1 text-slate-400" data-action="awDelSet" data-i="${i}" data-j="${j}" aria-label="Delete set">${icon('x', 'w-3.5 h-3.5')}</button></td></tr>`;
   }).join('');
   return `<div class="card p-3 sm:p-4 ${grp ? 'border-l-4 border-l-violet-400 dark:border-l-violet-500' : ''}">
@@ -1049,7 +1383,7 @@ function exerciseCard(ex, i, w, ctx, grp) {
 }
 // +/− for the next set to do (the first one not ticked), starting from what the row shows: typed, last time, or the set above
 const STEP_W = () => S.unit === 'lbs' ? 5 : 2.5;
-function stepStart(ex, j, f, p) { const s = ex.sets[j], a = ex.sets[j - 1]; return s[f] ?? p?.[f] ?? a?.[f] ?? (f === 'reps' ? parseInt(ex.targetReps) || null : null); }
+function stepStart(ex, j, f, p) { const s = workoutDraftValues(ex.sets[j]), a = workoutDraftValues(ex.sets[j - 1] || {}); return s[f] ?? p?.[f] ?? a?.[f] ?? (f === 'reps' ? parseInt(ex.targetReps) || null : null); }
 function setStepper(ex, i, type, prevSets) {
   const j = ex.sets.findIndex(s => !s.done), cols = typeCols(type); if (j < 0 || !(cols.includes('weight') || cols.includes('reps'))) return '';
   const n = ex.sets.slice(0, j + 1).filter(x => x.type !== 'warmup').length, [lab] = setBadge(ex.sets[j], n), p = prevSets[j], st = STEP_W();
@@ -1065,6 +1399,7 @@ function fitActive(aw) {
   const bwNow = bodyweightOn(ymd()); aw.exercises.forEach(e => { const info = exInfo(e.name), t = info.type; e.sets.forEach(s => { if (s.done) { done++; if (s.type !== 'warmup') vol += setVolume(s, t, info.countBW ? bwNow : null, info); } }); });
   const g = supersetGroups(aw.exercises);
   return `<div data-wctx="active" class="pb-20 md:pb-0">
+  <p class="text-sm muted mb-3">${completedWorkoutsThisWeek().length} completed this week · ${workoutWeekRange()}. This active workout is not counted yet.</p>
   <div class="card p-2.5 sm:p-4 mb-4 sticky top-0 z-10"><div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
     <input class="input text-base font-semibold flex-1 min-w-0 sm:min-w-[12rem]" value="${esc(aw.name)}" data-input="awField" data-f="name" aria-label="Workout name">
     <button class="btn btn-primary sm:order-last" data-action="awFinish">${icon('check')} Finish</button>
@@ -1100,7 +1435,7 @@ function fitHistoryTab() {
     if (m !== month) { month = m; out += `<h3 class="text-sm font-semibold muted mt-5 mb-2">${m}</h3>`; }
     out += `<details class="card p-0 mb-2 group"><summary class="p-4 flex items-center gap-3 cursor-pointer list-none">
       <div class="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-300 grid place-items-center text-xs font-bold leading-none text-center shrink-0">${new Date(w.start).toLocaleDateString(undefined, { month: 'short' })}<br>${new Date(w.start).getDate()}</div>
-      <div class="flex-1 min-w-0"><div class="font-semibold truncate">${esc(w.name)}${prs ? ` <span class="text-xs font-normal">🏆 ${prs}</span>` : ''}</div><div class="text-xs muted">${fmtDur((new Date(w.end) - new Date(w.start)) / 1000)} · ${fmtNum(toUnit(workoutVolume(w)))} ${S.unit} · ${workoutSets(w)} sets · ${w.exercises.length} exercises</div></div>
+      <div class="flex-1 min-w-0"><div class="font-semibold truncate">${esc(w.name)}${prs ? ` <span class="text-xs font-normal">🏆 ${prs}</span>` : ''}</div>${wDate(w) > ymd() ? '<p class="text-xs muted">Future-dated · excluded from this week’s count</p>' : ''}<div class="text-xs muted">${fmtDur((new Date(w.end) - new Date(w.start)) / 1000)} · ${fmtNum(toUnit(workoutVolume(w)))} ${S.unit} · ${workoutSets(w)} sets · ${w.exercises.length} exercises</div></div>
       ${icon('chevron-down', 'w-4 h-4 muted group-open:rotate-180 transition')}</summary>
       <div class="px-4 pb-4 border-t border-slate-100 dark:border-slate-800 pt-3 space-y-3">
         ${w.notes ? `<p class="text-sm italic muted">${esc(w.notes)}</p>` : ''}
@@ -1255,7 +1590,7 @@ function workoutSummaryModal(w) {
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2"><div class="stat"><div class="text-xs muted">Duration</div><div class="font-bold">${fmtDur((new Date(w.end) - new Date(w.start)) / 1000)}</div></div><div class="stat"><div class="text-xs muted">Volume</div><div class="font-bold">${fmtNum(toUnit(workoutVolume(w)))} ${S.unit}</div></div><div class="stat"><div class="text-xs muted">Sets</div><div class="font-bold">${workoutSets(w)}</div></div><div class="stat"><div class="text-xs muted">Exercises</div><div class="font-bold">${w.exercises.length}</div></div></div>
     ${prs.length ? `<div><div class="label">New personal records</div>${prs.map(({ e, s }) => { const t = exInfo(e.name).type; return `<div class="flex flex-wrap items-baseline gap-x-2 text-sm py-1 border-t border-slate-100 dark:border-slate-800">🏆 <span class="font-medium">${esc(e.name)}</span><span class="muted">${setLabel(s, t)} — ${s.pr.map(k => PR_LABELS[k]).join(', ')}</span></div>`; }).join('')}</div>` : ''}
     ${ms.length ? `<div><div class="label">Muscles worked (sets)</div><div class="flex flex-wrap gap-1.5">${ms.map(([m, v]) => `<span class="chip">${m} ${fmtNum(v, 1)}</span>`).join('')}</div></div>` : ''}
-    <p class="text-sm muted">Weekly streak: ${weeklyStreak()} week${weeklyStreak() === 1 ? '' : 's'} · ${W().filter(x => wDate(x) >= startOfWeek()).length} workout(s) this week.</p>`,
+    <p class="text-sm muted">${completedWorkoutsThisWeek().length} completed this week · ${workoutWeekRange()}. Counted by workout date; active and future-dated workouts are excluded.</p>`,
     `<button type="button" class="btn btn-primary" data-action="closeModal">Done</button>`));
 }
 
@@ -1343,43 +1678,46 @@ const A_FIT = {
   startRoutine: el => { const r = Store.get('routines').find(x => x.id === el.dataset.id); if (r) startWorkout(workoutFromRoutine(r)); },
   repeatWorkout: el => { const w = W().find(x => x.id === el.dataset.id); if (w) startWorkout({ name: w.name, routineId: w.routineId || null, exercises: w.exercises.map(e => ({ id: uid(), name: e.name, notes: '', ss: !!e.ss, rest: S.restSeconds, sets: e.sets.map(s => blankSet(s.type)) })) }); },
   logPast: el => { const d = el.dataset.date || ymd(), st = parseYmd(d); st.setHours(7, 0, 0, 0); if (Modal.isOpen()) Modal.close(); openEditor({ id: uid(), _new: true, name: 'Workout', start: st.toISOString(), end: new Date(+st + 3600e3).toISOString(), notes: '', routineId: null, exercises: [] }); },
-  workoutEdit: el => { const w = W().find(x => x.id === el.dataset.id); if (!w) return; const c = structuredClone(w); c.exercises.forEach(e => { e.id = uid(); e.rest = e.rest ?? S.restSeconds; e.sets.forEach(s => { s.id = uid(); s.done = true; }); }); openEditor(c); },
+  workoutEdit: el => { const w = W().find(x => x.id === el.dataset.id); if (!w) return; const c = structuredClone(w); c.exercises.forEach(e => { e.id ||= uid(); e.rest = e.rest ?? S.restSeconds; e.sets.forEach(s => { s.id ||= uid(); s.done = true; }); }); openEditor(c); },
   editWhen: el => { ui.editW['_' + el.dataset.f] = el.value; },
   editCancel: () => { if (!confirm('Discard your changes to this workout?')) return; ui.editW = null; render(); },
-  editSave: () => {
-    const e = ui.editW, [hh, mm] = (e._time || '07:00').split(':').map(Number), st = parseYmd(e._date || ymd()); st.setHours(hh || 0, mm || 0, 0, 0);
-    const exs = e.exercises.map(x => ({ name: x.name, notes: x.notes || '', ss: !!x.ss, sets: x.sets.filter(anyData).map(({ id, done, ...r }) => r) })).filter(x => x.sets.length);
+  editSave: async () => {
+    if (!ui.editW || ui.editSaving) return;
+    const e = structuredClone(ui.editW), [hh, mm] = (e._time || '07:00').split(':').map(Number), originalStart = new Date(e.start), originalEnd = new Date(e.end), st = parseYmd(e._date || ymd()); st.setHours(hh || 0, mm || 0, 0, 0);
+    const exs = e.exercises.map(x => ({ ...x, name: x.name, notes: x.notes || '', ss: !!x.ss, sets: x.sets.filter(anyData).map(({ done, ...r }) => r) })).filter(x => x.sets.length);
     if (!exs.length) return toast('Add at least one set with a value', 'error');
-    exs[exs.length - 1].ss = false;
-    const w = { id: e.id, name: e.name || 'Workout', start: st.toISOString(), end: new Date(+st + Math.max(1, +e._dur || 60) * 60000).toISOString(), notes: e.notes || '', routineId: e.routineId || null, exercises: exs };
-    if (e.source) w.source = e.source;
-    const ws = W(), i = ws.findIndex(x => x.id === w.id); if (i >= 0) ws[i] = w; else ws.push(w);
-    sortWorkouts(); addToLibrary(exs.map(x => x.name)); Store.save('workouts'); ui.editW = null; toast(i >= 0 ? 'Workout updated' : 'Workout logged'); ui.fitTab = 'history'; render();
+    const unchangedStart = e._date === ymd(originalStart) && e._time === `${pad(originalStart.getHours())}:${pad(originalStart.getMinutes())}`;
+    const start = unchangedStart ? e.start : st.toISOString(), unchangedDuration = Number.isFinite(+originalEnd) ? +e._dur === Math.max(1, Math.round((originalEnd - originalStart) / 60000)) : !Number.isFinite(+e._dur);
+    const end = unchangedDuration && (!Number.isFinite(+originalEnd) || unchangedStart) ? e.end : new Date(+new Date(start) + (unchangedDuration ? originalEnd - originalStart : Math.max(1, +e._dur || 60) * 60000)).toISOString();
+    const w = { ...e, id: e.id, name: e.name || 'Workout', start, end, notes: e.notes || '', routineId: e.routineId || null, exercises: exs };
+    for (const key of ['_new', '_date', '_time', '_dur']) delete w[key];
+    if (end === undefined) delete w.end;
+    ui.editSaving = true;
+    const controls = $$('[data-wctx="edit"] input, [data-wctx="edit"] textarea, [data-wctx="edit"] button, [data-wctx="edit"] select');
+    controls.forEach(el => { if (el.matches('button, select')) el.disabled = true; else el.readOnly = true; });
+    try {
+      await Store.flushDirty();
+      const ws = structuredClone(W()), i = ws.findIndex(x => x.id === w.id); if (i >= 0) ws[i] = w; else ws.push(w);
+      ws.sort((a, b) => new Date(b.start) - new Date(a.start));
+      await WebWrites.command({ workouts: ws }, 'amend-workout', { workoutId: w.id });
+      ui.editW = null; ui.fitTab = 'history'; render(); toast(i >= 0 ? 'Workout updated' : 'Workout logged');
+    } catch (e) { toast(e.message, 'error'); drawSaveRecovery(); }
+    finally { ui.editSaving = false; controls.forEach(el => { el.disabled = false; el.readOnly = false; }); }
   },
   awAddExercise: f => { const name = fd(f).name.trim(); if (!name) return; const w = wObj(f); w.exercises.push({ id: uid(), name, notes: '', rest: S.restSeconds, sets: [blankSet(), blankSet(), blankSet()] }); addToLibrary([name]); wSave(f); render(); },
-  awSetType: el => { const s = wObj(el).exercises[+el.dataset.i].sets[+el.dataset.j], order = ['normal', 'warmup', 'drop', 'failure']; s.type = order[(order.indexOf(s.type) + 1) % order.length]; wSave(el); render(); },
-  awSetDone: el => {
-    const w = Store.get('activeWorkout'), i = +el.dataset.i, j = +el.dataset.j, ex = w.exercises[i], s = ex.sets[j], type = exInfo(ex.name).type;
-    s.done = !s.done;
-    if (s.done) {
-      const prev = exerciseHistory(ex.name)[0]?.ex.sets[j], above = ex.sets[j - 1];
-      for (const c of typeCols(type)) if (s[c] == null || s[c] === 0) { const v = prev?.[c] ?? above?.[c] ?? (c === 'reps' ? (parseInt(ex.targetReps) || null) : c === 'duration' ? parseClock(ex.targetReps) : null); if (v != null) s[c] = v; }
-      s.pr = checkPR(w, i, j);
-      if (s.pr.length) toast(`🏆 New PR — ${ex.name}: ${s.pr.map(k => `${PR_LABELS[k]} ${fmtMetric(k, setMetrics(s, type)[k])}`).join(', ')}`);
-      if (!ex.ss && +ex.rest > 0) Timer.start(+ex.rest);
-    } else s.pr = [];
-    Store.save('activeWorkout'); render();
-  },
+  awSetType: el => { const s = wObj(el).exercises[+el.dataset.i].sets[+el.dataset.j], order = ['normal', 'warmup', 'drop', 'failure']; const type = order[(order.indexOf(s.draft?.type || s.type) + 1) % order.length]; if (wctx(el) === 'active') setWorkoutDraft(s, 'type', type); else s.type = type; wSave(el); render(); },
+  awSetDone: el => WorkoutCommands.complete(el),
   awStep: el => {
     const w = wObj(el), ex = w.exercises[+el.dataset.i], j = +el.dataset.j, s = ex.sets[j], f = el.dataset.f, d = +el.dataset.d; if (!s) return;
     const p = exerciseHistory(ex.name)[0]?.ex.sets[j], cur = stepStart(ex, j, f, p) ?? 0;
-    if (f === 'weight') s.weight = fromUnit(Math.max(0, round(toUnit(cur) + d, 2))); else s.reps = Math.max(0, cur + d);
+    if (wctx(el) === 'active') setWorkoutDraft(s, f, String(f === 'weight' ? Math.max(0, round(toUnit(cur) + d, 2)) : Math.max(0, cur + d)));
+    else if (f === 'weight') s.weight = fromUnit(Math.max(0, round(toUnit(cur) + d, 2))); else s.reps = Math.max(0, cur + d);
     wSave(el); render();
   },
   awFillPrev: el => {
     const w = wObj(el), ctx = wctx(el), i = +el.dataset.i, j = +el.dataset.j, ex = w.exercises[i], s = ex.sets[j];
     const p = exerciseHistory(ex.name, ctx === 'edit' ? { before: w.start, exclude: w.id } : {})[0]?.ex.sets[j]; if (!p) return;
-    for (const c of ['weight', 'reps', 'duration', 'distance']) if (p[c] != null) s[c] = p[c];
+    for (const c of ['weight', 'reps', 'duration', 'distance']) if (p[c] != null) { if (ctx === 'active') setWorkoutDraft(s, c, String(c === 'weight' ? toUnit(p[c]) : c === 'distance' ? (S.unit === 'lbs' ? p[c] / 1.609344 : p[c]) : c === 'duration' ? fmtClock(p[c]) : p[c])); else s[c] = p[c]; }
     wSave(el); render();
   },
   awAddSet: el => { const ex = wObj(el).exercises[+el.dataset.i], last = ex.sets[ex.sets.length - 1]; ex.sets.push({ ...blankSet(), weight: last?.weight ?? null, reps: last?.reps ?? null, ...(last?.duration ? { duration: last.duration } : {}), ...(last?.distance ? { distance: last.distance } : {}) }); wSave(el); render(); },
@@ -1400,23 +1738,10 @@ const A_FIT = {
   awExDo: el => { const f = A[el.dataset.do === 'libEditDo' ? 'libEdit' : el.dataset.do]; Modal.close(); f(el); },
   awNoteOpen: el => { const w = wObj(el), i = el.dataset.i, t = i == null ? w : w.exercises[+i]; ui.noteOpen.add(t); ui.after = () => (i == null ? $('#view [data-f="notes"]') : $(`#view [data-input="awExNote"][data-i="${i}"]`))?.focus(); render(); },
   awDiscard: () => { if (!confirm('Discard this workout? Nothing will be saved.')) return; Store.set('activeWorkout', null); Timer.stop(); Timer.visible = false; Timer.draw(); render(); },
-  awFinish: () => {
-    const aw = Store.get('activeWorkout');
-    const exs = aw.exercises.map(e => { const t = exInfo(e.name).type; return { name: e.name, notes: e.notes, ss: !!e.ss, rest: e.rest, targetReps: e.targetReps, sets: e.sets.filter(s => (s.done && anyData(s)) || fullData(s, t)).map(({ id, done, ...r }) => { if (!r.pr || !r.pr.length) delete r.pr; return r; }) }; }).filter(e => e.sets.length);
-    if (!exs.length) { if (confirm('No sets were completed. Discard this workout?')) { Store.set('activeWorkout', null); render(); } return; }
-    exs[exs.length - 1].ss = false;
-    const w = { id: aw.id, name: aw.name || 'Workout', start: aw.start, end: new Date().toISOString(), notes: aw.notes, routineId: aw.routineId, exercises: exs.map(({ rest, targetReps, ...e }) => e) };
-    W().unshift(w); sortWorkouts(); addToLibrary(exs.map(e => e.name)); Store.save('workouts');
-    const r = Store.get('routines').find(x => x.id === aw.routineId), sig = l => l.map(e => e.name + (e.ss ? '+' : '')).join('|');
-    if (r && sig(r.exercises) !== sig(exs) && confirm(`Update the “${r.name}” routine to match this workout's exercises?`)) {
-      r.exercises = exs.map(e => { const old = r.exercises.find(o => o.name === e.name); return { name: e.name, sets: e.sets.filter(s => s.type !== 'warmup').length || e.sets.length, reps: old?.reps || e.targetReps || '', rest: e.rest ?? S.restSeconds, ss: e.ss }; }); Store.save('routines');
-    }
-    Store.set('activeWorkout', null); Timer.stop(); Timer.visible = false; Timer.draw();
-    ui.fitTab = 'history'; render(); workoutSummaryModal(w);
-  },
+  awFinish: () => WorkoutCommands.finish(),
   awField: el => { wObj(el)[el.dataset.f] = el.value; wSave(el); },
   awExNote: el => { wObj(el).exercises[+el.dataset.i].notes = el.value; wSave(el); },
-  awSet: el => { const s = wObj(el).exercises[+el.dataset.i].sets[+el.dataset.j], f = el.dataset.f; if (f === 'duration') s.duration = parseTimeEntry(el.value); else { const v = num(el.value); s[f] = f === 'weight' ? fromUnit(v) : f === 'distance' ? distFrom(v) : v; } wSave(el); },
+  awSet: el => { const s = wObj(el).exercises[+el.dataset.i].sets[+el.dataset.j], f = el.dataset.f; if (wctx(el) === 'active') { setWorkoutDraft(s, f, el.value); const row = el.closest('tr'); row?.setAttribute('data-set-state', 'draft'); const label = row?.querySelector('[data-row-save-state]'); if (label) label.textContent = 'Draft'; const done = row?.querySelector('[data-action="awSetDone"]'); if (done && s.done) done.setAttribute('aria-label', 'Save set changes'); } else { const v = num(el.value); s[f] = f === 'duration' ? parseTimeEntry(el.value) : f === 'weight' ? fromUnit(v) : f === 'distance' ? distFrom(v) : v; } wSave(el); },
   awRest: el => { wObj(el).exercises[+el.dataset.i].rest = +el.value; wSave(el); },
   // history
   histMore: () => { ui.histLimit += 25; render(); },
@@ -1492,6 +1817,25 @@ const A_FIT = {
     ui.pendingHevy = null; Modal.close(); toast(`Imported ${ws.length} workouts${typed ? ` · detected types for ${typed} exercises (check the Exercises tab)` : ''}`); ui.fitTab = 'history'; if (S.view !== 'fitness') go('fitness'); else render();
   },
   hevyExport: () => { if (!W().length) return toast('No workouts to export', 'error'); download(`workouts-${ymd()}.csv`, toHevyCSV(), 'text/csv'); },
+  workoutImport: async () => {
+    if (!Store.db) return toast('History import requires IndexedDB. Export your fallback data before changing browsers.', 'error');
+    const staged = await LocalDb.get('bd.web.import-preview');
+    if (staged?.version === 1) { delete staged.busy; ui.workoutImport = staged; return showWorkoutImport(); }
+    pickFile('.json,application/json', async text => { try { await prepareWorkoutImport(text); } catch (e) { toast(e.message, 'error'); } }, BACKUP_LIMIT);
+  },
+  workoutImportArchive: async () => {
+    const receipts = (await idbEntries('local')).filter(([key, value]) => key.startsWith('bd.web.receipt.') && value.purpose === 'import-workouts');
+    const rows = receipts.flatMap(([, receipt]) => (receipt.quarantine || []).map(row => ({ ...row, jobId: receipt.jobId })));
+    ui.workoutImportArchive = rows;
+    Modal.open(modalShell('Quarantined history', `<p class="text-sm">These training records were retained for review and were never added to your history. Export them, correct the source format or mapping, then choose the corrected original history file.</p><div class="space-y-2">${rows.map(row => `<div class="card p-3 break-words"><strong>${esc(row.key)} · ${esc(String(row.id ?? 'No ID'))}</strong><p class="text-sm muted">${esc(row.reason)}</p></div>`).join('') || '<p class="muted">No retained quarantine from completed imports. A pending file keeps its review in Import workout history.</p>'}</div>`, `<button type="button" class="btn" data-action="workoutImportArchiveExport">Export retained training records</button><button type="button" class="btn" data-action="closeModal">Close</button>`));
+  },
+  workoutImportArchiveExport: () => download('body-dashboard-training-review.json', JSON.stringify({ app: 'body-dashboard', type: 'training-review', rows: ui.workoutImportArchive || [] }, null, 2)),
+  workoutImportNew: () => { ui.workoutImport = null; pickFile('.json,application/json', async text => { try { await prepareWorkoutImport(text); } catch (e) { toast(e.message, 'error'); } }, BACKUP_LIMIT); },
+  workoutImportChoice: async el => { const job = ui.workoutImport; if (job.busy) return; job.rows[+el.dataset.index].choice = el.value; await LocalDb.put('bd.web.import-preview', job); },
+  workoutImportZone: async el => { if (ui.workoutImport.busy) return; ui.workoutImport.timezoneReviewed = el.checked; await LocalDb.put('bd.web.import-preview', ui.workoutImport); },
+  workoutImportCommit: () => commitWorkoutImport(),
+  workoutImportReview: () => refreshWorkoutImport(),
+  workoutImportQuarantine: () => download('body-dashboard-training-review.json', JSON.stringify({ app: 'body-dashboard', type: 'training-review', rows: ui.workoutImport.rows.filter(r => r.status === 'quarantine') }, null, 2)),
   fitJsonExport: () => download(`workouts-${ymd()}.json`, JSON.stringify({ app: 'body-dashboard', type: 'fitness', exportedAt: new Date().toISOString(), workouts: W(), routines: Store.get('routines'), programs: Store.get('programs'), exMeta: Store.get('exMeta') }, null, 2))
 };
 
@@ -1761,7 +2105,7 @@ const Photos = {
   urls: new Map(), pending: new Map(),
   ok() { return !!(Store.db && Store.db.objectStoreNames.contains('photos')); },
   tx(mode) { return Store.db.transaction('photos', mode).objectStore('photos'); },
-  put(id, blob) { return new Promise((res, rej) => { const t = Store.db.transaction('photos', 'readwrite'); t.objectStore('photos').put(blob, id); t.oncomplete = res; t.onerror = () => rej(t.error); }); },
+  put(id, blob) { return new Promise((res, rej) => { const tx = Store.db.transaction('photos', 'readwrite'), q = tx.objectStore('photos').put(blob, id); tx.oncomplete = res; tx.onerror = tx.onabort = () => rej(tx.error || q.error || new Error('Photo could not be saved on this device')); }); },
   get(id) { return new Promise(res => { const q = this.tx('readonly').get(id); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); },
   del(id) { this.pending.delete(id); return new Promise(res => { const t = Store.db.transaction('photos', 'readwrite'); t.objectStore('photos').delete(id); t.oncomplete = res; t.onerror = res; const u = this.urls.get(id); if (u) { URL.revokeObjectURL(u); this.urls.delete(id); } }); },
   async url(id) {
@@ -2331,8 +2675,8 @@ const A_NUT = {
   },
   nutDayDo: el => { const f = A[el.dataset.do]; Modal.close(); f(el); },
   nutDate: el => { if (el.value) { ui.nutDate = el.value; render(); } },
-  nutWeight: el => { const v = num(el.value), d = ensureDay(ui.nutDate); d.weight = v == null ? null : fromUnit(v); Store.save('nutrition'); toast(v == null ? 'Weight cleared' : 'Weight saved'); render(); },
-  nutWeightToday: el => { const v = num(el.value), d = ensureDay(ymd()); d.weight = v == null ? null : fromUnit(v); Store.save('nutrition'); toast('Weight saved'); render(); },
+  nutWeight: el => { const v = num(el.value), d = ensureDay(ui.nutDate); d.weight = v == null ? null : fromUnit(v); Store.save('nutrition'); savedNotice(v == null ? 'Weight cleared' : 'Weight saved'); render(); },
+  nutWeightToday: el => { const v = num(el.value), d = ensureDay(ymd()); d.weight = v == null ? null : fromUnit(v); Store.save('nutrition'); savedNotice('Weight saved'); render(); },
   mealSamePrev: el => { const key = el.dataset.meal, items = prevMeal(ui.nutDate, key); if (!items.length) return; addEntries(ui.nutDate, key, items); toast(`Added ${items.length} item${items.length === 1 ? '' : 's'} to ${mealLabel(key)}`); render(); },
   nutCopyPrev: () => { const prev = day(addDays(ui.nutDate, -1)); if (!prev.entries.length) return toast('Nothing logged the previous day', 'error'); addEntries(ui.nutDate, null, prev.entries.map(e => ({ ...e, meal: mealOf(e) }))); toast(`Copied ${prev.entries.length} items`); render(); },
   trendRange: el => { ui.trendRange = +el.dataset.v; render(); },
@@ -2500,7 +2844,7 @@ function openSettings() {
       <div class="grid sm:grid-cols-2 gap-3"><div><label class="label">USDA FoodData Central key (optional)</label><input name="fdcKey" type="password" class="input" value="${esc(S.fdcKey || '')}" placeholder="Uses a shared demo key if blank" autocomplete="off"></div><p class="text-xs muted self-end">Food search works without it, but the shared demo key has a low hourly limit. A free personal key from api.data.gov removes that.</p></div></section>
     <section class="space-y-3 rounded-xl border border-slate-200 dark:border-slate-800 p-4"><h4 class="font-semibold text-sm flex items-center gap-2">${icon('database', 'w-4 h-4')} Data &amp; sync</h4>
       <div class="flex flex-wrap gap-2"><button type="button" class="btn btn-primary" data-action="exportAll">${icon('download')} Back up records + photos</button><button type="button" class="btn" data-action="importAll">${icon('upload')} Import backup…</button><button type="button" class="btn" data-action="hevyImport">${icon('dumbbell')} Import Hevy CSV…</button><button type="button" class="btn" data-action="mfImport">${icon('apple')} Import MacroFactor…</button></div>
-      <div class="flex flex-wrap items-center gap-2"><span class="text-sm muted">Export workouts:</span><button type="button" class="btn btn-sm" data-action="hevyExport">${icon('sheet', 'w-3.5 h-3.5')} CSV (Hevy format)</button><button type="button" class="btn btn-sm" data-action="fitJsonExport">${icon('braces', 'w-3.5 h-3.5')} JSON</button></div>
+      <div class="flex flex-wrap items-center gap-2"><button type="button" class="btn btn-sm" data-action="workoutImport">Import workout history</button><button type="button" class="btn btn-sm" data-action="workoutImportArchive">Review quarantined history</button><span class="text-sm muted">Export workouts:</span><button type="button" class="btn btn-sm" data-action="hevyExport">${icon('sheet', 'w-3.5 h-3.5')} CSV (Hevy format)</button><button type="button" class="btn btn-sm" data-action="fitJsonExport">${icon('braces', 'w-3.5 h-3.5')} JSON</button></div>
       <p class="text-xs muted">Hevy import: in Hevy, go to Settings → Export &amp; Import Data → Export Workouts, then choose that CSV. Workouts already here (same title and start time) are skipped, so importing again is safe.</p>
       <p class="text-xs muted">Backups include your records and photos. API keys stay on this device and are not included.</p>
       <p class="text-xs muted">Last backup: ${S.lastExport ? fmtDateTime(S.lastExport) : 'never'} · <span id="storage-info">checking storage…</span></p>
@@ -2558,6 +2902,122 @@ function validateRecord(record, label) {
     if (record[field] != null && typeof record[field] !== 'string') throw new Error(label + '.' + field + ' must be text.');
   }
 }
+// Training-only import. Original JSON values/order remain intact; unsupported records stay in the private preview.
+function trainingRecordProblem(key, record) {
+  try {
+    validateJsonTree(record); validateRecord(record, key);
+    if (record.id == null || !validRecordId(record.id)) return 'Missing source ID; identity mapping needs review.';
+    if (key === 'workouts' || key === 'routines') {
+      if (typeof record.name !== 'string' || !Array.isArray(record.exercises)) return 'Missing name or exercise list.';
+      if (key === 'workouts' && (typeof record.start !== 'string' || !Number.isFinite(new Date(record.start).getTime()) || (record.end != null && !Number.isFinite(new Date(record.end).getTime())))) return 'Invalid workout date.';
+      for (const ex of record.exercises) {
+        validateRecord(ex, 'exercise');
+        if (typeof ex.name !== 'string' || !ex.name.trim()) return 'Missing exercise name.';
+        if (ex.type != null && !EX_TYPES[ex.type]) return 'Unknown exercise tracking type; map before importing.';
+        if (key === 'routines' && Number.isInteger(ex.sets) && ex.sets >= 0) continue;
+        if (!Array.isArray(ex.sets)) return 'Invalid set list.';
+        for (const set of ex.sets) {
+          validateRecord(set, 'set');
+          if (set.type != null && !['normal', 'warmup', 'drop', 'failure'].includes(set.type)) return 'Unknown set type; map before importing.';
+          for (const field of ['weight', 'reps', 'duration', 'distance', 'rpe']) if (set[field] != null && (typeof set[field] !== 'number' || !Number.isFinite(set[field]) || set[field] < 0)) return 'Invalid numeric ' + field + '.';
+        }
+      }
+    }
+    return null;
+  } catch (e) { return e.message; }
+}
+async function prepareWorkoutImport(text) {
+  if (!Store.db) throw new Error('History import needs IndexedDB.');
+  if (new Blob([text]).size > BACKUP_LIMIT) throw new Error('History file exceeds the 256 MB limit.');
+  const envelope = JSON.parse(text);
+  const fitness = envelope?.app === 'body-dashboard' && envelope.type === 'fitness';
+  const backup = ['body-dashboard', 'life-dashboard'].includes(envelope?.app) && [1, 2].includes(envelope.version) && plainObject(envelope.data);
+  if (!fitness && !backup) throw new Error('Choose Body fitness JSON or a Body/Life backup v1/v2. Hevy CSV uses its existing separate importer.');
+  const source = fitness ? envelope : envelope.data;
+  if (!Array.isArray(source.workouts)) throw new Error('The training source needs a workouts list.');
+  await Store.flushDirty();
+  // Retain only training keys; never stage Life settings, unrelated collections, photos or credentials.
+  const training = Object.fromEntries(['workouts', 'routines', 'programs', 'exMeta'].filter(k => source[k] != null).map(k => [k, structuredClone(source[k])]));
+  const rows = [], bases = {}, lineage = new Map();
+  for (const [, receipt] of await idbEntries('local')) if (receipt?.purpose === 'import-workouts') for (const entry of receipt.ledger || []) lineage.set(entry.key + ':' + entry.id, entry);
+  for (const [key, values] of Object.entries(training)) {
+    bases[key] = structuredClone(WebWrites.bases[key]);
+    const list = ['workouts', 'routines'].includes(key);
+    if ((list && !Array.isArray(values)) || (!list && !plainObject(values))) { rows.push({ key, id: key, rawJson: JSON.stringify(values), status: 'quarantine', reason: 'Unexpected training collection shape.', choice: 'skip' }); continue; }
+    const entries = list ? values.map(raw => [raw?.id, raw]) : Object.entries(values), seen = new Set();
+    for (const [id, raw] of entries) {
+      let reason = list ? trainingRecordProblem(key, raw) : null;
+      try { validateJsonTree(raw); if (list && (id == null || !validRecordId(id))) reason ||= 'Invalid source ID.'; if (!list && (!String(id).trim() || ['__proto__', 'constructor', 'prototype'].includes(id))) reason = 'Invalid training key.'; } catch (e) { reason = e.message; }
+      if (key === 'exMeta' && raw?.type != null && !EX_TYPES[raw.type]) reason = 'Unknown tracking type; mapping required.';
+      if (seen.has(String(id))) reason = 'Repeated source ID; resolve in source without changing other identities.';
+      seen.add(String(id));
+      const current = list ? Store.get(key).find(r => String(r.id) === String(id)) : Store.get(key)[id];
+      const same = webJSON(current) === webJSON(raw), prior = lineage.get(key + ':' + id);
+      const sourceHash = await webDigest(raw), targetHash = await webDigest(current);
+      const status = reason ? 'quarantine' : same ? 'identical' : current == null ? 'new' : 'conflict';
+      const detail = prior ? (prior.sourceHash !== sourceHash ? 'Source changed. ' : '') + (prior.targetHash !== targetHash ? 'Local record changed. ' : '') : '';
+      rows.push({ key, id, ...(reason ? { rawJson: JSON.stringify(raw) } : { raw }), status, reason: reason || detail || (status === 'conflict' ? 'Same ID, different content. Keep current by default.' : ''), choice: status === 'new' ? 'add' : 'skip', sourceHash, targetHash });
+    }
+  }
+  // Only the minimal training envelope is staged, not the supplied full backup.
+  const job = { version: 1, id: uid(), envelopeText: JSON.stringify({ app: 'body-dashboard', type: 'fitness', ...training }), sourceApp: envelope.app, rows, bases, timezoneReviewed: false, at: new Date().toISOString() };
+  await LocalDb.put('bd.web.import-preview', job); ui.workoutImport = job; showWorkoutImport(); return job;
+}
+async function refreshWorkoutImport() {
+  const job = ui.workoutImport; if (!job || job.busy) return;
+  await Store.flushDirty();
+  const intents = [...WebWrites.pending.values()];
+  if (intents.some(intent => intent.purpose !== 'import-workouts' || intent.extra.jobId !== job.id)) throw new Error('Recover other pending changes before refreshing this training review.');
+  await WebWrites.run(async () => {
+    for (const intent of intents) {
+      // Supersede only this review's uncommitted attempt. A receipt also prevents an older tab replaying it.
+      if (!await LocalDb.get('bd.web.receipt.' + intent.id)) await LocalDb.put('bd.web.receipt.' + intent.id, { version: 1, id: intent.id, purpose: 'import-workouts', at: new Date().toISOString(), jobId: job.id, canceled: true });
+      await LocalDb.del('bd.web.intent.' + intent.id); WebWrites.pending.delete(intent.id);
+    }
+    const keys = ['workouts', 'routines', 'programs', 'exMeta'], saved = await Store.readMany(keys);
+    keys.forEach((key, i) => { WebWrites.bases[key] = structuredClone(saved[i]); Store.data[key] = saved[i] === undefined ? structuredClone(COLLECTIONS[key]) : saved[i]; });
+  });
+  const refreshed = await prepareWorkoutImport(job.envelopeText || JSON.stringify(job.envelope));
+  refreshed.sourceApp = job.sourceApp; await LocalDb.put('bd.web.import-preview', refreshed); drawSaveRecovery();
+}
+function showWorkoutImport() {
+  const job = ui.workoutImport, rows = job.rows, counts = Object.fromEntries(['new', 'identical', 'conflict', 'quarantine'].map(status => [status, rows.filter(r => r.status === status).length]));
+  Modal.open(modalShell('Review workout history', `<div class="space-y-3"><p class="text-sm">Training only: workouts, routines, programs and exercise metadata. Food, recipes, photos, settings and other Life records are excluded.</p>
+    <p class="text-sm">${rows.filter(r => r.key === 'workouts').length} source workouts. Across all training records: ${counts.new} new · ${counts.identical} identical · ${counts.conflict} conflicts · ${counts.quarantine} quarantined. IDs define identity; matching names/dates do not.</p>
+    <p class="text-sm muted">Values remain kg, km and seconds, regardless of your display unit. Explicit date offsets stay unchanged. Dates without offsets are interpreted in this browser’s local timezone (${esc(Intl.DateTimeFormat().resolvedOptions().timeZone)}); ambiguous dates can be skipped. This preview is stored privately for reopening.</p>
+    <label class="flex items-center gap-2 min-h-11 text-sm"><input type="checkbox" data-change="workoutImportZone" ${job.timezoneReviewed ? 'checked' : ''}> I reviewed the units and timezone assumptions</label>
+    <div class="max-h-[45vh] overflow-y-auto space-y-2">${rows.map((row, index) => `<div class="card p-3"><div class="font-medium break-words">${esc(row.key)} · ${esc(String(row.id ?? 'No ID'))}</div><div class="text-sm break-words">${esc(row.raw?.name || '')} · ${esc(row.status)}${row.raw?.start ? ' · ' + esc(row.raw.start) : ''}</div><p class="text-xs muted">${esc(row.reason)}</p>${row.status === 'new' || row.status === 'conflict' ? `<label class="text-sm">Action <select class="input mt-1" aria-label="Action for ${esc(row.key)} ${esc(String(row.id))}" data-change="workoutImportChoice" data-index="${index}"><option value="skip" ${row.choice === 'skip' ? 'selected' : ''}>Keep current / skip</option><option value="${row.status === 'new' ? 'add' : 'update'}" ${row.choice !== 'skip' ? 'selected' : ''}>${row.status === 'new' ? 'Add source record' : 'Replace this record with source'}</option></select></label>` : ''}</div>`).join('')}</div>
+    <p class="text-xs muted">Quarantine keeps raw training records for manual review; nothing is invented. Changed sources require an explicit replacement choice. A stale preview must be reviewed again.</p></div>`, `<button type="button" class="btn" data-action="workoutImportNew">Choose another file</button><button type="button" class="btn" data-action="workoutImportQuarantine">Export quarantine</button><button type="button" class="btn" data-action="workoutImportReview">Refresh review</button><button type="button" class="btn btn-primary" data-action="workoutImportCommit">Import selected</button>`), { wide: true });
+}
+async function commitWorkoutImport() {
+  const job = ui.workoutImport; if (!job || job.busy) return;
+  if (!job.timezoneReviewed) return toast('Review and confirm the units and timezone assumptions first.', 'error');
+  job.busy = true;
+  const controls = $$('#modal button, #modal input, #modal select'); controls.forEach(el => { el.disabled = true; }); const commit = $('#modal [data-action="workoutImportCommit"]'); if (commit) { commit.textContent = 'Saving selected records…'; commit.setAttribute('aria-busy', 'true'); }
+  try {
+    const values = {}, counts = { source: job.rows.length, added: 0, updated: 0, skipped: 0, quarantined: 0, addedSets: 0, setsInUpdatedWorkouts: 0 }, ledger = [];
+    for (const row of job.rows) {
+      if (row.status === 'quarantine') { counts.quarantined++; continue; }
+      if (row.choice === 'skip') { counts.skipped++; continue; }
+      values[row.key] ||= structuredClone(Store.get(row.key));
+      const target = values[row.key], list = Array.isArray(target);
+      if (list) { const i = target.findIndex(r => String(r.id) === String(row.id)); if (i < 0) target.push(structuredClone(row.raw)); else target[i] = structuredClone(row.raw); }
+      else target[row.id] = structuredClone(row.raw);
+      counts[row.choice === 'add' ? 'added' : 'updated']++;
+      if (row.key === 'workouts') counts[row.choice === 'add' ? 'addedSets' : 'setsInUpdatedWorkouts'] += row.raw.exercises.reduce((n, ex) => n + ex.sets.length, 0);
+      ledger.push({ key: row.key, id: row.id, sourceHash: row.sourceHash, targetHash: row.sourceHash });
+    }
+    if (!Object.keys(values).length) { toast(`Nothing imported: ${counts.skipped} skipped, ${counts.quarantined} quarantined.`); return counts; }
+    // Capture unchanged target collections as well so no unrelated changes can bypass the preview boundary.
+    for (const key of Object.keys(job.bases)) if (!(key in values)) values[key] = structuredClone(Store.get(key));
+    await WebWrites.command(values, 'import-workouts', { jobId: job.id, ledger, counts, quarantine: job.rows.filter(row => row.status === 'quarantine') }, job.bases);
+    await LocalDb.del('bd.web.import-preview'); ui.workoutImport = null; Modal.close(); sortWorkouts(); render();
+    toast(`Imported ${counts.added} new training records, ${counts.updated} updated; ${counts.skipped} skipped, ${counts.quarantined} quarantined. ${counts.addedSets} added sets; ${counts.setsInUpdatedWorkouts} sets in updated workouts.`);
+    return counts;
+  } catch (e) { toast(e.message + ' Use Refresh review after exporting pending input if needed.', 'error'); throw e; }
+  finally { job.busy = false; controls.forEach(el => { el.disabled = false; }); if (commit?.isConnected) { commit.textContent = 'Import selected'; commit.removeAttribute('aria-busy'); } }
+}
+
 function validateBackup(d) {
   if (!plainObject(d) || !['body-dashboard', 'life-dashboard'].includes(d.app) || ![1, 2].includes(d.version) || !plainObject(d.data)) throw new Error('Choose a Body Dashboard or Life Dashboard backup.');
   validateJsonTree(d);
@@ -2657,6 +3117,27 @@ function importPhotos(d) {
   if (fromLifeDashboard(d)) { const used = new Set(photoRefs(Object.fromEntries(Object.keys(COLLECTIONS).filter(k => Object.hasOwn(d.data, k)).map(k => [k, d.data[k]])))); list = list.filter(ph => used.has(ph.id)); }
   return list.map(ph => [ph.id, dataUrlToBlob(ph.data)]);
 }
+function validateWebEntries(entries) {
+  for (const entry of entries) {
+    if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== 'string' || !/^bd\.web\.(intent\.[A-Za-z0-9_-]+|receipt\.[A-Za-z0-9_-]+|timer|context|import-preview)$/.test(entry[0])) throw new Error('Invalid web recovery metadata key.');
+    const [key, value] = entry;
+    if (key === 'bd.web.timer') { if (value !== null && (!plainObject(value) || !Number.isFinite(value.end) || !Number.isFinite(value.total))) throw new Error('Invalid timer recovery metadata.'); continue; }
+    if (!plainObject(value) || value.version !== 1) throw new Error('Unsupported recovery payload version.');
+    if (key === 'bd.web.context') { if (['actorId', 'workspaceId', 'athleteId'].some(k => typeof value[k] !== 'string' || !validRecordId(value[k]))) throw new Error('Invalid local ownership context.'); continue; }
+    if (typeof value.id !== 'string' || !validRecordId(value.id)) throw new Error('Invalid recovery operation ID.');
+    if (key.includes('.intent.') || key.includes('.receipt.')) {
+      if (!key.endsWith('.' + value.id) || !['snapshot', 'start', 'complete-set', 'amend-set', 'undo-set', 'finish-workout', 'amend-workout', 'import-workouts'].includes(value.purpose)) throw new Error('Invalid recovery operation.');
+    }
+    if (key.includes('.intent.')) {
+      if (!plainObject(value.values) || !Object.keys(value.values).length || Object.keys(value.values).some(k => !Object.hasOwn(COLLECTIONS, k)) || !plainObject(value.expected) || Object.keys(value.values).some(k => !/^[a-f0-9]{64}$/.test(value.expected[k] || '')) || !plainObject(value.extra)) throw new Error('Invalid recovery intent.');
+      validateBackup({ app: 'body-dashboard', version: 1, data: value.values });
+    }
+    if (key === 'bd.web.import-preview') {
+      if (!Array.isArray(value.rows) || !plainObject(value.bases) || Object.keys(value.bases).some(k => !['workouts', 'routines', 'programs', 'exMeta'].includes(k)) || (typeof value.envelopeText !== 'string' && !plainObject(value.envelope))) throw new Error('Invalid training preview.');
+      for (const row of value.rows) if (!['workouts', 'routines', 'programs', 'exMeta'].includes(row.key) || !['new', 'identical', 'conflict', 'quarantine'].includes(row.status) || !['skip', 'add', 'update'].includes(row.choice) || (row.status !== 'quarantine' && ['workouts', 'routines'].includes(row.key) && trainingRecordProblem(row.key, row.raw))) throw new Error('Invalid training review row.');
+    }
+  }
+}
 function planBackupImport(d, mode) {
   validateBackup(d);
   if (!['merge', 'replace', 'missing'].includes(mode)) throw new Error('Choose Merge or Replace.');
@@ -2689,33 +3170,54 @@ function planBackupImport(d, mode) {
       : fromLifeDashboard(d) ? { ...settings, ...importSettings(d), targets: { ...S.targets, ...(d.settings.targets || {}) } }
       : { ...SETTINGS_DEFAULT, ...d.settings, fdcKey, view, collapsed, targets: { ...SETTINGS_DEFAULT.targets, ...d.settings.targets } };
   }
-  return { data, photos, settings, mode, added };
+  let webEntries = null;
+  if (!fromLifeDashboard(d) && d.extensions?.bdWeb != null) {
+    const extension = d.extensions.bdWeb;
+    if (extension.version !== 1 || !Array.isArray(extension.entries)) throw new Error('Unsupported web recovery metadata.');
+    validateJsonTree(extension);
+    validateWebEntries(extension.entries);
+    webEntries = structuredClone(extension.entries);
+  }
+  return { data, photos, settings, mode, added, webEntries };
 }
 async function commitBackupImport(plan) {
-  // Keep every collection and photo change in one IndexedDB transaction.
   await Store.flushDirty();
-  const previousSettings = localStorage.getItem('bd.settings');
-  const previousFallback = Store.db ? null : Object.fromEntries(Object.keys(COLLECTIONS).map(k => [k, localStorage.getItem('bd.data.' + k)]));
-  try {
-    localStorage.setItem('bd.settings', JSON.stringify(plan.settings));
-    if (Store.db) await new Promise((resolve, reject) => {
-      const stores = plan.photos !== null ? ['kv', 'photos'] : ['kv'], tx = Store.db.transaction(stores, 'readwrite');
-      tx.oncomplete = resolve; tx.onerror = () => reject(tx.error || new Error('Import could not be saved.')); tx.onabort = () => reject(tx.error || new Error('Import was cancelled.'));
-      try {
-        const kv = tx.objectStore('kv');
-        for (const [key, value] of Object.entries(plan.data)) kv.put(value, key);
-        if (plan.photos !== null) { const photos = tx.objectStore('photos'); if (plan.mode === 'replace') photos.clear(); plan.photos.forEach(([id, blob]) => photos.put(blob, id)); }
-      } catch (e) { tx.abort(); reject(e); }
-    });
-    else for (const [key, value] of Object.entries(plan.data)) localStorage.setItem('bd.data.' + key, JSON.stringify(value));
-  } catch (e) {
-    if (previousSettings === null) localStorage.removeItem('bd.settings'); else localStorage.setItem('bd.settings', previousSettings);
-    if (previousFallback) for (const [key, value] of Object.entries(previousFallback)) { if (value === null) localStorage.removeItem('bd.data.' + key); else localStorage.setItem('bd.data.' + key, value); }
-    throw e;
-  }
-  Store.data = plan.data; S = plan.settings;
-  Photos.clearURLs();
-  applyTheme(); applyCollapse();
+  if (WebWrites.pending.size) throw new Error('Recover or export and discard pending changes before restoring a backup.');
+  return WebWrites.run(async () => {
+    const previousSettings = localStorage.getItem('bd.settings');
+    const previousFallback = Store.db ? null : Object.fromEntries(Object.keys(COLLECTIONS).map(k => [k, localStorage.getItem('bd.data.' + k)]));
+    try {
+      localStorage.setItem('bd.settings', JSON.stringify(plan.settings));
+      if (Store.db) await new Promise((resolve, reject) => {
+        const stores = [...(plan.photos !== null ? ['kv', 'photos'] : ['kv']), 'local'], tx = Store.db.transaction(stores, 'readwrite'), kv = tx.objectStore('kv'), local = tx.objectStore('local');
+        let reason = 'Backup restoration could not be saved.', left = Object.keys(plan.data).length;
+        tx.oncomplete = resolve; tx.onerror = tx.onabort = () => reject(new Error(reason));
+        const write = () => {
+          try {
+            for (const [key, value] of Object.entries(plan.data)) kv.put(value, key);
+            if (plan.photos !== null) { const photos = tx.objectStore('photos'); if (plan.mode === 'replace') photos.clear(); plan.photos.forEach(([id, blob]) => photos.put(blob, id)); }
+            const putMetadata = () => { if (plan.webEntries) for (const [key, value] of plan.webEntries) local.put(value, key); };
+            if (plan.mode === 'replace') {
+              const q = local.getAllKeys(); q.onsuccess = () => { try { q.result.filter(key => typeof key === 'string' && key.startsWith('bd.web.')).forEach(key => local.delete(key)); putMetadata(); } catch (e) { reason = e.message; tx.abort(); } };
+            } else putMetadata();
+          } catch (e) { reason = e.message; try { tx.abort(); } catch {} reject(e); }
+        };
+        for (const key of Object.keys(plan.data)) {
+          const q = kv.get(key); q.onsuccess = () => {
+            if (webJSON(q.result) !== webJSON(WebWrites.bases[key])) { reason = 'Another tab changed saved records. Reload and review the backup again.'; tx.abort(); return; }
+            if (--left === 0) write();
+          };
+        }
+      });
+      else for (const [key, value] of Object.entries(plan.data)) localStorage.setItem('bd.data.' + key, JSON.stringify(value));
+    } catch (e) {
+      if (previousSettings === null) localStorage.removeItem('bd.settings'); else localStorage.setItem('bd.settings', previousSettings);
+      if (previousFallback) for (const [key, value] of Object.entries(previousFallback)) { if (value === null) localStorage.removeItem('bd.data.' + key); else localStorage.setItem('bd.data.' + key, value); }
+      throw e;
+    }
+    Store.data = plan.data; S = plan.settings; await WebWrites.init();
+    Photos.clearURLs(); applyTheme(); applyCollapse(); drawSaveRecovery();
+  });
 }
 // What a backup holds and how to bring it in. `day` is set for a dated copy from Google Drive, which
 // is offered as "add back what's missing" (the safe undo) or "replace everything".
@@ -2741,9 +3243,14 @@ function importChoice(d, day) {
       <p class="text-sm muted"><strong>Merge</strong> keeps your current data and adds or updates items from the file. <strong>Replace</strong> restores the records and included photos. API keys on this device are kept.</p>`,
     `<button type="button" class="btn" data-action="closeModal">Cancel</button><button type="button" class="btn" data-action="doImport" data-mode="merge">Merge</button><button type="button" class="btn btn-danger" data-action="doImport" data-mode="replace">Replace everything</button>`));
 }
+async function webBackupEntries() {
+  const entries = new Map(Store.db ? (await idbEntries('local')).filter(([key]) => key.startsWith('bd.web.')) : []);
+  for (const intent of WebWrites.pending.values()) entries.set('bd.web.intent.' + intent.id, structuredClone(intent));
+  return [...entries];
+}
 async function buildBackupPayload() {
   const { fdcKey, view, collapsed, ...settings } = S;
-  return { app: 'body-dashboard', version: 2, exportedAt: new Date().toISOString(), settings, data: { ...Store.data }, assets: { photos: await backupPhotos() } };
+  return { app: 'body-dashboard', version: 2, exportedAt: new Date().toISOString(), settings, data: { ...Store.data }, assets: { photos: await backupPhotos() }, extensions: { bdWeb: { version: 1, entries: await webBackupEntries() } } };
 }
 async function exportAll() {
   toast('Preparing backup…');
@@ -2761,7 +3268,7 @@ async function resetAllData() {
   Photos.clearURLs();
   S = structuredClone(SETTINGS_DEFAULT);
   Store.data = Object.fromEntries(Object.entries(COLLECTIONS).map(([k, v]) => [k, structuredClone(v)]));
-  ensureSeeds(); await Store.flushAll(); saveSettings(); applyTheme(); applyCollapse();
+  await WebWrites.init(); ensureSeeds(); await Store.flushAll(); saveSettings(); applyTheme(); applyCollapse();
 }
 function ensureSeeds() {
   const d = Store.data;
@@ -3057,7 +3564,15 @@ function canMake(r) { const ls = ingLines(r); if (!ls.length) return { have: 0, 
 // recipes: favorites & rotation
 const recFind = id => Store.get('recipes').find(x => x.id === id);
 const lastMade = r => (r.made || []).slice().sort().pop() || null;
-const recThumb = (r, cls) => r.photo ? `<img data-photo="${r.photo}" alt="" class="${cls} object-cover bg-slate-100 dark:bg-slate-800">` : r.img ? `<img src="${esc(webUrl(r.img))}" alt="" loading="lazy" referrerpolicy="no-referrer" class="${cls} object-cover bg-slate-100 dark:bg-slate-800" onerror="this.remove()">` : '';
+const recThumb = (r, cls) => `<span class="${cls} relative block overflow-hidden bg-slate-100 dark:bg-slate-800" data-recipe-image>
+  <span class="absolute inset-0 flex flex-col items-center justify-center gap-2 muted" aria-hidden="true">${icon('chef-hat', 'w-8 h-8')}<span class="text-xs">${r.photo || r.img ? 'Photo unavailable' : 'No photo yet'}</span></span>
+  ${r.photo ? `<img data-photo="${esc(r.photo)}" data-recipe-photo alt="" class="absolute inset-0 w-full h-full object-cover">` : r.img && webUrl(r.img) ? `<img src="${esc(webUrl(r.img))}" data-recipe-photo alt="" loading="lazy" referrerpolicy="no-referrer" class="absolute inset-0 w-full h-full object-cover">` : ''}
+  </span>`;
+function recipeNutritionLine(r) {
+  const values = [['cal', 'kcal'], ['p', 'g protein'], ['c', 'g carbs'], ['f', 'g fat']]
+    .filter(([k]) => num(r[k]) != null).map(([k, unit]) => `${fmtNum(num(r[k]), 1)} ${unit}`);
+  return values.length ? `Per serving: ${values.join(' · ')}` : 'Nutrition per serving not entered';
+}
 const perServCost = r => num(r.cost) ? num(r.cost) / (num(r.servings) || 1) : null;
 const money = n => `$${(Math.round((+n || 0) * 100) / 100).toFixed(2).replace(/\.00$/, '')}`;
 function staleFavorites(n = 4) { const t = ymd(); return Store.get('recipes').filter(r => r.fav || (r.rating || 0) >= 4).map(r => ({ r, last: lastMade(r) })).filter(x => !x.last || daysBetween(x.last, t) >= 21).sort((a, b) => (a.last || '0').localeCompare(b.last || '0')).slice(0, n); }
@@ -3095,8 +3610,9 @@ function recList() {
   ${stale.length ? `<div class="card mb-4">${cardHead('history', 'Haven’t had these in a while', '<span class="text-xs muted">Favorites & 4★+</span>')}<div class="flex flex-wrap gap-2">${stale.map(({ r, last }) => `<button class="chip py-1.5" data-action="recView" data-id="${r.id}">${r.fav ? '♥ ' : ''}${esc(r.title)} <span class="muted">· ${last ? `${daysBetween(last, t)}d ago` : 'not logged'}</span></button>`).join('')}</div></div>` : ''}
   ${list.length ? `<div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">${list.map(r => { const lm = lastMade(r), pc = perServCost(r); return `<button class="card text-left hover:border-brand-400 flex flex-col" data-action="recView" data-id="${r.id}">
     ${recThumb(r, 'w-full h-36 rounded-xl mb-3')}
-    <div class="flex items-start gap-2"><div class="font-semibold flex-1">${esc(r.title)}</div>${r.fav ? '<span class="text-rose-500" aria-label="Favorite">♥</span>' : ''}</div>
-    <div class="text-xs muted mt-0.5">${r.time ? `${esc(r.time)} min · ` : ''}${r.servings || 1} serving${(r.servings || 1) == 1 ? '' : 's'}${r.cal ? ` · ${fmtNum(r.cal)} kcal, ${fmtNum(r.p)}g protein` : ''}${pc ? ` · ${money(pc)}/serv` : ''}</div>
+    <div class="flex items-start gap-2"><div class="font-semibold flex-1 break-words">${esc(r.title)}</div>${r.fav ? '<span class="text-rose-500" aria-label="Favorite">♥</span>' : ''}</div>
+    <div class="text-xs muted mt-1">${r.time ? `${esc(r.time)} min · ` : ''}${r.servings || 1} serving${(r.servings || 1) == 1 ? '' : 's'}${pc ? ` · ${money(pc)}/serv` : ''}</div>
+    <div class="text-sm mt-2">${recipeNutritionLine(r)}</div>
     <div class="flex flex-wrap items-center gap-1 mt-auto pt-3">${stars(r.rating, 'text-amber-500 text-xs mr-1')}${r.kids ? '<span class="chip text-[10px]">🧒 Kids ate it</span>' : ''}${lm ? `<span class="chip text-[10px]">Made ${daysBetween(lm, t) === 0 ? 'today' : `${daysBetween(lm, t)}d ago`}</span>` : ''}${(r.tags || []).slice(0, 3).map(x => `<span class="chip text-[10px]">${esc(x)}</span>`).join('')}</div></button>`; }).join('')}</div>`
     : emptyState('chef-hat', all.length ? 'No recipes match' : 'Your recipe box is empty', all.length ? 'Try clearing the filters.' : 'Add family favorites — or import one from any recipe site.')}`;
 }
@@ -3741,6 +4257,21 @@ const A_SHARE = {
 // would notice; each device shows the newest one once, as a card on the dashboard. A slide can show
 // a picture from assets/whatsnew/ (give it alt text) and a `go` shortcut: [view, ui key, tab, label].
 const RELEASES = [
+  { id: '2026-11-07-web-workout-sprint-1', title: 'Workouts saved with confidence', slides: [
+    { title: 'Accept, save, and undo', body: 'Previous sets are dated suggestions. Check a set to save it; only accepted sets enter a finished workout. Draft changes stay separate from saved performance.' },
+    { title: 'Recover interrupted saves', body: 'Retry a pending action after a failed save or reopening. Another tab cannot silently replace changed records. Export a backup before discarding pending input.' },
+    { title: 'Bring your workout history', body: 'Settings → Import workout history previews fitness JSON or training from Body/Life backups. Identical records skip; changed records need your choice. Other Life records stay out.' },
+    { title: 'Prepare for offline use', body: 'Open the hosted app online until Ready offline appears. Updates wait until all Body tabs close. Browser storage can be cleared, so keep exported backups. Rest alarms while the app is away are not guaranteed.' }
+  ] },
+  { id: '2026-11-07e', title: 'A clearer daily dashboard', slides: [
+    { title: 'Your daily actions together', body: '<p>Today now has <strong>Log food</strong>, <strong>Start/Resume workout</strong> and <strong>Log weight</strong> within reach, with a compact dinner link.</p><p>Your calorie display preference and card order stay yours. An empty log is named clearly.</p>', go: ['dashboard', '', '', 'Open Dashboard'] },
+    { title: 'Count completed workouts this week', body: '<p>Dashboard, Workouts and the finish summary share one count, from Monday through today, using each workout’s recorded local date.</p><p>Backdated and edited workouts update the count. Active and future-dated workouts are kept separate.</p>' },
+    { title: 'See weight and recipes clearly', body: '<p>The weight card shows a bold seven-day average over faint measurements, with units, dates and a text summary. Missing days are not filled in.</p><p>Recipe cards keep their names, available nutrition per serving and recipe access even without a photo. Saved local photos still work offline.</p>' },
+    { title: 'Know when changes have saved', body: '<p>The top bar shows when changes are saving or saved on this device. If saving fails, keep this tab open and use <strong>Retry save</strong> or <strong>Export backup</strong>.</p><p>Pending changes remain in this tab until recovery; closing the tab before saving or exporting can lose them.</p>' }
+  ] },
+  { id: '2026-11-07d', title: 'Recover an interrupted save', slides: [
+    { title: 'Keep your changes and try again', body: '<p>If this device cannot save a change, a message stays visible with <strong>Retry save</strong> and <strong>Export backup</strong>.</p><p>Keep the tab open until saving succeeds, or export a backup before closing. Unsaved changes remain in this open tab; closing it can lose them.</p>' }
+  ] },
   { id: '2026-11-07c', title: 'Faster logging', slides: [
     { title: 'Log food in fewer taps', body: '<p>The meal is now at the top of <strong>Log food</strong>, one tap to change.</p><p>Your own foods come first: <strong>Recent</strong>, or <strong>Usual</strong> for the meal you’re logging. Tap <strong>+</strong> on several foods, then <strong>Add 3 to Breakfast</strong> to log them all at their usual amounts.</p><p>When you pick one food, <strong>Portions</strong> sets ½, 1, 1½ or 2 of your usual amount.</p>', go: ['nutrition', '', '', 'Open Nutrition'] },
     { title: 'Same as yesterday', body: '<p>An empty meal in your daily log offers <strong>Same as yesterday</strong> when you logged that meal the day before. One tap copies it.</p>' },
@@ -3760,10 +4291,10 @@ const RELEASES = [
 ];
 const TOUR = [
   { title: 'Welcome to Body Dashboard', body: '<p>Your training and your diet in one place.</p><p>Everything you enter is saved on this device. There is no account to create, and nobody else can see your records.</p>' },
-  { title: 'Getting around', body: '<p>The menu lists every section. On a phone, the bar at the bottom holds four sections and a <strong>+</strong> button for quick adds, and the <strong>☰</strong> button at the top left opens the full menu.</p><ul class="list-disc pl-5 space-y-1"><li><strong>Dashboard</strong> is today at a glance, with a shortcut into each section.</li><li>Inside a section, the row of tabs across the top switches between its pages.</li><li>A number beside a menu item means something there needs attention today.</li></ul>' },
-  { title: 'The three sections', body: '<ul class="list-disc pl-5 space-y-1"><li><strong>Workouts</strong>: log your sets as you train, follow a program, and see your progress, with a rest timer in the top bar.</li><li><strong>Nutrition</strong>: search for foods or scan a barcode to log what you eat, track your weight, and let the adaptive plan set your calories.</li><li><strong>Recipes &amp; Meals</strong>: recipes with their macros, a meal plan, Plan my week and a grocery list.</li></ul>', go: ['fitness', '', '', 'Open Workouts'] },
-  { title: 'Coming from Life Dashboard?', body: '<p>In Life Dashboard, open <strong>Settings &amp; Sync</strong> and tap <strong>Back up</strong>. Here, open <strong>Settings &amp; Sync → Import backup</strong> and choose that file. Your workouts, food, weight, measurements, progress photos and recipes come across; nothing else does.</p>' },
-  { title: 'Put it on your phone', body: '<p>Open this page’s web address on your phone. On an iPhone use Safari: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>. On Android use Chrome: open the <strong>⋮</strong> menu and choose <strong>Add to Home screen</strong>.</p><p>It then opens like any other app and works without a connection.</p>' },
+  { title: 'Getting around', body: '<p>The menu lists every section. On a phone, the bar at the bottom holds four sections and a <strong>+</strong> button for quick adds, and the <strong>☰</strong> button at the top left opens the full menu.</p><ul class="list-disc pl-5 space-y-1"><li><strong>Dashboard</strong> has direct Log food, Start/Resume workout and Log weight actions in Today. Show, hide or reorder cards with the sliders button.</li><li>Inside a section, the row of tabs across the top switches between its pages.</li><li>A number beside a menu item means something there needs attention today.</li></ul>' },
+  { title: 'The three sections', body: '<ul class="list-disc pl-5 space-y-1"><li><strong>Workouts</strong>: log your sets as you train, follow a program, and see your progress, with a collapsible rest timer. Check each set to save it; unchecked suggestions do not enter a finished workout. Background alarms are not guaranteed.</li><li><strong>Nutrition</strong>: search for foods or scan a barcode to log what you eat, track your weight, and let the adaptive plan set your calories.</li><li><strong>Recipes &amp; Meals</strong>: recipes with their macros, a meal plan, Plan my week and a grocery list.</li></ul>', go: ['fitness', '', '', 'Open Workouts'] },
+  { title: 'Coming from Life Dashboard?', body: '<p>For workouts only, use <strong>Settings → Import workout history</strong> to preview fitness JSON or extract training from a backup. It leaves other Life records out.</p><p>In Life Dashboard, open <strong>Settings &amp; Sync</strong> and tap <strong>Back up</strong>. Here, open <strong>Settings &amp; Sync → Import backup</strong> and choose that file. Your workouts, food, weight, measurements, progress photos and recipes come across; nothing else does.</p>' },
+  { title: 'Put it on your phone', body: '<p>Open this page’s web address on your phone. On an iPhone use Safari: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>. On Android use Chrome: open the <strong>⋮</strong> menu and choose <strong>Add to Home screen</strong>.</p><p>Wait for <strong>Ready offline</strong> while online first. Then it opens from the Home Screen without a connection. Records stay in this browser; exporting a backup protects against storage being cleared. Updates wait until all Body tabs close.</p>' },
   { title: 'Keep your records safe', body: '<p>Your records live on this device. Removing the app from your home screen, or clearing the browser’s data, erases them.</p><p>Every week or so, open <strong>Settings &amp; Sync</strong>, tap <strong>Back up records + photos</strong>, and keep the file somewhere safe.</p><p>You can open this tour again from <strong>Help &amp; what’s new</strong> in the menu.</p>' }
 ];
 const newsWaiting = () => S.tour !== 'new' && !!RELEASES.length && S.newsSeen !== RELEASES[0].id;
@@ -4060,8 +4591,10 @@ const Sync = {
   // Another tab or window of the app may have saved since this one loaded. Take what is saved on
   // the device, so this one never syncs or keeps working from an out-of-date copy in memory.
   async adopt() {
+    if (WebWrites.pending.size) throw new Error('Recover pending changes before adopting saved data.');
     await Store.flushDirty();
     const keys = Object.keys(COLLECTIONS), saved = await Store.readMany(keys); let changed = false;
+    keys.forEach((k, i) => { WebWrites.bases[k] = structuredClone(saved[i]); });
     keys.forEach((k, i) => { if (saved[i] !== undefined && !Store.dirty.has(k) && !sameJson(saved[i], Store.data[k])) { Store.data[k] = saved[i]; changed = true; } });
     return changed;
   },
@@ -4229,11 +4762,19 @@ const A_SYNC = {
    ACTIONS (event-delegated)
    ===================================================================== */
 const A = {
+  reloadSaved: async () => {
+    if (!confirm('Export a backup first if you need pending input. Discard the pending actions shown here and reload the saved records?')) return;
+    clearTimeout(Store.t); await WebWrites.tail;
+    if (Store.db) await new Promise((resolve, reject) => { const tx = Store.db.transaction('local', 'readwrite'); for (const id of WebWrites.pending.keys()) tx.objectStore('local').delete('bd.web.intent.' + id); tx.oncomplete = resolve; tx.onerror = tx.onabort = () => reject(new Error('Could not discard pending actions. Your input is still available.')); });
+    Store.dirty.clear(); Store.failed.clear(); WebWrites.pending.clear(); location.reload();
+  },
+  retrySave: async () => { if (Store.flushing) return; try { await WebWrites.retry(); toast('Changes saved on this device'); } catch (e) { toast(e.message, 'error'); } },
   // shell
   go: el => go(el.dataset.view),
   quickAdd: () => quickAddSheet(),
   qaPick: el => quickAddForm(el.dataset.what),
-  qaWeight: f => { const v = num(fd(f).weight); if (v == null || v <= 0) return toast('Enter your weight', 'error'); ensureDay(ymd()).weight = fromUnit(v); Store.save('nutrition'); Modal.close(); toast('Weight saved'); render(); },
+  dashWorkout: () => { ui.editW = null; ui.fitTab = 'workout'; go('fitness'); },
+  qaWeight: f => { const v = num(fd(f).weight); if (v == null || v <= 0) return toast('Enter your weight', 'error'); ensureDay(ymd()).weight = fromUnit(v); Store.save('nutrition'); Modal.close(); savedNotice('Weight saved'); render(); },
   showMore: el => { const k = el.dataset.key; ui.more = { ...(ui.more || {}), [k]: ((ui.more || {})[k] || PAGE) + PAGE }; render(); },
   setTab: el => { ui[el.dataset.key] = el.dataset.val; render(); },
   tabsEdit: el => tabsEditModal(el.dataset.key),
@@ -4256,7 +4797,9 @@ const A = {
   cycleTheme: () => { S.theme = { system: 'light', light: 'dark', dark: 'system' }[S.theme] || 'system'; saveSettings(); applyTheme(); },
   toggleCollapse: () => { S.collapsed = !S.collapsed; saveSettings(); applyCollapse(); },
   // timer
-  showTimer: () => { Timer.visible = true; Timer.draw(); unlockAudio(); },
+  showTimer: () => { if (document.activeElement?.matches('[data-input="awSet"]')) document.activeElement.blur(); Timer.visible = true; Timer.collapsed = false; Timer.draw(); unlockAudio(); },
+  timerExpand: () => { if (document.activeElement?.matches('[data-input="awSet"]')) document.activeElement.blur(); Timer.collapsed = false; Timer.draw(); },
+  timerCollapse: () => { Timer.collapsed = true; Timer.draw(); },
   hideTimer: () => { Timer.visible = false; Timer.draw(); },
   timerStart: el => Timer.start(+el.dataset.v), timerAdd: el => Timer.add(+el.dataset.v), timerStop: () => Timer.stop(),
   // settings & sync
@@ -4304,9 +4847,11 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-action]'); if (!el) return;
   const ctl = e.target.closest('input, select, textarea, label'); if (ctl && ctl !== el && el.contains(ctl)) return; // let form controls inside clickable cards work
   const fn = A[el.dataset.action]; if (!fn) return console.warn('Unknown action', el.dataset.action);
-  e.preventDefault(); fn(el, e);
+  e.preventDefault(); Promise.resolve(fn(el, e)).catch(error => toast(error.message, 'error'));
 });
 document.addEventListener('scroll', e => { if (e.target.classList?.contains('tabs-row')) tabFade(e.target); }, true);
+// A failed image leaves the recipe's name, nutrition and entry point intact; never alter its saved link.
+document.addEventListener('error', e => { if (e.target.matches?.('img[data-recipe-photo]')) e.target.hidden = true; }, true);
 // Phones: drag a bottom sheet down by its handle or title bar to close it
 const SHEET = { el: null, y0: 0, dy: 0 };
 document.addEventListener('touchstart', e => {
@@ -4318,10 +4863,12 @@ document.addEventListener('touchmove', e => { if (!SHEET.el) return; SHEET.dy = 
 const sheetEnd = close => { const d = SHEET.el; if (!d) return; SHEET.el = null; d.style.transition = 'transform .15s ease-out'; if (close && SHEET.dy > 90) Modal.close(); else d.style.transform = ''; };
 document.addEventListener('touchend', () => sheetEnd(true), { passive: true });
 document.addEventListener('touchcancel', () => sheetEnd(false), { passive: true });
-document.addEventListener('input', e => { const el = e.target.closest('[data-input]'); if (el && A[el.dataset.input]) A[el.dataset.input](el, e); });
-document.addEventListener('change', e => { const el = e.target.closest('[data-change]'); if (el && A[el.dataset.change]) A[el.dataset.change](el, e); });
-document.addEventListener('submit', e => { const f = e.target.closest('[data-submit]'); if (!f) return; e.preventDefault(); const fn = A[f.dataset.submit]; if (fn) fn(f, e); });
+document.addEventListener('input', e => { const el = e.target.closest('[data-input]'); if (el && A[el.dataset.input]) Promise.resolve(A[el.dataset.input](el, e)).catch(error => toast(error.message, 'error')); });
+document.addEventListener('change', e => { const el = e.target.closest('[data-change]'); if (el && A[el.dataset.change]) Promise.resolve(A[el.dataset.change](el, e)).catch(error => toast(error.message, 'error')); });
+document.addEventListener('submit', e => { const f = e.target.closest('[data-submit]'); if (!f) return; e.preventDefault(); const fn = A[f.dataset.submit]; if (fn) Promise.resolve(fn(f, e)).catch(error => toast(error.message, 'error')); });
+document.addEventListener('focusin', e => { if (e.target.matches('[data-input="awSet"]')) { Timer.collapsed = true; Timer.draw(); e.target.select(); } });
 document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('[data-input="awSet"]')) { e.preventDefault(); const fields = $$('[data-input="awSet"]', e.target.closest('tr')); const next = fields[fields.indexOf(e.target) + 1] || $('[data-action="awSetDone"]', e.target.closest('tr')); next?.focus(); return; }
   if (Modal.isOpen()) { Modal.keydown(e); if (e.defaultPrevented) return; }
   if (e.key === 'Escape' && $('#sidebar').classList.contains('open')) { e.preventDefault(); closeSidebar(); }
   const el = e.target.closest('[role="button"][data-action]');
@@ -4334,16 +4881,36 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { 
 // Catch up with other devices when the app comes back to the front or the connection returns.
 document.addEventListener('visibilitychange', async () => {
   if (document.hidden || !syncAvailable() || !Sync.connected()) return;
-  if (!Modal.isOpen() && !Sync.busy && await Sync.adopt()) { sortWorkouts(); render(); }
-  if (Date.now() - new Date(syncMeta().last || 0) > 5 * 60000) Sync.auto();
+  try {
+    if (!Modal.isOpen() && !Sync.busy && await Sync.adopt()) { sortWorkouts(); render(); }
+    if (Date.now() - new Date(syncMeta().last || 0) > 5 * 60000) Sync.auto();
+  } catch (e) { toast('Could not resume sync: ' + e.message, 'error'); }
 });
 window.addEventListener('online', () => Sync.auto());
 
 // The hosted copy caches its own files so it opens offline. The file:// copy never registers;
 // ?pwa on localhost is for tests.
-function registerOfflineShell() {
+function drawOfflineState(message) {
+  let el = $('#offline-state');
+  if (!el) { el = document.createElement('p'); el.id = 'offline-state'; el.className = 'text-xs muted px-3 py-1 shrink-0'; el.setAttribute('role', 'status'); $('#save-recovery').before(el); }
+  el.textContent = message;
+}
+async function registerOfflineShell() {
   const local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has('pwa');
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || local)) navigator.serviceWorker.register('./sw.js').catch(e => console.warn('Offline support unavailable', e));
+  if (!('serviceWorker' in navigator) || !(location.protocol === 'https:' || local)) return;
+  drawOfflineState('Preparing offline shell…');
+  try {
+    const registration = await navigator.serviceWorker.register('./sw.js');
+    const status = () => {
+      if (registration.waiting) return drawOfflineState('Update ready · save, then close all Body tabs and reopen');
+      const worker = navigator.serviceWorker.controller; if (!worker) return;
+      const channel = new MessageChannel(); channel.port1.onmessage = event => { drawOfflineState(event.data.ready ? 'Ready offline · local records' : 'Offline shell incomplete. Reconnect before relying on offline access.'); channel.port1.close(); };
+      worker.postMessage({ type: 'BD_OFFLINE_STATUS' }, [channel.port2]);
+    };
+    registration.addEventListener('updatefound', () => { registration.installing?.addEventListener('statechange', status); });
+    navigator.serviceWorker.addEventListener('controllerchange', status);
+    await navigator.serviceWorker.ready; status();
+  } catch { drawOfflineState('Offline preparation failed. Reconnect and reload before relying on offline access.'); }
 }
 
 async function init() {
@@ -4354,11 +4921,11 @@ async function init() {
   // A browser that has never opened the app gets the start-here card instead of old release notes.
   if (!localStorage.getItem('bd.seeded') && !localStorage.getItem('bd.settings')) { S.tour = 'new'; S.newsSeen = RELEASES[0].id; saveSettings(); }
   await Store.init(); ensureSeeds(); sortWorkouts();
-  render(); Timer.restore();
+  render(); await Timer.restore(); drawSaveRecovery();
   try { if (navigator.storage && navigator.storage.persisted && !(await navigator.storage.persisted())) navigator.storage.persist(); } catch (e) {}
   registerOfflineShell();
   shareFromAddress();
-  Sync.draw(); Sync.run({ announce: signedIn });
+  Sync.draw(); Sync.run({ announce: signedIn }); Store.ready = true;
 }
 init().catch(e => {
   console.error('Could not initialize saved data', e);

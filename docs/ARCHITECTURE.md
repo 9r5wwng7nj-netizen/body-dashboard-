@@ -19,11 +19,11 @@
 
 1. **CORE UTILITIES**: DOM helpers, date math (local `YYYY-MM-DD`, Monday weeks), formatting, `icon()`, `download()`, `copyText()`.
 2. **SETTINGS**: `SETTINGS_DEFAULT`, `S`, `saveSettings()`.
-3. **STORAGE**: `COLLECTIONS` and `Store` (IndexedDB `kv` store, localStorage fallback, debounced `save()`, flush on `pagehide`/`visibilitychange`). `readMany()` loads the collections in one readonly transaction. A failed transaction stops initialization rather than treating unread records as missing defaults.
+3. **STORAGE**: `COLLECTIONS` and `Store` (IndexedDB `kv` store, localStorage fallback, debounced `save()`, flush on `pagehide`/`visibilitychange`). Writes drain serially from cloned snapshots; a successful write acknowledges only its captured revision. Failed keys remain dirty with a recovery banner, retry and export. History plus active workout commit in one IndexedDB transaction when both are dirty. In fallback mode history saves first. Recovery state is in memory, so keep the tab open until retry succeeds or export a backup. `readMany()` loads the collections in one readonly transaction. A failed transaction stops initialization rather than treating unread records as missing defaults.
 4. **UI PRIMITIVES**: `toast`, `Modal`, `modalShell`, `tabs`, `cardHead`, `emptyState`, `ui` state.
 5. **ROUTER / SHELL**: `VIEWS`, `renderNav`, `render`/`renderNow` (with a re-entrancy guard), `rerender` (keeps focus), `afterRender` (workout clock, photos, icons), `go(view)`.
 6. **REST TIMER**: floating timer `Timer` (persists in `bd.timer`), `beep`, `notify`.
-7. **DASHBOARD**: `renderDashboard()` and the module cards.
+7. **DASHBOARD**: `renderDashboard()` and the module cards. `dashToday()` reuses quick-add food/weight flows and opens the workout screen. Card IDs, ordering and visibility preferences remain unchanged. `dashWeight()` reuses `trendSeries()` (seven calendar days of available readings), with calendar spacing and a text summary. Completed-week counts use `completedWorkoutsThisWeek()`, derived from saved history on every render; weeks start locally on Monday, future-dated records are excluded and `activeWorkout` stays separate. Legacy completed history does not require a new status field.
 8. **FITNESS**: logger with supersets and set types, routines and programs, exercise library, stats, Hevy CSV.
 9. **NUTRITION**:
    - Daily log, the log-food modal (search, barcode, quick add, saved meals, recipes), foods and meals.
@@ -55,3 +55,14 @@ Photo URLs are presentation-only: pending reads are deduplicated, and `Photos.pr
 4. Actions: add them to the module's `A_*` table. Search first to avoid name clashes.
 5. Dark mode, 390px width, empty states.
 6. Run `npm test`.
+
+
+## Web Sprint 1 commands and recovery
+
+`WebWrites` coordinates Store snapshots and explicit commands in one promise queue. Optional `bd.web.*` entries in the existing `local` store checkpoint intents, receipts, timer ownership, import preview/ledger/quarantine, and a single local ownership context. SHA-256 expected bases plus a compare-and-write transaction reject stale collection overwrites. Failed reads stop initialization; they never seed over unread saved data. See [the persistence contract](mobile-rebuild/outputs/D_WEB_PERSISTENCE_CONTRACT.md).
+
+`WorkoutCommands` retains the committed view until transaction completion for Start/Complete/Undo/Amend/Finish. Optional active-set `draft` text and `draftUnits` retain input independently of accepted canonical values. Finish keeps accepted sets only and writes history + active clearing + owned timer + receipt atomically. `Store.ready` signals completed startup for test harnesses; `Store.data` may exist earlier during reconciliation.
+
+Workout-history import is separate from whole-backup restoration. Source IDs define identity. A preview stores only training JSON, expected bases and choices; final canonical changes, ledger/receipt, retained quarantine and preview removal commit together. Unsafe/ambiguous raw records are retained as serialized JSON strings so backup validation can safely round-trip them. Full backup v2 optionally includes `extensions.bdWeb`; old backups remain valid. No schema version/store/collection rename was made.
+
+The service worker uses a project-scoped Body cache generation. It waits for controlled tabs to close, reads only its own generation, and leaves the activated generation intact after failed installation. Bump `GENERATION` whenever shell HTML/CSS/assets change. Before the first upgrade, close older Body pages after saving/exporting; older code cannot enforce this writer protocol. No server authorization or coaching backend is supplied by local ownership metadata.

@@ -13,17 +13,17 @@ async function open(page) {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   page.on('dialog', d => d.accept());
   await page.goto(APP);
-  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.data && Array.isArray(Store.data.recipes));
+  await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
   await page.evaluate(() => A.helpDismiss({ dataset: { what: 'tour' } }));
   return errors;
 }
 // Two made-up past workouts so the logger has a Previous column to show.
-const history = () => {
+const history = async () => {
   const s = new Date(); s.setDate(s.getDate() - 2); s.setHours(7, 0, 0, 0);
   const sets = Array.from({ length: 3 }, () => ({ type: 'normal', weight: 82.5, reps: 8 }));
   Store.set('workouts', [{ id: 'w1', name: 'Push', start: s.toISOString(), end: new Date(s.getTime() + 36e5).toISOString(), exercises: [{ name: 'Bench Press (Barbell)', sets }, { name: 'Overhead Press (Barbell)', sets }] }]);
   S.unit = 'kg';
-  startWorkout({ name: 'Push', exercises: ['Bench Press (Barbell)', 'Overhead Press (Barbell)'].map(name => ({ id: uid(), name, notes: '', ss: false, rest: 90, targetReps: '', sets: [blankSet(), blankSet(), blankSet()] })) });
+  await startWorkout({ name: 'Push', exercises: ['Bench Press (Barbell)', 'Overhead Press (Barbell)'].map(name => ({ id: uid(), name, notes: '', ss: false, rest: 90, targetReps: '', sets: [blankSet(), blankSet(), blankSet()] })) });
 };
 
 test('the set row fits a phone: no RPE column until it is turned on, Previous on one line, nothing clipped', async ({ page }) => {
@@ -31,7 +31,7 @@ test('the set row fits a phone: no RPE column until it is turned on, Previous on
   await page.evaluate(history);
   const card = page.locator('#view .card').filter({ hasText: 'Bench Press (Barbell)' }).first();
   await expect(card.locator('[data-f="rpe"]')).toHaveCount(0);
-  await expect(card.locator('[data-action="awFillPrev"]').first()).toHaveText('82.5×8');
+  await expect(card.locator('[data-action="awFillPrev"]').first()).toContainText('82.5×8');
   // A weight like 182.5 shows in full, and every row control is at least 44px tall.
   const fit = await card.locator('[data-f="weight"]').first().evaluate(el => { el.value = '182.5'; return { fits: el.scrollWidth <= el.clientWidth, h: el.getBoundingClientRect().height }; });
   expect(fit.fits).toBe(true);
@@ -40,7 +40,7 @@ test('the set row fits a phone: no RPE column until it is turned on, Previous on
   expect(await page.evaluate(() => document.querySelector('#view').scrollWidth <= document.querySelector('#view').clientWidth)).toBe(true);
   // Ticking a set still copies last time's numbers.
   await card.locator('[data-action="awSetDone"]').first().click();
-  expect(await page.evaluate(() => { const s = Store.get('activeWorkout').exercises[0].sets[0]; return [s.weight, s.reps, s.done]; })).toEqual([82.5, 8, true]);
+  await expect.poll(() => page.evaluate(() => { const s = Store.get('activeWorkout').exercises[0].sets[0]; return [s.weight, s.reps, s.done]; })).toEqual([82.5, 8, true]);
   // RPE appears when it is turned on, and always for an exercise that already has one.
   await page.evaluate(() => { S.rpe = true; render(); });
   await expect(card.locator('[data-f="rpe"]')).toHaveCount(3);
