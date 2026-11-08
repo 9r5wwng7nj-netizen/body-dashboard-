@@ -36,6 +36,7 @@ test('switching appearance updates inherited shell text as well as card surfaces
   await page.evaluate(theme=>{S.theme=theme;applyTheme();A.pageHome({dataset:{view:'fitness'}});},theme);
   await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   const colors=await page.locator('#view h3').first().evaluate(e=>({heading:getComputedStyle(e).color,main:getComputedStyle(document.querySelector('#view')).color}));
-  const expected=theme==='dark'?'rgb(242, 244, 238)':'rgb(34, 44, 40)';expect(colors).toEqual({heading:expected,main:expected});
+  const expected=theme==='dark'?'rgb(244, 247, 253)':'rgb(23, 32, 51)';expect(colors).toEqual({heading:expected,main:expected});
+  expect(await page.locator('meta[name="theme-color"]').getAttribute('content')).toBe(theme==='dark'?'#10151f':'#f3f6fa');
  }
 });

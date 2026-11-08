@@ -15,6 +15,8 @@ async function session(page,{previous=false,unit='lbs',theme='dark'}={}){
  if(previous){Store.set('workouts',[{id:'synthetic-previous',name:'Synthetic history',start:'2026-11-01T12:00:00Z',end:'2026-11-01T12:30:00Z',exercises:[{name:'Bench Press (Barbell)',sets:Array.from({length:4},()=>({type:'normal',weight:182.5,reps:8}))}]}]);await Store.flushDirty();}
  await startWorkout({id:'synthetic-spacing',name:'Synthetic session',exercises:[{id:'ex-1',name:'Bench Press (Barbell)',notes:'',rest:150,targetReps:'6-8',sets:Array.from({length:4},()=>blankSet())}]});
  },{previous,unit,theme});
+ // Theme changes refresh section markup after paint; measure the current row, not a replaced node.
+ await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
 }
 for(const width of [390,393]) for(const theme of ['light','dark'])test(`${width}px ${theme}: first-time sets have clear cells and an unobscured exercise header`,async({page,browserName})=>{
  await page.setViewportSize({width,height:660});await session(page,{theme});

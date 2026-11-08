@@ -110,3 +110,7 @@ The owner accepted the recommendations in [the feature review plan](docs/product
 ## Authorized implementation and publication — 2026-11-07
 
 The owner explicitly authorized implementing the approved feature-review plan, running checks and publishing. The Warm Mineral candidate now uses three projected roots while retaining all four legacy route IDs, named Train/Nutrition pages, shared exercise selection, durable swaps and routine set coverage. Pantry/Grocery/Freezer records remain in storage/backups; their actions are inert and rendered affordances removed. New optional snapshots and receipts use existing stores. See `docs/product-review/2026-11-07/IMPLEMENTATION_REPORT.md` for actual verification and release limits. The earlier planning-only notes describe the prior review, not a new approval requirement.
+
+## Cobalt Air selected and authorized — 2026-11-07
+
+The owner selected Cobalt Air from the five paired proposals and explicitly authorized implementation in both light/dark modes, checks and publication. Cobalt Air supersedes Warm Mineral as the production visual direction; the earlier product/navigation decisions remain. Use the selected semantic palette in `docs/product-review/2026-11-07/visual-exploration/palettes.json` without adding multiple brand themes or changing stored records. This is a presentation update, not a persistence or logging redesign.

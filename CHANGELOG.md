@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-07 — Cobalt Air
+
+Cobalt Air light/dark colors, neutral workout surfaces, blue actions, matching focus and browser chrome, and a cobalt app icon. Existing records, storage, offline logging and import/backup behavior are unchanged.
+
 ## 2026-11-07 — Warm Mineral training and nutrition
 
 - Added a shared offline exercise picker for routine building, active sessions and past-workout editing, with search, muscle/equipment filters, ordered multi-add and explicit custom creation.

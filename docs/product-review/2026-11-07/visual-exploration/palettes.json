@@ -1,0 +1,147 @@
+[
+  {
+    "id": "cobalt",
+    "name": "Cobalt Air",
+    "tag": "Fresh. Clear. Confident.",
+    "pitch": "Bright neutral surfaces and decisive blue. The clearest everyday direction, with a precise gym mode.",
+    "tradeoff": "Familiar and easy to read; less distinctive than the other directions.",
+    "light": {
+      "canvas": "#F3F6FA",
+      "surface": "#FFFFFF",
+      "text": "#172033",
+      "muted": "#566176",
+      "line": "#DCE2EB",
+      "accent": "#2455D6",
+      "onAccent": "#FFFFFF",
+      "soft": "#EAF0FF",
+      "control": "#7B879A"
+    },
+    "dark": {
+      "canvas": "#10151F",
+      "surface": "#1A2230",
+      "text": "#F4F7FD",
+      "muted": "#B2BDD0",
+      "line": "#354156",
+      "accent": "#9BB7FF",
+      "onAccent": "#142448",
+      "soft": "#26334B",
+      "control": "#7D8DA8"
+    }
+  },
+  {
+    "id": "carbon",
+    "name": "Carbon",
+    "tag": "The training notebook.",
+    "pitch": "Graphite, white and a tiny citrine signature. Flat, disciplined and almost entirely free of color noise.",
+    "tradeoff": "The strongest gym character, but the least soft or welcoming.",
+    "light": {
+      "canvas": "#F4F5F6",
+      "surface": "#FFFFFF",
+      "text": "#181A1D",
+      "muted": "#5B6068",
+      "line": "#DFE2E6",
+      "accent": "#202124",
+      "onAccent": "#FFFFFF",
+      "soft": "#EBEDF0",
+      "control": "#7D838B"
+    },
+    "dark": {
+      "canvas": "#101112",
+      "surface": "#1B1D1F",
+      "text": "#F4F5F6",
+      "muted": "#ADB2BA",
+      "line": "#373B40",
+      "accent": "#F4F4F2",
+      "onAccent": "#18191B",
+      "soft": "#272A2D",
+      "control": "#777F89"
+    }
+  },
+  {
+    "id": "coral",
+    "name": "Coral Paper",
+    "tag": "A warmer kind of progress.",
+    "pitch": "Clean paper, graphite and restrained coral. An editorial journal with useful numbers, rather than a wall of cards.",
+    "tradeoff": "Expressive and personal; coral needs careful separation from error messaging.",
+    "light": {
+      "canvas": "#FCF8F7",
+      "surface": "#FFFFFF",
+      "text": "#28242A",
+      "muted": "#6D6068",
+      "line": "#E9DCE1",
+      "accent": "#B3354F",
+      "onAccent": "#FFFFFF",
+      "soft": "#F9E7EB",
+      "control": "#9E818D"
+    },
+    "dark": {
+      "canvas": "#19171B",
+      "surface": "#242126",
+      "text": "#FAF5F7",
+      "muted": "#C4B6BE",
+      "line": "#443A43",
+      "accent": "#F59AAF",
+      "onAccent": "#351320",
+      "soft": "#342730",
+      "control": "#9D8190"
+    }
+  },
+  {
+    "id": "lilac",
+    "name": "Lilac Studio",
+    "tag": "Calm focus. Modern energy.",
+    "pitch": "Cool white, soft lilac and indigo. Friendlier grouped summaries with a crisp, practical workout matrix.",
+    "tradeoff": "The most approachable; too many rounded panels would dilute its training focus.",
+    "light": {
+      "canvas": "#F6F6FC",
+      "surface": "#FFFFFF",
+      "text": "#211D35",
+      "muted": "#665F7A",
+      "line": "#DDD8EC",
+      "accent": "#5741C7",
+      "onAccent": "#FFFFFF",
+      "soft": "#ECE9F8",
+      "control": "#8C81A9"
+    },
+    "dark": {
+      "canvas": "#17151F",
+      "surface": "#23202D",
+      "text": "#F4F1FC",
+      "muted": "#BDB5CF",
+      "line": "#423A54",
+      "accent": "#B8AAFF",
+      "onAccent": "#251A4C",
+      "soft": "#322C42",
+      "control": "#8C80AC"
+    }
+  },
+  {
+    "id": "atlantic",
+    "name": "Atlantic",
+    "tag": "A quiet performance instrument.",
+    "pitch": "Petrol blue, clean white and ink navy. Compact horizontal readouts make daily numbers easy to scan.",
+    "tradeoff": "Precise and calm, though more technical than playful.",
+    "light": {
+      "canvas": "#F2F7FA",
+      "surface": "#FFFFFF",
+      "text": "#142B36",
+      "muted": "#526A75",
+      "line": "#D8E4EA",
+      "accent": "#006B80",
+      "onAccent": "#FFFFFF",
+      "soft": "#E0F0F4",
+      "control": "#6A8794"
+    },
+    "dark": {
+      "canvas": "#0C1B24",
+      "surface": "#142B37",
+      "text": "#EEF8FC",
+      "muted": "#AAC4D1",
+      "line": "#294958",
+      "accent": "#62D3E4",
+      "onAccent": "#082B36",
+      "soft": "#1A3B4A",
+      "control": "#678E9F"
+    }
+  }
+]

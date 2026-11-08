@@ -1,0 +1,472 @@
+{
+  "renderedBoards": [
+    {
+      "id": "cobalt",
+      "screen": "workout",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light workout preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark workout preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "cobalt",
+      "screen": "nutrition",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light nutrition preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark nutrition preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "cobalt",
+      "screen": "today",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light today preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark today preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "carbon",
+      "screen": "workout",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light workout preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark workout preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "carbon",
+      "screen": "nutrition",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light nutrition preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark nutrition preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "carbon",
+      "screen": "today",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light today preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark today preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "coral",
+      "screen": "workout",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light workout preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark workout preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "coral",
+      "screen": "nutrition",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light nutrition preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark nutrition preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "coral",
+      "screen": "today",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light today preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark today preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "lilac",
+      "screen": "workout",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light workout preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark workout preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "lilac",
+      "screen": "nutrition",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light nutrition preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark nutrition preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "lilac",
+      "screen": "today",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light today preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark today preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "atlantic",
+      "screen": "workout",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light workout preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark workout preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "atlantic",
+      "screen": "nutrition",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light nutrition preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark nutrition preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    },
+    {
+      "id": "atlantic",
+      "screen": "today",
+      "lightDark": true,
+      "layout": [
+        {
+          "mode": "light today preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        },
+        {
+          "mode": "dark today preview",
+          "noHorizontalOverflow": true,
+          "fieldsClearOfTimer": true,
+          "touchTargets": true
+        }
+      ],
+      "accessibilityViolations": []
+    }
+  ],
+  "scrollVerification": {
+    "overviewScrollChecks": [
+      {
+        "id": "cobalt",
+        "screen": "today",
+        "rows": [
+          {
+            "mode": "light today preview",
+            "scrolls": true,
+            "lastItemClear": true
+          },
+          {
+            "mode": "dark today preview",
+            "scrolls": true,
+            "lastItemClear": true
+          }
+        ]
+      },
+      {
+        "id": "cobalt",
+        "screen": "nutrition",
+        "rows": [
+          {
+            "mode": "light nutrition preview",
+            "scrolls": true,
+            "lastItemClear": true
+          },
+          {
+            "mode": "dark nutrition preview",
+            "scrolls": true,
+            "lastItemClear": true
+          }
+        ]
+      },
+      {
+        "id": "carbon",
+        "screen": "today",
+        "rows": [
+          {
+            "mode": "light today preview",
+            "scrolls": true,
+            "lastItemClear": true
+          },
+          {
+            "mode": "dark today preview",
+            "scrolls": true,
+            "lastItemClear": true
+          }
+        ]
+      },
+      {
+        "id": "carbon",
+        "screen": "nutrition",
+        "rows": [
+          {
+            "mode": "light nutrition preview",
+            "scrolls": true,
+            "lastItemClear": true
+          },
+          {
+            "mode": "dark nutrition preview",
+            "scrolls": true,
+            "lastItemClear": true
+          }
+        ]
+      },
+      {
+        "id": "coral",
+        "screen": "today",
+        "rows": [
+          {
+            "mode": "light today preview",
+            "scrolls": true,
+            "lastItemClear": true
+          },
+          {
+            "mode": "dark today preview",
+            "scrolls": true,
+            "lastItemClear": true
+          }
+        ]
+      },
+      {
+        "id": "coral",
+        "screen": "nutrition",
+        "rows": [
+          {
+            "mode": "light nutrition preview",
+            "scrolls": true,
+            "lastItemClear": true
+          },
+          {
+            "mode": "dark nutrition preview",
+            "scrolls": true,
+            "lastItemClear": true
+          }
+        ]
+      },
+      {
+        "id": "lilac",
+        "screen": "today",
+        "rows": [
+          {
+            "mode": "light today preview",
+            "scrolls": true,
+            "lastItemClear": true
+          },
+          {
+            "mode": "dark today preview",
+            "scrolls": true,
+            "lastItemClear": true
+          }
+        ]
+      },
+      {
+        "id": "lilac",
+        "screen": "nutrition",
+        "rows": [
+          {
+            "mode": "light nutrition preview",
+            "scrolls": true,
+            "lastItemClear": true
+          },
+          {
+            "mode": "dark nutrition preview",
+            "scrolls": true,
+            "lastItemClear": true
+          }
+        ]
+      },
+      {
+        "id": "atlantic",
+        "screen": "today",
+        "rows": [
+          {
+            "mode": "light today preview",
+            "scrolls": true,
+            "lastItemClear": true
+          },
+          {
+            "mode": "dark today preview",
+            "scrolls": true,
+            "lastItemClear": true
+          }
+        ]
+      },
+      {
+        "id": "atlantic",
+        "screen": "nutrition",
+        "rows": [
+          {
+            "mode": "light nutrition preview",
+            "scrolls": true,
+            "lastItemClear": true
+          },
+          {
+            "mode": "dark nutrition preview",
+            "scrolls": true,
+            "lastItemClear": true
+          }
+        ]
+      }
+    ],
+    "mobileBoard": {
+      "width": 390,
+      "scrollWidth": 390
+    }
+  }
+}
