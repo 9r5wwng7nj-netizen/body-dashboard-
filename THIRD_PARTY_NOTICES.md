@@ -11,3 +11,12 @@ Body Dashboard vendors these browser assets so application startup, spreadsheet 
 The complete license texts are stored alongside each vendored asset.
 
 Tailwind CSS 4.3.0 is a development dependency used to produce `assets/app.css`; Tailwind code is not executed in the user's browser.
+
+## Curated exercise metadata
+
+The additional 144 catalog definitions reference `free-exercise-db` by yuhonas and contributors, pinned to revision `f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5`:
+
+- Source: https://github.com/yuhonas/free-exercise-db/tree/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5
+- Declared upstream license: Unlicense / public-domain dedication: https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md
+
+Names, equipment categories and primary/secondary roles were curated into the app's broad vocabulary, with explicit editorial role and tracking choices. Per-entry source IDs and revision are retained in runtime metadata; candidate/review documents preserve the raw source metadata and differences. These are proposed focus conventions, not measured activation, injury guidance or trainer approval. No exercise instructions, images, GIFs or video from that source are included. Existing runtime-library licenses remain unchanged.
