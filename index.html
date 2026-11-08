@@ -354,7 +354,8 @@ const WebWrites = {
     const keys = Object.keys(intent.values), current = await Store.readMany(keys), expected = {};
     for (let i = 0; i < keys.length; i++) {
       const k = keys[i]; expected[k] = webJSON(current[i]);
-      if (await webDigest(current[i]) !== intent.expected[k] && !(intent.purpose === 'snapshot' && webJSON(current[i]) === webJSON(intent.values[k]))) {
+      const sameRestoredDefault=['save-custom-exercise','save-exercise-metadata'].includes(intent.purpose)&&intent.expected[k]===await webDigest(undefined)&&webJSON(current[i])===webJSON(COLLECTIONS[k]);
+      if (await webDigest(current[i]) !== intent.expected[k] && !sameRestoredDefault && !(intent.purpose === 'snapshot' && webJSON(current[i]) === webJSON(intent.values[k]))) {
         this.conflict = true;
         throw new Error('Another tab changed these records. Export pending input, then reload the saved copy and review it.');
       }
@@ -439,6 +440,9 @@ function drawSaveRecovery() {
   const retry = $('[data-action="retrySave"]', box);
   retry.setAttribute('aria-disabled', String(!!Store.flushing));
   retry.textContent = Store.flushing ? 'Retrying…' : 'Retry save';
+  const exercisePending=pendingExerciseEdit(),review=$('[data-action="recoverExerciseEdit"]',box);
+  if(exercisePending&&!review){const button=document.createElement('button');button.type='button';button.className='btn min-h-11';button.dataset.action='recoverExerciseEdit';button.textContent='Review exercise edit';retry.after(button);}
+  else if(!exercisePending&&review)review.remove();
 }
 async function savedNotice(message) {
   try { await Store.flushDirty(); toast(message); }
@@ -1116,7 +1120,7 @@ function inferMeta(name) {
   let primary = 'Other'; for (const [re, m] of M) if (re.test(n)) { primary = m; break; }
   return { type, primary, secondary: [], equipment: eqm ? cap(eqm[1]) : (type === 'bodyweight' || type === 'duration' ? 'Bodyweight' : 'Other') };
 }
-function exInfo(name) { const k = String(name || '').toLowerCase(); return (Store.get('exMeta') || {})[k] || DEFAULT_LIB_LC[k] || inferMeta(name); }
+function exInfo(name) { const k = String(name || '').toLowerCase(); return { ...(DEFAULT_LIB_LC[k] || inferMeta(name)), ...((Store.get('exMeta') || {})[k] || {}) }; }
 
 // distance & time helpers (distance stored in km, time in seconds)
 const distUnit = () => S.unit === 'lbs' ? 'mi' : 'km';
@@ -1446,10 +1450,11 @@ function exerciseCard(ex, i, w, ctx, grp) {
       <button class="btn btn-ghost btn-sm" data-action="awExMenu" data-i="${i}" aria-label="More for ${esc(ex.name)}" title="Move, superset or remove">${icon('ellipsis', 'w-4 h-4')}</button>
       <div class="exercise-tools flex items-center gap-2 w-full">
         <label class="flex items-center gap-1 text-xs muted" title="Rest after each set">${icon('timer', 'w-3.5 h-3.5')} Rest <select class="input py-1 px-1.5 w-auto text-xs" data-change="awRest" data-i="${i}" aria-label="Rest after each set">${restOptions(ex.rest)}</select></label>
-        ${ex.notes || ui.noteOpen.has(ex) ? '' : `<button class="btn btn-ghost btn-sm text-brand-700 dark:text-brand-300" data-action="awNoteOpen" data-i="${i}">${icon('notebook-pen', 'w-4 h-4')} Add note</button>`}
+        ${ex.notes || ui.noteOpen.has(ex) ? '' : `<button class="btn btn-ghost btn-sm text-brand-700 dark:text-brand-300" data-action="awNoteOpen" data-i="${i}">${icon('notebook-pen', 'w-4 h-4')} Add session note</button>`}
       </div>
     </div>
-    ${ex.notes || ui.noteOpen.has(ex) ? `<input class="input py-1.5 text-xs mb-2" placeholder="Exercise notes…" value="${esc(ex.notes)}" data-input="awExNote" data-i="${i}" aria-label="Notes for ${esc(ex.name)}">` : ''}
+    ${exerciseCueMarkup(ex,ctx==='edit')}
+    ${ex.notes || ui.noteOpen.has(ex) ? `<div class="mb-3"><label class="label" for="session-note-${i}">Session note</label><input id="session-note-${i}" class="input py-1.5 text-sm" placeholder="Observations about this workout…" value="${esc(ex.notes)}" data-input="awExNote" data-i="${i}" aria-label="Session note for ${esc(ex.name)}"><button type="button" class="btn btn-ghost btn-sm mt-1" data-action="sessionNoteToCue" data-i="${i}" ${ex.notes?.trim()?'':'disabled'}>Save as exercise cue</button></div>` : ''}
     <div class="workout-matrix-wrap overflow-x-auto"><table class="workout-matrix w-full max-w-3xl text-sm"><caption class="text-xs muted text-left mb-2">${ctx === 'active' ? 'Check a set to log it. Tap its number for options.' : 'Edit set values, then save the workout.'}</caption><thead><tr class="text-xs muted text-left"><th data-col="set" class="font-medium pl-1 w-9">Set</th>${showPrevious ? '<th data-col="previous" class="font-medium">Previous</th>' : ''}${cols.map(c => `<th data-col="${c}" class="font-medium text-center">${head(c)}</th>`).join('')}${showRpe ? '<th class="font-medium text-center">RPE</th>' : ''}${ctx === 'edit' ? '' : '<th data-col="done" class="w-10"><span class="sr-only">Log set</span></th>'}${ctx === 'edit' ? '<th data-col="remove" class="w-7"><span class="sr-only">Remove set</span></th>' : ''}</tr></thead><tbody>${rows}</tbody></table></div>
     ${ctx === 'edit' ? '' : `<details class="set-adjustments" ${ui.stepOpen.has(ex.id || String(i)) ? 'open' : ''}><summary data-action="awStepToggle" data-key="${esc(ex.id || String(i))}">Adjust next set ${icon('chevron-down', 'w-4 h-4')}</summary>${setStepper(ex, i, type, prevSets)}</details>`}
     <button class="btn btn-sm w-full mt-2" data-action="awAddSet" data-i="${i}">${icon('plus', 'w-3.5 h-3.5')} Add set</button>
@@ -1569,22 +1574,146 @@ function fitLibraryTab() {
     <div class="text-right text-xs muted shrink-0">${x.s ? `${x.s.n} session${x.s.n === 1 ? '' : 's'}<br>last ${fmtDate(ymd(new Date(x.s.last)), { month: 'short', day: 'numeric' })}` : 'not done yet'}</div></button>`).join('') || '<p class="p-4 text-sm muted">No exercises match.</p>'}</div></div>
   <p class="text-xs muted mt-2">${list.length} exercises. Tap one to set its tracking type, muscles, equipment or a how-to link — or to rename or merge it across your history.</p>`;
 }
+function exerciseMetadataDraft(name, info = {}) {
+  return { name: name || '', type: info.type || 'weight_reps', primary: info.primary || 'Other', secondary: [...(info.secondary || [])], equipment: info.equipment || 'Other', countBW: !!info.countBW, bwPct: String(info.bwPct ?? 100), howto: info.howto || '', notes: info.notes || '' };
+}
+function exerciseMetadataBases() {
+  const keys=['exercises','exMeta','workouts','routines','activeWorkout'];return {...Object.fromEntries(keys.map(key=>[key,structuredClone(Store.get(key))])),_expected:Object.fromEntries(keys.map(key=>[key,structuredClone(Store.dirty.has(key)?Store.get(key):WebWrites.bases[key])]))};
+}
+function exerciseMetadataFields(d, { cueOnly = false, original = {} } = {}) {
+  const field = (name, html) => `<label class="label">${name}${html}</label>`;
+  const edit = 'data-input="exerciseMetaInput"', change = 'data-change="exerciseMetaChange"';
+  const opts = (items, value) => [...new Set([...items,...(value&&!items.includes(value)?[value]:[])])].map(item=>`<option value="${esc(item)}" ${item===value?'selected':''}>${esc(item)}${!items.includes(item)?' (existing mapping)':''}</option>`).join('');
+  if (cueOnly) return `<input type="hidden" name="name" value="${esc(d.name)}"><p class="font-semibold">${esc(d.name)}</p>${field('Exercise cues',`<textarea name="notes" class="input mt-1" rows="4" ${edit} autofocus>${esc(d.notes)}</textarea>`)}<p class="text-sm muted">Shown whenever you log this exercise. Session notes and recorded history stay unchanged.</p>`;
+  const muscles = [...new Set([...MUSCLES,...(original.secondary||[])])];
+  return `${field('Name',`<input name="name" class="input mt-1" value="${esc(d.name)}" required ${edit}>`)}
+    <div class="grid sm:grid-cols-3 gap-3">${field('Tracking type',`<select name="type" class="input mt-1" ${change}>${Object.entries(EX_TYPES).map(([key,v])=>`<option value="${key}" ${key===d.type?'selected':''}>${esc(v.label)}</option>`).join('')}</select>`)}${field('Primary muscle',`<select name="primary" class="input mt-1" ${change}>${opts(MUSCLES,d.primary)}</select>`)}${field('Equipment',`<select name="equipment" class="input mt-1" ${change}>${opts(EQUIPMENT,d.equipment)}</select>`)}</div>
+    <fieldset class="exercise-secondary"><legend class="label">Secondary muscles</legend><p class="text-xs muted mb-2" id="exercise-secondary-help">Choose every additional muscle involved. The primary muscle is listed separately.</p><div class="flex flex-wrap gap-2">${muscles.map(m=>`<label class="exercise-muscle-choice"><input type="checkbox" name="sec" value="${esc(m)}" ${(d.secondary||[]).includes(m)&&m!==d.primary?'checked':''} ${m===d.primary?'disabled':''} ${change} aria-describedby="exercise-secondary-help"><span>${esc(m)}</span><span class="exercise-primary-hint text-xs muted" ${m===d.primary?'':'hidden'}>Primary</span></label>`).join('')}</div><p class="text-xs muted mt-2" data-exercise-primary-status role="status"></p></fieldset>
+    <div id="bw-opts" class="rounded-xl border border-slate-200 dark:border-slate-800 p-3 ${BW_TYPES.has(d.type)?'':'hidden'}"><label class="flex items-center gap-2 text-sm font-medium cursor-pointer"><input type="checkbox" name="countBW" ${d.countBW?'checked':''} ${change}> Count body weight toward volume</label><label class="label mt-2">Percentage of body weight<input type="number" inputmode="numeric" name="bwPct" min="1" max="100" step="1" class="input w-24 mt-1" value="${esc(d.bwPct)}" ${edit}></label><p class="text-xs muted mt-2">Uses your weight for that date or the fallback in Settings. This changes the load basis for future accepted work.</p></div>
+    ${field('How-to link (video or article)',`<input name="howto" class="input mt-1" value="${esc(d.howto)}" placeholder="https://" ${edit}>`)}
+    ${field('Exercise cues',`<textarea name="notes" class="input mt-1" rows="3" ${edit} placeholder="Reusable setup reminders or form cues">${esc(d.notes)}</textarea>`)}<p class="text-xs muted">Exercise cues are visible next session. Keep observations about today in Session note.</p>`;
+}
+function readExerciseMetadataForm(form, previous = {}) {
+  const f = new FormData(form), has = key=>f.has(key);
+  return { ...previous, name: String(f.get('name') ?? previous.name ?? ''), notes: String(f.get('notes') ?? previous.notes ?? ''), ...(has('type')?{type:String(f.get('type')),primary:String(f.get('primary')),equipment:String(f.get('equipment')),secondary:f.getAll('sec').map(String),countBW:has('countBW'),bwPct:String(f.get('bwPct')??''),howto:String(f.get('howto')??'')}: {}) };
+}
+function currentExerciseMetadataEditor(form) {
+  return form?.dataset.submit==='epCustomSave' ? ui.exercisePicker?.customEditor : ui.exerciseMetaEditor;
+}
+function captureExerciseMetadata(el) {
+  const form=el.closest('form'),editor=currentExerciseMetadataEditor(form);if(!editor||editor.prepared||editor.busy)return;
+  editor.draft=readExerciseMetadataForm(form,editor.draft);
+  if(form.dataset.submit==='epCustomSave')ui.exercisePicker.custom=editor.draft;
+}
+function changeExerciseMetadata(el) {
+  const form=el.closest('form'),editor=currentExerciseMetadataEditor(form);if(!editor||editor.prepared||editor.busy)return;
+  if(el.name==='primary'){
+    let removed=false;
+    for(const checkbox of $$('input[name="sec"]',form)){const primary=checkbox.value===el.value;if(primary&&checkbox.checked){checkbox.checked=false;removed=true;}checkbox.disabled=primary;const hint=$('.exercise-primary-hint',checkbox.closest('label'));if(hint)hint.hidden=!primary;}
+    const status=$('[data-exercise-primary-status]',form);if(status)status.textContent=removed?`${el.value} is now primary and was removed from secondary muscles.`:'';
+  }
+  const bw=$('#bw-opts',form);if(bw)bw.classList.toggle('hidden',!BW_TYPES.has(form.elements.type?.value));
+  captureExerciseMetadata(el);
+}
+function validateExerciseMetadata(editor) {
+  const d=editor.draft,original=editor.originalInfo||{},name=String(d.name||'').trim();if(!name)throw new Error('Give the exercise a name.');
+  if(editor.cueOnly)return{name,meta:{...(editor.bases.exMeta[editor.orig.toLowerCase()]||{}),notes:String(d.notes||'').trim()}};
+  if(!EX_TYPES[d.type]||(!MUSCLES.includes(d.primary)&&d.primary!==original.primary)||(!EQUIPMENT.includes(d.equipment)&&d.equipment!==original.equipment))throw new Error('Choose a valid tracking type, muscle and equipment.');
+  const allowed=new Set([...MUSCLES,...(original.secondary||[])]),secondary=[...new Set(d.secondary||[])];if(secondary.some(m=>!allowed.has(m)))throw new Error('Choose secondary muscles from the list.');
+  const meta={...(editor.bases.exMeta[editor.orig.toLowerCase()]||{}),type:d.type,primary:d.primary,secondary:secondary.filter(m=>m!==d.primary),equipment:d.equipment};
+  if(BW_TYPES.has(d.type)||Object.hasOwn(meta,'countBW')){const pct=Number(d.bwPct);if(!Number.isFinite(pct)||pct<1||pct>100)throw new Error('Body-weight percentage must be from 1 to 100.');meta.countBW=!!d.countBW&&BW_TYPES.has(d.type);meta.bwPct=pct;}
+  for(const key of ['howto','notes'])if(String(d[key]||'').trim()||Object.hasOwn(meta,key))meta[key]=String(d[key]||'').trim();
+  return{name,meta};
+}
+function exerciseEditorRecovery(editor) {
+  const p=editor.kind==='picker'?ui.exercisePicker:null;
+  return {orig:editor.orig,draft:structuredClone(editor.draft),cueOnly:!!editor.cueOnly,originalInfo:structuredClone(editor.originalInfo||{}),...(p?{picker:{context:p.context,index:p.index,targetId:p.targetId,baseline:p.baseline,parentRoutine:p.parentRoutine},...(p.parentRoutine?{routineDraft:structuredClone(ui.rDraft)}:{})}: {})};
+}
+function prepareExerciseDefinition(editor) {
+  const recovery=exerciseEditorRecovery(editor);validateExerciseRecoveryEdit(recovery);
+  const {name,meta}=validateExerciseMetadata(editor),b=editor.bases,orig=editor.orig,from=orig.toLowerCase(),key=name.toLowerCase();
+  const exists=b.exercises.find(n=>n.toLowerCase()===key);if(!orig&&exists)throw new Error('That name already exists. Go back and select or edit it.');
+  const rename=!!orig&&orig!==name;if(rename&&!confirm(`Rename “${orig}” to “${name}” in every workout and routine?${exists&&from!==key?' This merges the two library definitions using the fields you reviewed.':''}`))return null;
+  const exMeta=structuredClone(b.exMeta),beforeDefinitions={from:structuredClone(exMeta[from]||null),to:structuredClone(exMeta[key]||null)};
+  if(rename&&from!==key)delete exMeta[from];exMeta[key]={...(exMeta[key]||{}),...meta};
+  const names=b.exercises.filter(n=>n.toLowerCase()!==from&&n.toLowerCase()!==key);names.push(name);names.sort((a,b)=>a.localeCompare(b));
+  const values={exercises:names,exMeta};let renamed=0;
+  if(rename){const fix=list=>(list||[]).forEach(ex=>{if(ex.name.toLowerCase()===from){ex.name=name;renamed++;}});for(const k of ['workouts','routines']){values[k]=structuredClone(b[k]);values[k].forEach(item=>fix(item.exercises));}values.activeWorkout=structuredClone(b.activeWorkout);if(values.activeWorkout)fix(values.activeWorkout.exercises);}
+  const token=uid(),purpose=editor.kind==='picker'?'save-custom-exercise':'save-exercise-metadata';
+  return{values,name,purpose,renamed,from:orig,extra:{exerciseToken:token,...(editor.kind==='picker'?{pickerToken:token}:{}),exerciseEdit:recovery,...(rename?{beforeDefinitions}: {})},expected:Object.fromEntries(Object.keys(values).map(k=>[k,structuredClone(b._expected[k])]))};
+}
+async function persistExerciseDefinition(editor) {
+  await Store.flushDirty();
+  if(!editor.prepared){for(const key of ['exercises','exMeta',...(editor.orig&&editor.orig!==editor.draft.name.trim()?['workouts','routines','activeWorkout']:[])])if(webJSON(Store.get(key))!==webJSON(editor.bases[key]))throw new Error('These records changed while this form was open. Keep your draft, export it, then reopen the saved definition to review.');editor.prepared=prepareExerciseDefinition(editor);if(!editor.prepared)return null;}
+  const p=editor.prepared,ack=(await idbEntries('local')).some(([key,value])=>key.startsWith('bd.web.receipt.')&&value.exerciseToken===p.extra.exerciseToken);
+  if(!ack)await WebWrites.command(p.values,p.purpose,p.extra,p.expected);
+  else {
+    const keys=Object.keys(p.values),revisions=keys.map(key=>Store.revisions.get(key)||0);
+    if(keys.some(key=>Store.dirty.has(key)))throw new Error('Newer edits are still pending. Save or export them before acknowledging this exercise edit.');
+    const saved=await Store.readMany(keys);
+    if(keys.some((key,i)=>Store.dirty.has(key)||(Store.revisions.get(key)||0)!==revisions[i]))throw new Error('Newer edits arrived while checking the saved exercise. They were kept; save or export them first.');
+    if(keys.some((key,i)=>webJSON(saved[i])!==webJSON(p.values[key])))throw new Error('This edit was already saved, but newer records now exist. Export this draft or reload the saved definition; it will not be replayed.');
+    keys.forEach((key,i)=>{WebWrites.bases[key]=structuredClone(saved[i]);Store.data[key]=structuredClone(saved[i]);});
+  }
+  if(p.from&&p.from!==p.name&&ui.editW)for(const ex of ui.editW.exercises)if(ex.name.toLowerCase()===p.from.toLowerCase())ex.name=p.name;
+  return p;
+}
+function drawLibraryExerciseEditor() {
+  const e=ui.exerciseMetaEditor;if(!e)return;
+  const title=e.cueOnly?'Exercise cues':e.orig?'Exercise settings':'New exercise';
+  Modal.open(modalShell(title,`${e.cueOnly&&e.previousCue&&e.draft.notes!==e.previousCue?`<p class="text-sm muted">Current exercise cues: ${esc(e.previousCue)}</p><p class="text-sm">Review the replacement below. Your session note will stay in this workout.</p>`:''}${exerciseMetadataFields(e.draft,{cueOnly:e.cueOnly,original:e.originalInfo})}${e.orig&&!e.cueOnly?'<p class="text-xs muted">Renaming is global and asks for confirmation. Existing session notes and recorded mappings stay with their records.</p>':''}${e.error?`<p class="text-sm text-rose-600" role="alert">${esc(e.error)}</p><p class="text-xs muted">Keep this tab open until save or export succeeds. Restart recovery is available only after a checkpoint is saved.</p>`:''}${e.prepared?'<p class="text-sm muted" role="status">Pending exercise edit. Retry save to confirm it; the draft is retained for recovery.</p>':''}`,`${e.orig&&!e.cueOnly?`<button type="button" class="btn btn-sm mr-auto" data-action="libProgress" data-name="${esc(e.orig)}">${icon('trending-up','w-3.5 h-3.5')} Progress</button><button type="button" class="btn btn-sm btn-danger" data-action="libDelete" data-name="${esc(e.orig)}">Remove</button>`:''}${e.error?'<button type="button" class="btn" data-action="exerciseDraftExport">Export exercise draft</button><button type="button" class="btn" data-action="exerciseDefinitionReload">Reload saved definition</button>':''}<button type="button" class="btn" data-action="closeModal">Cancel</button><button class="btn btn-primary" name="exerciseSave">${e.busy?'Saving…':e.prepared?'Retry save':'Save'}</button>`,'libSave'),{wide:!e.cueOnly});
+  if(e.busy||e.prepared)for(const control of $$('#modal input,#modal textarea,#modal select,#modal button'))if(e.busy||!['closeModal','exerciseDraftExport','exerciseDefinitionReload'].includes(control.dataset.action)&&control.type!=='submit')control.disabled=true;
+}
 function libModal(name) {
-  const info = name ? exInfo(name) : { type: 'weight_reps', primary: 'Other', secondary: [], equipment: 'Other' };
-  const opts = (arr, cur) => arr.map(x => `<option ${x === cur ? 'selected' : ''}>${x}</option>`).join('');
-  Modal.open(modalShell(name ? 'Exercise settings' : 'New exercise', `<input type="hidden" name="orig" value="${esc(name || '')}">
-    <div><label class="label">Name</label><input name="name" class="input" value="${esc(name || '')}" required ${name ? '' : 'autofocus'}></div>
-    <div class="grid sm:grid-cols-3 gap-3"><div><label class="label">Tracking type</label><select name="type" class="input" data-change="libTypeChange">${Object.entries(EX_TYPES).map(([k, v]) => `<option value="${k}" ${info.type === k ? 'selected' : ''}>${v.label}</option>`).join('')}</select></div>
-      <div><label class="label">Primary muscle</label><select name="primary" class="input">${opts(MUSCLES, info.primary)}</select></div><div><label class="label">Equipment</label><select name="equipment" class="input">${opts(EQUIPMENT, info.equipment)}</select></div></div>
-    <div><label class="label">Secondary muscles (count as half a set)</label><div class="flex flex-wrap gap-1.5">${MUSCLES.map(m => `<label class="cursor-pointer"><input type="checkbox" name="sec" value="${m}" class="peer sr-only" ${(info.secondary || []).includes(m) ? 'checked' : ''}><span class="chip peer-checked:bg-brand-600 peer-checked:text-white">${m}</span></label>`).join('')}</div></div>
-    <div id="bw-opts" class="rounded-xl border border-slate-200 dark:border-slate-800 p-3 ${BW_TYPES.has(info.type) ? '' : 'hidden'}">
-      <label class="flex items-center gap-2 text-sm font-medium cursor-pointer"><input type="checkbox" name="countBW" class="w-4 h-4 accent-brand-600" ${info.countBW ? 'checked' : ''}> Count body weight toward volume</label>
-      <div class="flex flex-wrap items-center gap-2 mt-2 text-sm"><span class="muted">Use</span><input type="number" inputmode="numeric" name="bwPct" min="1" max="100" step="1" class="input w-20 py-1" value="${info.bwPct ?? 100}"><span class="muted">% of body weight per rep</span></div>
-      <p class="text-xs muted mt-2">Volume = (body weight × % ${'+'} added weight, or − assistance) × reps. Body weight comes from your Nutrition weigh-ins for that date (7-day trend), or the fallback in Settings. Tip: push-ups move roughly 65%, pull-ups and dips about 100%.</p></div>
-    <div><label class="label">How-to link (video or article)</label><input name="howto" class="input" value="${esc(info.howto || '')}" placeholder="https://"></div>
-    <div><label class="label">Form cues</label><textarea name="notes" class="input" rows="2">${esc(info.notes || '')}</textarea></div>
-    <p class="text-xs muted">Tracking types: weight &amp; reps · bodyweight reps · weighted (+lbs) or assisted (−lbs) bodyweight · duration (planks, holds) · weight &amp; duration (carries) · distance &amp; duration (runs, rucks).${name ? ' Renaming updates every workout and routine; renaming to an existing exercise merges the two.' : ''}</p>`,
-    `${name ? `<button type="button" class="btn btn-sm mr-auto" data-action="libProgress" data-name="${esc(name)}">${icon('trending-up', 'w-3.5 h-3.5')} Progress</button><button type="button" class="btn btn-sm btn-danger" data-action="libDelete" data-name="${esc(name)}">Remove</button>` : ''}<button type="button" class="btn" data-action="closeModal">Cancel</button><button class="btn btn-primary">Save</button>`, 'libSave'), { wide: true });
+  const orig=name||'',old=ui.exerciseMetaEditor;
+  if(!old||old.orig!==orig||old.cueOnly){const info=orig?exInfo(orig):{type:'weight_reps',primary:'Other',secondary:[],equipment:'Other'};ui.exerciseMetaEditor={kind:'library',orig,draft:exerciseMetadataDraft(orig,info),originalInfo:structuredClone(info),bases:exerciseMetadataBases()};}
+  drawLibraryExerciseEditor();
+}
+function openExerciseCueEditor(name, text = null) {
+  const info=exInfo(name);ui.exerciseMetaEditor={kind:'library',orig:name,cueOnly:true,previousCue:info.notes||'',draft:exerciseMetadataDraft(name,info),originalInfo:structuredClone(info),bases:exerciseMetadataBases()};if(text!==null)ui.exerciseMetaEditor.draft.notes=text;drawLibraryExerciseEditor();
+}
+async function saveLibraryExercise(form) {
+  const e=ui.exerciseMetaEditor;if(!e||e.busy)return;if(!e.prepared)e.draft=readExerciseMetadataForm(form,e.draft);e.busy=true;e.error='';drawLibraryExerciseEditor();
+  try{const saved=await persistExerciseDefinition(e);if(!saved)return;const orig=e.orig;if(ui.progEx===orig)ui.progEx=saved.name;ui.exerciseMetaEditor=null;Modal.close();render();toast(e.cueOnly?'Exercise cues saved on device':'Exercise saved on device');}
+  catch(error){e.error=error.message;toast(error.message,'error');drawSaveRecovery();}
+  finally{e.busy=false;if(ui.exerciseMetaEditor===e){drawLibraryExerciseEditor();if(e.error)$('#modal button[name="exerciseSave"]')?.focus({preventScroll:true});}}
+}
+function validateExerciseRecoveryEdit(edit) {
+  const text=(value,max)=>typeof value==='string'&&value.length<=max,fail=()=>{throw new Error('Invalid exercise-edit recovery data.');};
+  if(!plainObject(edit)||!text(edit.orig,500)||!plainObject(edit.draft)||typeof edit.cueOnly!=='boolean'||!plainObject(edit.originalInfo))fail();
+  const d=edit.draft;if(!text(d.name,500)||!text(d.type,80)||!text(d.primary,100)||!text(d.equipment,100)||!text(d.bwPct,40)||!text(d.howto,4096)||!text(d.notes,1000000)||typeof d.countBW!=='boolean'||!Array.isArray(d.secondary)||d.secondary.length>100||d.secondary.some(m=>!text(m,100)))fail();
+  if(edit.picker){const p=edit.picker;if(!plainObject(p)||!['routine-add','routine-replace','session-add','session-replace','edit-add'].includes(p.context)||typeof p.parentRoutine!=='boolean'||p.parentRoutine!==p.context.startsWith('routine')||!text(p.baseline,10000000)||(p.targetId!=null&&!text(p.targetId,500))||(p.index!=null&&(!Number.isInteger(p.index)||p.index<0||p.index>10000)))fail();}
+  if(edit.routineDraft){const r=edit.routineDraft;if(!plainObject(r)||!text(r.name,500)||!text(r.notes??'',1000000)||!text(r.folder??'',500)||(r.id!=null&&!(text(r.id,500)||typeof r.id==='number'&&Number.isFinite(r.id)))||!Array.isArray(r.exercises)||r.exercises.length>1000||r.exercises.some(ex=>!plainObject(ex)||!text(ex.name,500)||!(ex.sets==null||typeof ex.sets==='number'&&Number.isFinite(ex.sets))||!(text(ex.reps??'',100)||typeof ex.reps==='number'&&Number.isFinite(ex.reps))))fail();}
+  validateJsonTree(edit);return edit;
+}
+function pendingExerciseEdit() { return [...WebWrites.pending.values()].find(intent=>intent.extra?.exerciseEdit&&['save-exercise-metadata','save-custom-exercise'].includes(intent.purpose)); }
+function recoverExerciseEdit() {
+  const intent=pendingExerciseEdit(),saved=intent?.extra.exerciseEdit;if(!saved)return;validateExerciseRecoveryEdit(saved);
+  const prepared={values:structuredClone(intent.values),purpose:intent.purpose,extra:structuredClone(intent.extra),name:saved.draft.name.trim(),from:saved.orig,renamed:0};
+  const editor={kind:'library',orig:saved.orig||'',draft:structuredClone(saved.draft),cueOnly:!!saved.cueOnly,originalInfo:structuredClone(saved.originalInfo||{}),bases:exerciseMetadataBases(),prepared};
+  const p=saved.picker;if(p){if(p.parentRoutine&&!ui.rDraft&&saved.routineDraft)ui.rDraft=structuredClone(saved.routineDraft);const target=p.parentRoutine?ui.rDraft:p.context==='edit-add'?ui.editW:Store.get('activeWorkout');if(target&&(p.parentRoutine?webJSON(target)===p.baseline:target.id===p.targetId)){editor.kind='picker';ui.exercisePicker={...p,q:editor.draft.name,muscle:'all',equipment:'all',selected:[],items:exercisePickerItems(),busy:false,custom:editor.draft,customEditor:editor};customPickerForm();return;}}
+  ui.exerciseMetaEditor=editor;drawLibraryExerciseEditor();
+}
+function exportExerciseMetadataDraft(el) {
+  const form=el.closest('form'),editor=currentExerciseMetadataEditor(form);if(!editor)return;captureExerciseMetadata(el);
+  download(`exercise-draft-${ymd()}.json`,JSON.stringify({app:'body-dashboard',type:'exercise-draft',version:1,exportedAt:new Date().toISOString(),exerciseEdit:exerciseEditorRecovery(editor)},null,2));toast('Exercise draft exported. Keep it before reloading saved records.');
+}
+async function reloadExerciseDefinition() {
+  const e=ui.exerciseMetaEditor;if(!e||e.busy)return;
+  if(!confirm('Export this exercise draft first if you need it. Discard this pending exercise edit and reload the saved definition? Session notes and other pending actions are kept.'))return;
+  await WebWrites.tail;
+  if(['exercises','exMeta'].some(key=>Store.dirty.has(key)))return toast('Recover other pending library changes before reloading this definition.','error');
+  const token=e.prepared?.extra.exerciseToken;
+  for(const intent of [...WebWrites.pending.values()])if(token&&intent.extra.exerciseToken===token){await LocalDb.del('bd.web.intent.'+intent.id);WebWrites.pending.delete(intent.id);}
+  const keys=['exercises','exMeta'],revisions=keys.map(key=>Store.revisions.get(key)||0),saved=await Store.readMany(keys);
+  if(keys.some((key,i)=>Store.dirty.has(key)||(Store.revisions.get(key)||0)!==revisions[i]))return toast('Newer input arrived and was kept. Recover it before reloading.','error');
+  keys.forEach((key,i)=>{Store.data[key]=structuredClone(saved[i]??COLLECTIONS[key]);WebWrites.bases[key]=structuredClone(saved[i]);});
+  const orig=e.orig;ui.exerciseMetaEditor=null;WebWrites.conflict=WebWrites.pending.size>0;drawSaveRecovery();libModal(orig);
+}
+function exerciseCueMarkup(ex, historical = false) {
+  const cue=String(exInfo(ex.name).notes||'').trim();if(!cue)return'';
+  const key=ex.name.toLowerCase(),expanded=ui.expandedExerciseCues?.has(key);
+  return `<section class="exercise-cues mt-3 mb-3" aria-label="${historical?'Current exercise cues':'Exercise cues'}"><div class="flex items-center justify-between gap-2"><strong class="text-sm">${historical?'Current exercise cues':'Exercise cues'}</strong><button type="button" class="btn btn-ghost btn-sm" data-action="exerciseCueEdit" data-name="${esc(ex.name)}" aria-label="Edit exercise cues for ${esc(ex.name)}">Edit</button></div><p class="text-sm whitespace-pre-wrap ${expanded?'':'exercise-cue-preview'}">${esc(cue)}</p><button type="button" class="btn btn-ghost btn-sm mt-1" data-action="exerciseCueToggle" data-name="${esc(ex.name)}" aria-expanded="${!!expanded}">${expanded?'Show less':'Expand cues'}</button></section>`;
 }
 function metricDefs(type) {
   const mx = (ex, f) => Math.max(0, ...workSets(ex).map(s => f(s) || 0)), sm = (ex, f) => sum(workSets(ex).map(s => f(s) || 0));
@@ -1731,7 +1860,7 @@ function toHevyCSV() {
 // Classification snapshots belong to new accepted instances, never backfilled history.
 function exerciseClassification(name) {
   const info = exInfo(name), key = String(name).toLowerCase();
-  return { version: 1, type: info.type, primary: info.primary || 'Other', secondary: [...(info.secondary || [])], equipment: info.equipment || 'Other', countBW: !!info.countBW, bwPct: info.bwPct ?? 100, source: Store.get('exMeta')[key] ? 'user' : DEFAULT_LIB_LC[key] ? 'builtin' : 'inferred' };
+  return { version: 1, type: info.type, primary: info.primary || 'Other', secondary: [...(info.secondary || [])], equipment: info.equipment || 'Other', countBW: !!info.countBW, bwPct: info.bwPct ?? 100, source: ['type','primary','secondary','equipment','countBW','bwPct'].some(field=>Object.hasOwn(Store.get('exMeta')[key]||{},field)) ? 'user' : DEFAULT_LIB_LC[key] ? 'builtin' : 'inferred' };
 }
 function exerciseInfo(ex) {
   const snap = ex?.classification;
@@ -1842,23 +1971,18 @@ async function undoExerciseSwap() {
   } catch(e){toast(e.message,'error');drawSaveRecovery();}finally{WorkoutCommands.pending(false);}
 }
 function customPickerForm() {
-  const p=ui.exercisePicker;if(!p)return;const d=p.custom || {name:p.q,type:'weight_reps',primary:'Other',equipment:'Other'};p.custom=d;
-  Modal.open(modalShell('Create exercise', `<p class="text-sm muted">Confirm the tracking type. Unknown muscle or equipment can stay Other.</p><label class="label">Name<input class="input mt-1" name="name" value="${esc(d.name)}" required></label><label class="label">Tracking type<select name="type" class="input mt-1">${Object.entries(EX_TYPES).map(([key,v])=>`<option value="${key}" ${d.type===key?'selected':''}>${esc(typeLabel(key))}</option>`).join('')}</select></label><label class="label">Primary muscle<select class="input mt-1" name="primary">${MUSCLES.map(m=>`<option ${d.primary===m?'selected':''}>${esc(m)}</option>`).join('')}</select></label><label class="label">Equipment<select class="input mt-1" name="equipment">${EQUIPMENT.map(m=>`<option ${d.equipment===m?'selected':''}>${esc(m)}</option>`).join('')}</select></label>${p.error?`<p class="text-sm text-rose-600" role="alert">${esc(p.error)}</p>`:''}`, `<button type="button" class="btn" data-action="epCustomBack">Back</button><button class="btn btn-primary">Save and select</button>`, 'epCustomSave'),{onClose:drawExercisePicker});
+  const p=ui.exercisePicker;if(!p)return;
+  if(!p.customEditor){const info={type:'weight_reps',primary:'Other',secondary:[],equipment:'Other'};p.customEditor={kind:'picker',orig:'',draft:p.custom||exerciseMetadataDraft(p.q,info),originalInfo:info,bases:exerciseMetadataBases()};}
+  const e=p.customEditor;p.custom=e.draft;
+  Modal.open(modalShell('Create exercise',`<p class="text-sm muted">Confirm the tracking type and muscle mapping. Unknown values can stay Other.</p>${exerciseMetadataFields(e.draft,{original:e.originalInfo})}${e.error?`<p class="text-sm text-rose-600" role="alert">${esc(e.error)}</p><p class="text-xs muted">Keep this tab open until save or export succeeds. Restart recovery is available only after a checkpoint is saved.</p>`:''}${e.prepared?'<p class="text-sm muted" role="status">Pending custom exercise. Retry save; all entered fields are retained.</p>':''}`,`${e.error?'<button type="button" class="btn" data-action="exerciseDraftExport">Export exercise draft</button>':''}<button type="button" class="btn" data-action="epCustomBack">Back</button><button class="btn btn-primary" name="exerciseSave">${e.busy?'Saving…':e.prepared?'Retry save':'Save and select'}</button>`,'epCustomSave'),{wide:true,onClose:drawExercisePicker});
+  if(e.busy||e.prepared)for(const control of $$('#modal input,#modal textarea,#modal select,#modal button'))if(e.busy||!['epCustomBack','closeModal','exerciseDraftExport'].includes(control.dataset.action)&&control.type!=='submit')control.disabled=true;
 }
 async function saveCustomPickerExercise(form) {
-  const p=ui.exercisePicker;if(!p||p.customBusy)return;p.customBusy=true;
-  const d=p.customPrepared?p.custom:fd(form);p.custom=d;
-  try {
-    const name=d.name.trim();if(!name)throw new Error('Give the exercise a name.');
-    const exists=pickerNames().find(n=>n.toLowerCase()===name.toLowerCase());
-    if(exists&&!p.customPrepared)throw new Error('That name already exists. Go back and select it.');
-    if(!EX_TYPES[d.type]||!MUSCLES.includes(d.primary)||!EQUIPMENT.includes(d.equipment))throw new Error('Choose a valid tracking type, muscle and equipment.');
-    if(!p.customPrepared){await Store.flushDirty();const names=[...Store.get('exercises'),name].sort((a,b)=>a.localeCompare(b)),meta=structuredClone(Store.get('exMeta'));meta[name.toLowerCase()]={type:d.type,primary:d.primary,secondary:[],equipment:d.equipment};p.customPrepared={values:{exercises:names,exMeta:meta},name,extra:{pickerToken:uid()},expected:{exercises:structuredClone(WebWrites.bases.exercises),exMeta:structuredClone(WebWrites.bases.exMeta)}};}
-    const acknowledged = (await idbEntries('local')).some(([key,value])=>key.startsWith('bd.web.receipt.')&&value.purpose==='save-custom-exercise'&&value.pickerToken===p.customPrepared.extra.pickerToken);
-    if (!acknowledged) await WebWrites.command(p.customPrepared.values,'save-custom-exercise',p.customPrepared.extra,p.customPrepared.expected);
-    else if (!pickerNames().some(name=>name.toLowerCase()===p.customPrepared.name.toLowerCase())) throw new Error('The saved exercise is no longer in this library. Reopen the picker.');
-    const chosen=p.customPrepared.name;p.items=exercisePickerItems();p.selected=p.context.endsWith('replace')?[chosen]:[...new Set([...p.selected,chosen])];p.q=chosen;p.customPrepared=null;p.custom=null;p.error='';drawExercisePicker();
-  } catch(e){p.error=e.message;customPickerForm();toast(e.message,'error');drawSaveRecovery();}finally{p.customBusy=false;}
+  const p=ui.exercisePicker,e=p?.customEditor;if(!e||e.busy)return;
+  if(!e.prepared)e.draft=readExerciseMetadataForm(form,e.draft);p.custom=e.draft;e.busy=true;e.error='';customPickerForm();
+  try{const saved=await persistExerciseDefinition(e);if(!saved)return;p.items=exercisePickerItems();p.selected=p.context.endsWith('replace')?[saved.name]:[...new Set([...p.selected,saved.name])];p.q=saved.name;p.custom=null;p.customEditor=null;p.error='';drawExercisePicker();toast('Exercise saved on device');}
+  catch(error){e.error=error.message;toast(error.message,'error');drawSaveRecovery();}
+  finally{e.busy=false;if(p.customEditor===e){customPickerForm();if(e.error)$('#modal button[name="exerciseSave"]')?.focus({preventScroll:true});}}
 }
 function routineCoverage(routine, credit = 0, frequency = 1) {
   const byMuscle={},unknown=[],separate=[];let total=0,invalid=0;
@@ -1890,15 +2014,6 @@ const wSave = el => { if (wctx(el) === 'active') Store.save('activeWorkout'); };
 function openEditor(w) {
   const st = new Date(w.start); w._date = ymd(st); w._time = `${pad(st.getHours())}:${pad(st.getMinutes())}`; w._dur = Math.max(1, Math.round((new Date(w.end) - st) / 60000));
   ui.editW = w; if (S.view !== 'fitness') go('fitness'); else { lastRendered = null; render(); }
-}
-function renameExerciseEverywhere(from, to) {
-  const f = from.toLowerCase(); let n = 0;
-  const fix = list => list.forEach(e => { if (e.name.toLowerCase() === f) { e.name = to; n++; } });
-  W().forEach(w => fix(w.exercises)); Store.get('routines').forEach(r => fix(r.exercises));
-  const aw = Store.get('activeWorkout'); if (aw) fix(aw.exercises); if (ui.editW) fix(ui.editW.exercises);
-  const meta = Store.get('exMeta'); if (meta[f] && !meta[to.toLowerCase()]) meta[to.toLowerCase()] = meta[f]; if (f !== to.toLowerCase()) delete meta[f];
-  Store.set('exercises', Store.get('exercises').filter(x => x.toLowerCase() !== f)); addToLibrary([to]);
-  ['workouts', 'routines', 'activeWorkout', 'exMeta'].forEach(k => Store.save(k)); return n;
 }
 const A_FIT = {
   exercisePick: el => openExercisePicker(el.dataset.context,el.dataset.i == null ? null : +el.dataset.i),
@@ -1991,6 +2106,7 @@ const A_FIT = {
       ${i > 0 ? b('awMoveEx', 'arrow-up', 'Move up', 'data-d="-1"') : ''}${i < n - 1 ? b('awMoveEx', 'arrow-down', 'Move down', 'data-d="1"') : ''}
       ${i < n - 1 ? b('awLink', ex.ss ? 'unlink' : 'link', ex.ss ? 'Remove from superset' : 'Superset with the next exercise') : ''}
       ${b('libEditDo', 'settings-2', 'Exercise type and muscles', `data-name="${esc(ex.name)}"`)}
+      ${b('exerciseCueEdit', 'notebook-pen', 'Exercise cues (all sessions)', `data-name="${esc(ex.name)}"`)}
       ${b('awDelEx', 'trash-2', 'Remove exercise', '', 'btn-danger')}</div>`));
   },
   awExDo: el => { const f = A[el.dataset.do === 'libEditDo' ? 'libEdit' : el.dataset.do]; Modal.close(); f(el); },
@@ -1998,7 +2114,7 @@ const A_FIT = {
   awDiscard: () => { if (!confirm('Discard this workout? Nothing will be saved.')) return; Store.set('activeWorkout', null); Timer.stop(); Timer.visible = false; Timer.draw(); render(); },
   awFinish: () => WorkoutCommands.finish(),
   awField: el => { wObj(el)[el.dataset.f] = el.value; wSave(el); },
-  awExNote: el => { wObj(el).exercises[+el.dataset.i].notes = el.value; wSave(el); },
+  awExNote: el => { wObj(el).exercises[+el.dataset.i].notes = el.value; wSave(el);const copy=el.parentElement.querySelector('[data-action="sessionNoteToCue"]');if(copy)copy.disabled=!el.value.trim(); },
   awSet: el => { const s = wObj(el).exercises[+el.dataset.i].sets[+el.dataset.j], f = el.dataset.f; if (wctx(el) === 'active') { setWorkoutDraft(s, f, el.value); const row = el.closest('tr'); row?.setAttribute('data-set-state', 'draft'); const label = row?.querySelector('[data-row-save-state]'); if (label) label.textContent = 'Draft'; const done = row?.querySelector('[data-action="awSetDone"]'); if (done && s.done) done.setAttribute('aria-label', 'Save set changes'); } else { const v = num(el.value); s[f] = f === 'duration' ? parseTimeEntry(el.value) : f === 'weight' ? fromUnit(v) : f === 'distance' ? distFrom(v) : v; } wSave(el); },
   awRest: el => { wObj(el).exercises[+el.dataset.i].rest = +el.value; wSave(el); },
   // history
@@ -2037,15 +2153,17 @@ const A_FIT = {
   libMuscle: el => { ui.libMuscle = el.value; render(); },
   libEquip: el => { ui.libEquip = el.value; render(); },
   libNew: () => libModal(null),
-  libTypeChange: el => { const o = $('#bw-opts'); if (o) o.classList.toggle('hidden', !BW_TYPES.has(el.value)); },
+  libTypeChange: changeExerciseMetadata,
+  exerciseMetaInput: captureExerciseMetadata,
+  exerciseMetaChange: changeExerciseMetadata,
+  recoverExerciseEdit,
+  exerciseCueEdit: el => openExerciseCueEditor(el.dataset.name),
+  exerciseCueToggle: el => {const key=el.dataset.name.toLowerCase(),expanded=ui.expandedExerciseCues ||=new Set();expanded.has(key)?expanded.delete(key):expanded.add(key);render();},
+  exerciseDraftExport: exportExerciseMetadataDraft,
+  exerciseDefinitionReload: reloadExerciseDefinition,
+  sessionNoteToCue: el => {const ex=wObj(el)?.exercises[+el.dataset.i];if(ex?.notes?.trim())openExerciseCueEditor(ex.name,ex.notes);},
   libEdit: el => libModal(el.dataset.name),
-  libSave: f => {
-    const v = fd(f), sec = new FormData(f).getAll('sec'), name = v.name.trim(), orig = v.orig; if (!name) return;
-    const meta = { type: v.type, countBW: !!v.countBW && BW_TYPES.has(v.type), bwPct: Math.min(100, Math.max(1, num(v.bwPct) || 100)), primary: v.primary, secondary: sec.filter(m => m !== v.primary), equipment: v.equipment, howto: v.howto.trim(), notes: v.notes.trim() };
-    if (orig && orig !== name) { if (!confirm(`Rename “${orig}” to “${name}” in every workout and routine?`)) return; const n = renameExerciseEverywhere(orig, name); toast(`Renamed in ${n} place${n === 1 ? '' : 's'}`); }
-    Store.get('exMeta')[name.toLowerCase()] = meta; Store.save('exMeta'); addToLibrary([name]);
-    if (ui.progEx === orig) ui.progEx = name; Modal.close(); if (!orig || orig === name) toast('Exercise saved'); render();
-  },
+  libSave: saveLibraryExercise,
   libDelete: el => {
     const n = el.dataset.name; if (exerciseHistory(n).length) return toast('This exercise is in your history — rename it to merge instead', 'error');
     if (!confirm(`Remove ${n} from your exercise list?`)) return;
@@ -3385,11 +3503,14 @@ function validateWebEntries(entries) {
     if (key === 'bd.web.context') { if (['actorId', 'workspaceId', 'athleteId'].some(k => typeof value[k] !== 'string' || !validRecordId(value[k]))) throw new Error('Invalid local ownership context.'); continue; }
     if (typeof value.id !== 'string' || !validRecordId(value.id)) throw new Error('Invalid recovery operation ID.');
     if (key.includes('.intent.') || key.includes('.receipt.')) {
-      if (!key.endsWith('.' + value.id) || !['snapshot', 'start', 'complete-set', 'amend-set', 'undo-set', 'finish-workout', 'amend-workout', 'import-workouts', 'add-exercises', 'swap-exercise', 'undo-swap', 'save-custom-exercise', 'log-library-portion', 'edit-entry-snapshot'].includes(value.purpose)) throw new Error('Invalid recovery operation.');
+      if (!key.endsWith('.' + value.id) || !['snapshot', 'start', 'complete-set', 'amend-set', 'undo-set', 'finish-workout', 'amend-workout', 'import-workouts', 'add-exercises', 'swap-exercise', 'undo-swap', 'save-custom-exercise', 'save-exercise-metadata', 'log-library-portion', 'edit-entry-snapshot'].includes(value.purpose)) throw new Error('Invalid recovery operation.');
     }
+    if(key.includes('.receipt.')){if(value.exerciseEdit!==undefined)validateExerciseRecoveryEdit(value.exerciseEdit);if(value.exerciseToken!==undefined&&!validRecordId(value.exerciseToken))throw new Error('Invalid exercise recovery token.');}
     if (key.includes('.intent.')) {
       if (!plainObject(value.values) || !Object.keys(value.values).length || Object.keys(value.values).some(k => !Object.hasOwn(COLLECTIONS, k)) || !plainObject(value.expected) || Object.keys(value.values).some(k => !/^[a-f0-9]{64}$/.test(value.expected[k] || '')) || !plainObject(value.extra)) throw new Error('Invalid recovery intent.');
       validateBackup({ app: 'body-dashboard', version: 1, data: value.values });
+      if(value.extra.exerciseEdit!==undefined)validateExerciseRecoveryEdit(value.extra.exerciseEdit);
+      if(value.extra.exerciseToken!==undefined&&!validRecordId(value.extra.exerciseToken))throw new Error('Invalid exercise recovery token.');
     }
     if (key === 'bd.web.import-preview') {
       if (!Array.isArray(value.rows) || !plainObject(value.bases) || Object.keys(value.bases).some(k => !['workouts', 'routines', 'programs', 'exMeta'].includes(k)) || (typeof value.envelopeText !== 'string' && !plainObject(value.envelope))) throw new Error('Invalid training preview.');
@@ -4512,6 +4633,11 @@ const A_SHARE = {
 // would notice; each device shows the newest one once, as a card on the dashboard. A slide can show
 // a picture from assets/whatsnew/ (give it alt text) and a `go` shortcut: [view, ui key, tab, label].
 const RELEASES = [
+  { id: '2026-11-07-exercise-cues', title: 'Exercise cues that follow you', slides: [
+    { title: 'Choose secondary muscles clearly', body: '<p>Library and in-workout custom exercises share the same muscle and cue fields. Secondary choices show a check and a selected surface, with larger touch targets. The primary muscle is identified separately.</p>' },
+    { title: 'Keep useful cues for next time', body: '<p>Reusable <strong>Exercise cues</strong> appear beneath the exercise heading in future sessions. <strong>Session notes</strong> stay with that workout. Use <strong>Save as exercise cue</strong> when you deliberately want to reuse a session note; the original note stays in history.</p>' },
+    { title: 'Review and recover exercise edits', body: '<p>Exercise settings confirm a local save before closing. Failed edits stay available for retry or export; checkpointed edits can be reviewed after reopening. Your old notes, recorded muscle mappings and record identifiers remain intact.</p>' }
+  ] },
   { id: '2026-11-07-cobalt-air', title: 'A clearer look with Cobalt Air', slides: [
     { title: 'Crisp light, calm dark', body: '<p>Cobalt Air pairs bright neutral surfaces and blue actions with a matching navy dark theme. Choose Light, Dark or System in Settings. Workout fields, saved sets, navigation and progress use the same clear visual language.</p>' },
     { title: 'The same records and logging', body: '<p>Your existing workouts, food entries, recipes, photos and backups stay in place. Offline logging, exercise swaps and imports keep their familiar behavior.</p>' }
@@ -4567,9 +4693,9 @@ const RELEASES = [
   ] }
 ];
 const TOUR = [
-  { title: 'Welcome to Body Dashboard', body: '<p>Your training and your diet in one place.</p><p>Everything you enter is saved on this device. There is no account to create, and nobody else can see your records.</p>' },
+  { title: 'Welcome to Body Dashboard', body: '<p>Your training and your diet in one place.</p><p>Everything you enter is saved on this device. There is no account to create. Records stay in this browser unless you choose to export or share them.</p>' },
   { title: 'Getting around', body: '<p>Use Today, Train and Nutrition along the bottom. The <strong>+</strong> in the header opens quick adds; the sliders open Settings &amp; Sync. During a workout, the down arrow minimizes it without ending it, and Resume brings it back.</p><ul class="list-disc pl-5 space-y-1"><li><strong>Today</strong> has direct Log food, Start/Resume workout and Log weight actions in Today. Show, hide or reorder cards with the sliders button.</li><li>Use named links such as History, Library, Meal plan and Weight &amp; measurements. A back button returns to the section overview.</li><li>A number beside a destination means something there needs attention today.</li></ul>' },
-  { title: 'The three sections', body: '<ul class="list-disc pl-5 space-y-1"><li><strong>Train</strong>: log your sets as you train, follow a program, and see your progress, with a collapsible rest timer. Check each set to save it; unchecked suggestions do not enter a finished workout. Background alarms are not guaranteed.</li><li><strong>Nutrition</strong>: search for foods or scan a barcode to log what you eat, track your weight, and let the adaptive plan set your calories.</li><li><strong>Nutrition Library</strong>: saved foods, meals and recipes, plus meal planning.</li></ul>', go: ['fitness', '', '', 'Open Workouts'] },
+  { title: 'The three sections', body: '<ul class="list-disc pl-5 space-y-1"><li><strong>Train</strong>: log your sets as you train, follow a program, and see your progress, with a collapsible rest timer. Check each set to save it; unchecked suggestions do not enter a finished workout. Background alarms are not guaranteed. Reusable Exercise cues appear next time; Session notes stay with one workout.</li><li><strong>Nutrition</strong>: search for foods or scan a barcode to log what you eat, track your weight, and let the adaptive plan set your calories.</li><li><strong>Nutrition Library</strong>: saved foods, meals and recipes, plus meal planning.</li></ul>', go: ['fitness', '', '', 'Open Workouts'] },
   { title: 'Coming from Life Dashboard?', body: '<p>For workouts only, use <strong>Settings → Import workout history</strong> to preview fitness JSON or extract training from a backup. It leaves other Life records out.</p><p>In Life Dashboard, open <strong>Settings &amp; Sync</strong> and tap <strong>Back up</strong>. Here, open <strong>Settings &amp; Sync → Import backup</strong> and choose that file. Your workouts, food, weight, measurements, progress photos and recipes come across; nothing else does.</p>' },
   { title: 'Put it on your phone', body: '<p>Open this page’s web address on your phone. On an iPhone use Safari: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>. On Android use Chrome: open the <strong>⋮</strong> menu and choose <strong>Add to Home screen</strong>.</p><p>Wait for <strong>Ready offline</strong> while online first. Then it opens from the Home Screen without a connection. Records stay in this browser; exporting a backup protects against storage being cleared. Updates wait until all Body tabs close.</p>' },
   { title: 'Keep your records safe', body: '<p>Your records live on this device. Removing the app from your home screen, or clearing the browser’s data, erases them.</p><p>Every week or so, open <strong>Settings &amp; Sync</strong>, tap <strong>Back up records + photos</strong>, and keep the file somewhere safe.</p><p>You can open this tour again from <strong>Help &amp; what’s new</strong> in the header.</p>' }
