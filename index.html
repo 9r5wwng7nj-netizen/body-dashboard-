@@ -614,7 +614,7 @@ function moreBtn(key, list) {
   return left > 0 ? `<button type="button" class="btn btn-sm w-full mt-2" data-action="showMore" data-key="${key}">Show ${Math.min(PAGE, left)} more <span class="muted">· ${fmtNum(left)} not shown</span></button>` : '';
 }
 function cardHead(ic, title, right = '') {
-  return `<div class="flex items-center gap-2 mb-3"><div class="w-7 h-7 rounded-lg bg-brand-50 dark:bg-brand-950 text-brand-600 dark:text-brand-400 grid place-items-center">${icon(ic, 'w-4 h-4')}</div><h3 class="font-semibold">${title}</h3><div class="ml-auto flex items-center gap-1">${right}</div></div>`;
+  return `<div class="flex flex-wrap items-center gap-2 mb-3"><div class="w-7 h-7 shrink-0 rounded-lg bg-brand-50 dark:bg-brand-950 text-brand-600 dark:text-brand-400 grid place-items-center">${icon(ic, 'w-4 h-4')}</div><h3 class="font-semibold min-w-0 max-w-full break-words">${title}</h3><div class="ml-auto flex flex-wrap min-w-0 max-w-full items-center gap-1">${right}</div></div>`;
 }
 function emptyState(ic, title, sub = '', action = '') {
   return `<div class="card text-center py-10"><div class="w-12 h-12 mx-auto rounded-2xl bg-slate-100 dark:bg-slate-800 grid place-items-center mb-3 muted">${icon(ic, 'w-6 h-6')}</div><div class="font-semibold">${title}</div>${sub ? `<p class="text-sm muted mt-1 max-w-md mx-auto">${sub}</p>` : ''}${action ? `<div class="mt-4">${action}</div>` : ''}</div>`;
@@ -4257,6 +4257,10 @@ const A_SHARE = {
 // would notice; each device shows the newest one once, as a card on the dashboard. A slide can show
 // a picture from assets/whatsnew/ (give it alt text) and a `go` shortcut: [view, ui key, tab, label].
 const RELEASES = [
+  { id: '2026-11-07-personal-beta', title: 'Personal web beta', slides: [
+    { title: 'Ready for your iPhone test', body: '<p>This personal beta includes recoverable local workout logging and workout-history import. Wait for <strong>Ready offline</strong> before testing without a connection, and keep an exported backup.</p>' },
+    { title: 'More room for larger text', body: '<p>Card headings and their actions wrap onto another line when needed, keeping them reachable with larger text on narrow screens.</p>' }
+  ] },
   { id: '2026-11-07-web-workout-sprint-1', title: 'Workouts saved with confidence', slides: [
     { title: 'Accept, save, and undo', body: 'Previous sets are dated suggestions. Check a set to save it; only accepted sets enter a finished workout. Draft changes stay separate from saved performance.' },
     { title: 'Recover interrupted saves', body: 'Retry a pending action after a failed save or reopening. Another tab cannot silently replace changed records. Export a backup before discarding pending input.' },

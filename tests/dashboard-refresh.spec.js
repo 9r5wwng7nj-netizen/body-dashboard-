@@ -148,8 +148,10 @@ for (const theme of ['light', 'dark']) test(`390px ${theme}: enlarged text, touc
       ensureDay(ymd()).entries.push({ id: 'food', name: 'Synthetic meal', cal: 600, p: 25, c: 50, f: 10 });
       document.documentElement.style.fontSize = '200%'; render();
     }, theme);
+    // Reserve a scrollbar and use a portable font to catch the Linux runner's narrower content area.
+    await page.addStyleTag({ content: '#view { scrollbar-gutter: stable; } html { font-family: Arial, sans-serif; }' });
     const dimensions = await page.evaluate(() => ({ page: document.documentElement.scrollWidth <= innerWidth, main: $('#view').scrollWidth <= $('#view').clientWidth, buttons: $$('[data-dash-card="today"] button').map(b => ({ h: b.getBoundingClientRect().height, w: b.getBoundingClientRect().width, fits: b.scrollWidth <= b.clientWidth })) }));
-    expect(dimensions.page).toBe(true); expect(dimensions.main).toBe(true);
+    expect(dimensions.page, JSON.stringify(dimensions)).toBe(true); expect(dimensions.main, JSON.stringify(dimensions)).toBe(true);
     expect(dimensions.buttons.every(b => b.h >= 44 && b.w >= 44 && b.fits)).toBe(true);
     // A tall card must remain scrollable: every action can be brought fully above the phone bar.
     for (const button of await page.locator('[data-dash-card="today"] button').all()) {

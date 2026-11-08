@@ -23,7 +23,12 @@ await walk('assets'); await walk('vendor');
 const assets = {};
 for (const name of names.sort()) {
   if (/backup|\.pem$|\.key$|\.cer$|\.env|credentials/i.test(name) || (name.endsWith('.json') && name !== 'manifest.webmanifest')) throw new Error('Unexpected deployment filename: ' + name);
-  const target = path.join(output, name), content = await fs.readFile(path.join(root, name));
+  const target = path.join(output, name); let content = await fs.readFile(path.join(root, name));
+  if (name === 'sw.js') {
+    const source = content.toString();
+    if (!/^const GENERATION = '[^']+';/m.test(source)) throw new Error('Missing worker generation marker.');
+    content = Buffer.from(source.replace(/^const GENERATION = '[^']+';/m, `const GENERATION = 'beta-${sourceCommit.slice(0, 12)}';`));
+  }
   await fs.mkdir(path.dirname(target), { recursive: true }); await fs.writeFile(target, content);
   assets[name] = crypto.createHash('sha256').update(content).digest('hex');
 }

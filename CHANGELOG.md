@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-07 — Personal beta deployment
+
+- Prepared an allowlisted Pages package: app/runtime assets only, with a source-commit manifest and a worker cache generation per release.
+- Fixed card-heading/action wrapping at 200% text with a reserved scrollbar and portable fonts, as caught by the Linux CI runner.
+- Preserved database/store names, record identities, offline recovery and disabled sync.
+
+
 ## 2026-11-07 — Web workout Sprint 1 (local, unpublished)
 
 - Added durable intent/receipt recovery, stale-tab protection and honest degraded-storage status.
