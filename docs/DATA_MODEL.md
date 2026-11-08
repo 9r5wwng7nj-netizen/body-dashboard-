@@ -1,6 +1,6 @@
 # Data model
 
-All personal data stays in the browser. **Backward compatibility is the #1 rule.** Add fields and collections freely, but never rename or remove them. Collection keys and record shapes match Life Dashboard's for the sections kept, so Life Dashboard backups import as they are. See AGENTS.md.
+Records save locally in the browser; an explicit optional Google Drive connection also syncs Body records/photos to its private app folder. **Backward compatibility is the #1 rule.** Add fields and collections freely, but never rename or remove them. Collection keys and record shapes match Life Dashboard's for the sections kept, so Life Dashboard backups import as they are. See AGENTS.md and [Drive sync](DRIVE_SYNC.md).
 
 ## Where things are stored
 
@@ -13,8 +13,8 @@ All personal data stays in the browser. **Backward compatibility is the #1 rule.
 | localStorage | `bd.data.<key>` | Fallback copy of collections when IndexedDB is unavailable | — |
 | localStorage | `bd.sync` | Sync state for this device (on/off, Google token, refresh token, last sync, errors, photos left, last daily copy) | ❌ |
 | localStorage | `bd.timer`, `bd.seeded`, `bd.libv` | Rest timer, and one-time seed flags | ❌ |
-| Cache Storage | `bd-shell-v1` | The app's own files for offline use (`sw.js`); never personal data | — |
-| Google Drive app folder (when sync is set up) | `body-dashboard-sync.json`, `body-dashboard-copy-YYYY-MM-DD.json`, `photo-<id>` | The synced records and settings, dated daily copies (7 daily, 8 weekly), and one file per photo a record uses | — |
+| Cache Storage | `bd-shell-<encoded-scope>-<generation>` | The app's own files for offline use (`sw.js`); never personal data | — |
+| Google Drive app folder (when sync is connected) | `body-dashboard-sync.json`, `body-dashboard-copy-YYYY-MM-DD.json`, `body-dashboard-photo-<original-id>` | The synced records and settings, dated daily copies (7 daily, 8 weekly), and one file per photo a record uses; original photo references do not change | — |
 
 `Store.init()` loads every key in `COLLECTIONS`. A missing key gets its default, which is how new collections arrive without an import.
 

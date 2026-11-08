@@ -12,6 +12,8 @@ Body Dashboard keeps local IndexedDB logging as the primary path. Sync is opt-in
 - Only the production origin `https://9r5wwng7nj-netizen.github.io` and callback `https://9r5wwng7nj-netizen.github.io/body-dashboard-/index.html` are accepted by the broker. It cannot exchange Life Dashboard codes. Authorization uses state and PKCE. There is no implicit-token fallback when the broker is unavailable.
 - Browser access/refresh tokens stay in `bd.sync`, are excluded from backup/sync data and are sent only to Google or this dedicated broker. Stop syncing revokes the Body grant and retains local/Drive records.
 
+Google revocation applies to the project grant, so stopping sync can require signing in again on other Body devices using that account. It cannot revoke the separate Life project. See [Google revocation behavior](https://developers.google.com/identity/protocols/oauth2/web-server#tokenrevoke).
+
 ## First connection order
 
 1. Save any open cycle or logging form, then export a full Body backup including photos on each device that has independent data.
@@ -45,6 +47,8 @@ Sources: [Google app-data folder](https://developers.google.com/workspace/drive/
 ## Verification status — 2026-11-08
 
 - Static checks and four OAuth broker unit tests passed.
-- Full Chromium suite: 264 passed. Full iPhone-sized WebKit suite: 170 passed, including 21 synthetic sync scenarios in each browser engine. An additional hosted opt-in/offline preservation case passed in both engines; it brings the next full-run totals to 265 and 171.
+- Exact-source [GitHub checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42528948672) passed: 265 Chromium and 171 iPhone-sized WebKit tests, including 22 sync/opt-in scenarios in each engine, plus the four broker unit tests.
 - The dedicated broker is deployed with request logging disabled. The owner created the OAuth client and submitted its private secret directly to Cloudflare. The matching public client ID is configured; the broker reports ready. The Drive API and sole `drive.appdata` scope are enabled in the separate `body-dashboard-514117` project. The owner-approved sole beta account is registered; the signed-in provider pilot remains pending. No owner email or secret is part of the public runtime configuration.
-- The frontend is configured for optional connection, with device sync still off by default. This update has not been published to GitHub Pages. Tests have not accessed real browser records or established that live Google conditional writes work.
+- [Pages deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42529536040) succeeded. Published runtime source: `8dbb05a262874cde782b301553cb08df2c1bff68`; deployment: `84c2f1d3a890eaae9898a3a8f5ec31299ff6188b`. Only 17 allowlisted public files were packaged. The deployed release marker and 15 nonempty public asset hashes matched the package.
+- Fresh persistent Chromium and WebKit profiles at 390px passed staged and live offline reload, set completion, exercise swap, resume/finish, repeated workout-history import, full backup restore with identical photo bytes and readable restored photos. Cobalt Air light/dark colors matched. Retired inventory records stayed unchanged; no page errors or network writes occurred. Sync was off in both fresh profiles.
+- The frontend is configured for optional connection, with device sync still off by default. Tests have not accessed real browser records or established that live Google authorization/refresh/conditional writes work. Those and physical iPhone behavior remain the owner-assisted pilot; unsupported provider writes pause before personal upload.

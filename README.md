@@ -4,14 +4,14 @@ Your training and your diet in one place. It works offline, installs on a phone'
 
 - **Workouts:** log sets as you train, with supersets, set types and a rest timer; routines and programs; an exercise library; progress stats; Hevy CSV and workout JSON import/export with a separate history review.
 - **Nutrition:** search foods or scan a barcode; saved foods and meals; weight trend; an adaptive plan with weekly check-ins; body measurements and progress photos; MacroFactor import.
-- **Recipes & Meals:** recipes with their macros, cook mode, a meal plan, Plan my week, a grocery list, pantry and freezer, and saving a recipe from a link.
-- **Dashboard:** today's workout, food so far, the weigh-in and dinner, with cards you can reorder or hide.
+- **Nutrition Library:** saved foods, meals and recipes with their macros, cook mode, meal planning and saving a recipe from a link. Pantry, grocery and freezer interfaces are retired; existing records remain in backups.
+- **Today:** today's workout, food so far, the weigh-in and dinner, with cards you can reorder or hide.
 
 Body Dashboard started as the fitness and diet half of Life Dashboard. To bring your records across, back up in Life Dashboard (Settings & Sync), then here open **Settings & Sync → Import backup** and choose that file. Only workouts, food, weight, measurements, progress photos and recipes come in.
 
 ## Your records
 
-Records stay in the browser on the device you use. Download a backup from Settings & Sync every week or so and keep it somewhere safe. Sync between devices through Google Drive is built but switched off until a Google account is chosen.
+Records save locally in the browser on the device you use. Download a backup including photos from Settings & Sync every week or so and keep it somewhere safe. Optional Google Drive sync is available to the owner-approved personal-beta account through **Settings & Sync → Connect Google Drive**. Connect the phone with the latest records first, then the desktop. Each device stays disconnected until you choose Connect. Body uses a separate Google app and hidden folder from Life Dashboard. See [setup, recovery and beta limits](docs/DRIVE_SYNC.md).
 
 ## Development
 
