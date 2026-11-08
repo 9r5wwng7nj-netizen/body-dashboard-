@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-08 — Manual ChatGPT handoff and reviewed drafts
+
+- Added selected-data programming, meal/photo and diet-log briefs with exact preview and manual Copy/Download. No model requests, automatic uploads or photo reads.
+- Added strict routine/meal JSON review, local exercise/food mapping, planned coverage and editable prescriptions/portions. Explicit acceptance creates new routines or deterministic food snapshots; history and targets remain.
+- Added optional local handoff drafts, raw checkpoints, failed-save retry/export, Close/Resume protection, idempotent acceptance and backward-compatible backup validation.
+
 ## 2026-11-08 — Plan and Performed Muscle sets
 
 - Linked routine/rotation/week-scenario coverage with actual local Monday-through-today training.
