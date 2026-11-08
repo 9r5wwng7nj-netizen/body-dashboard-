@@ -1,10 +1,25 @@
 # Next Body Dashboard iteration — fixes, library, muscle sets and AI handoff
 
-November 7, 2026 (America/New_York) · Investigation and proposed build plan
+November 7, 2026 (America/New_York) · Investigation, approved delivery and release record
 
 **Implementation approved:** the owner authorized this sequence, beginning with secondary muscles and reusable cues, with checks and publication for each ready update. The findings below record the pre-implementation audit; per-release verification records describe what actually shipped. Built-in AI remains a later separate decision.
 
-Audited checkout: `764b06667be71379ea1bde71058b4a9a753c1dfe` on `beta/personal-web` (the published runtime is Cobalt Air source `f4ea8bb87dc92d577aca7752d0aee8e1e3691b93`). The team inspected source and ran isolated synthetic probes in fresh browser contexts. This packet does not implement or publish changes, inspect personal records, enable AI, connect an account or modify the app's storage.
+## Delivered in order — November 8, 2026
+
+All four authorized stages are live at [the personal beta](https://9r5wwng7nj-netizen.github.io/body-dashboard-/). Each had its own checked source, packaged/live offline/backup gates and normal Pages update. Existing user records were not inspected; validation used synthetic profiles.
+
+| Stage | Shipped result | Exact-source CI | Release record |
+| --- | --- | --- | --- |
+| 1 | Shared secondary fields and persistent Exercise cues | 184 Chromium / 77 WebKit | [Details](RELEASE_1_EXERCISE_CUES.md) |
+| 2 | 144 curated additions / 200 fresh definitions, common search and mappings | 196 / 89 | [Details](RELEASE_2_EXERCISE_CATALOG.md) |
+| 3 | Plan/Performed Muscle sets, role separation and source review | 214 / 107 | [Details](RELEASE_3_MUSCLE_SETS.md) |
+| 4 / H1 | Manual ChatGPT briefs and durable reviewed routine/meal drafts | 241 / 134 | [Details](RELEASE_4_CHATGPT_HANDOFF.md) |
+
+H2 built-in AI, coaching and paid/server services remain deferred. Physical iPhone/VoiceOver and real external ChatGPT quality/round-trip validation remain manual. [Current release identity and update instructions](../../BETA_RELEASE.md).
+
+## Original investigation and rationale
+
+Audited checkout: `764b06667be71379ea1bde71058b4a9a753c1dfe` on `beta/personal-web` (the then-published runtime was Cobalt Air source `f4ea8bb87dc92d577aca7752d0aee8e1e3691b93`). The team inspected source and ran isolated synthetic probes in fresh browser contexts. That original investigation did not implement or publish changes, inspect personal records, enable AI, connect an account or modify storage. The delivery records above describe the later authorized implementation.
 
 ## Confirmed owner direction
 

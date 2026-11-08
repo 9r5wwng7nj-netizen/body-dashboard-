@@ -2,21 +2,34 @@
 
 Updated November 8, 2026 (America/New_York).
 
-**Muscle sets personal beta — open on iPhone:** https://9r5wwng7nj-netizen.github.io/body-dashboard-/
+**Body Dashboard personal beta — open on iPhone:** https://9r5wwng7nj-netizen.github.io/body-dashboard-/
 
 ## Release identity
 
-- Tested source: `a0dea9ec557c6ecbd8b9299a3a4d31b149c19888`, branch `beta/personal-web`.
-- Deployment: `3b2619ca2ebb297c6292d5587a7d2e71d102f343`, branch `gh-pages`, root folder.
-- [Passing source checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42450431116).
-- [Successful Pages build/deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42450798281).
+- Tested source: `2634241e72c793f631f86b9fa2bef21e5ab8f796`, branch `beta/personal-web`.
+- Deployment: `aca52cdc2a1dd7ab7b341816a85aaa80228d15bd`, branch `gh-pages`, root folder.
+- [Passing source checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42451694950).
+- [Successful Pages build/deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42452109123).
 - [Public release manifest](https://9r5wwng7nj-netizen.github.io/body-dashboard-/release.json) records source and SHA-256 asset hashes.
 
 The deployment contains 17 allowlisted package files: app HTML, service worker, manifest, CSS, icons, pinned libraries/licenses, `.nojekyll` and the release manifest. No backups, credentials, certificates, local preview tools, tests or planning documents are in the Pages artifact. The public source branch contains reviewed code/tests and synthetic planning fixtures. Main was retained; no force push was used.
 
 `node scripts/package-beta.mjs EMPTY_OUTPUT_DIRECTORY SOURCE_COMMIT` creates this package. It refuses a nonempty destination and rejects unexpected backup/key/JSON files. The packaged worker gets a cache generation derived from the tested source commit, so later deployments can install a new complete shell without forcing reload over active work. Keep Pages configured to `gh-pages` at `/`.
 
-## Muscle sets — current update
+## ChatGPT handoff — current update
+
+Train/Nutrition → ⋯ prepares selected programming, meal/photo and diet-log briefs with exact preview and manual Copy/Download. Review pasted routine/meal JSON, map local exercises/foods, edit prescriptions/portions and explicitly accept. Programs create new routines; meals use deterministic current food snapshots, keeping unknown nutrients unknown and photo portions estimated. History and targets remain. No automatic sharing, model requests, account connection or photo upload.
+
+Raw checkpoints, local reviewed drafts, Resume/export/retry, revision checks, atomic acceptance and receipt/signature guards preserve recoverable input and prevent accidental duplicates. handoffDrafts is an optional additive collection; old backups default empty. Existing IDs/units/photos/storage and import formats remain compatible.
+
+- Final exact-source Linux CI: **241 Chromium passed (1.6m), 134 WebKit passed (3.2m)**. Root full local suites passed 240/133, followed by final focused 27/27 after the extra scheduled-target regression and phone-copy refinement. Build/static checks passed.
+- Exact staged and live handoff flows passed both engines: selected/default privacy, offline routine/meal acceptance, deterministic nutrition/nulls, estimate labels, result-ID preservation through backup/reload and unchanged workout history.
+- Live common checks passed all 15 runtime hashes, both Cobalt themes, offline logging/swap/resume/finish, duplicate-safe history import and byte-identical photo restoration. Zero page errors/network writes; retired records and Body-only database v1 remain intact, sync off.
+- Light/dark app screenshots were reviewed. Physical iPhone/VoiceOver and a real manual ChatGPT/model-quality test remain open. Brief selector/conditioning/draft-management limits are recorded in [the release report](product-review/2026-11-07/RELEASE_4_CHATGPT_HANDOFF.md).
+
+All four ordered updates were published individually; see [the completed plan and release links](product-review/2026-11-07/NEXT_ITERATION_PLAN.md).
+
+## Previous update — Muscle sets
 
 Train → Progress → Muscle sets links Plan and Performed. Primary sets and secondary involvement are separate; body areas deduplicate overlapping children. Local Monday-to-today history excludes future/active work. Timed/conditioning/warm-up work, partial/unknown/inferred mappings and unaccepted rows remain explicit. Routine shortcuts preserve unsaved edits. The optional current-role view changes the report, never stored classifications or tracking basis.
 
@@ -77,7 +90,7 @@ See `docs/product-review/2026-11-07/IMPLEMENTATION_REPORT.md` for behavior, pres
 
 ## Earlier beta history
 
-The catalog source `3df2c5b932d3640bb810152fd3bc8ed8e5331e79` was deployed as `2ec7e53d8ffb3ed2edcc5dc2b0ac977aed6ac3d9`. The exercise-cue source `2834caca6e7c7cea387e4d9d389bfbe30476656d` was deployed as `26228a86fa5843602f7eefb6b6eb4aea10bca94e`. Cobalt Air source `f4ea8bb87dc92d577aca7752d0aee8e1e3691b93` was deployed as `6734dd6d7a3528ed75a509d24456aa3bbf05000c`. The previous Warm Mineral source was `25d1c96bf8e10003323dc34c66720d2f7a46df0b`, deployed as `35d2c922fe396cdb46b1d4b807ff86c979e26340` (170 Chromium / 63 WebKit, plus staged/live offline and backup verification). The prior focused-interface source was `fa734b77e064cae7b3e3b64502a427802bec7c0d`, deployed as `1682a2ae40b73edbea609601ddd860d55ddf638f`. It removed the sidebar and introduced focused workout logging. The initial beta source was `98515a08138b7453b4c0a60e05282ff6575b11d9`, deployed as `65af0a3788f36cc3fc17dcbd7262deaa5b98b0f4`. Cobalt Air advances the existing Pages branch normally; no force push or browser-data reset was used. Main remains unchanged. Personal reference screenshots are excluded from source and artifacts.
+The Muscle sets source `a0dea9ec557c6ecbd8b9299a3a4d31b149c19888` was deployed as `3b2619ca2ebb297c6292d5587a7d2e71d102f343`. The catalog source `3df2c5b932d3640bb810152fd3bc8ed8e5331e79` was deployed as `2ec7e53d8ffb3ed2edcc5dc2b0ac977aed6ac3d9`. The exercise-cue source `2834caca6e7c7cea387e4d9d389bfbe30476656d` was deployed as `26228a86fa5843602f7eefb6b6eb4aea10bca94e`. Cobalt Air source `f4ea8bb87dc92d577aca7752d0aee8e1e3691b93` was deployed as `6734dd6d7a3528ed75a509d24456aa3bbf05000c`. The previous Warm Mineral source was `25d1c96bf8e10003323dc34c66720d2f7a46df0b`, deployed as `35d2c922fe396cdb46b1d4b807ff86c979e26340` (170 Chromium / 63 WebKit, plus staged/live offline and backup verification). The prior focused-interface source was `fa734b77e064cae7b3e3b64502a427802bec7c0d`, deployed as `1682a2ae40b73edbea609601ddd860d55ddf638f`. It removed the sidebar and introduced focused workout logging. The initial beta source was `98515a08138b7453b4c0a60e05282ff6575b11d9`, deployed as `65af0a3788f36cc3fc17dcbd7262deaa5b98b0f4`. Cobalt Air advances the existing Pages branch normally; no force push or browser-data reset was used. Main remains unchanged. Personal reference screenshots are excluded from source and artifacts.
 
 ## Records and updates
 
@@ -99,4 +112,4 @@ Updates install in a waiting worker and activate after controlled Body tabs clos
 
 No local preview certificate, Mac server, App Store membership or sync account is needed for this published address. The optional local preview certificate can be removed after you export anything you want to keep from that preview.
 
-Physical iPhone/Safari/Home Screen/VoiceOver acceptance is still open. Desktop browser automation does not establish those results. Large-history finish remains slower than the proposed 150ms target (the final Mac probes were about 0.41–0.57 seconds for 100,000 sets, and Linux CI probes about 0.98–1.02 seconds); this is a personal beta, not a completed coaching portal or complete diet/analytics MVP.
+Physical iPhone/Safari/Home Screen/VoiceOver acceptance is still open. Desktop browser automation does not establish those results. The existing large-history finish fixture remains above the proposed 150ms target; recorded engine probes are in the per-release reports and do not measure real iPhone latency. This personal beta is not a completed coaching portal or a validated photo-nutrition inference service.

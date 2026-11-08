@@ -23,3 +23,15 @@ Builder's final isolated check/build passed; **25 Chromium (29.8s), 25 WebKit (3
 ## Limits
 
 No physical iPhone/VoiceOver or actual ChatGPT round trip/model-quality study was performed. Manual photos cannot measure exact grams/macros. Routine draft acceptance supports reps and timed targets; conditioning/distance prescriptions use the ordinary builder. Accept creates new routines rather than silently revising a selected existing template. Brief selectors show up to 40 routines (max eight selected), 15 foods and 10 recipes, explicitly disclosed; returned proposals can search all locally saved references. Local draft archive/delete management is not included. Intentional repeated meals/program copies use ordinary app actions because proposal signatures favor accidental-duplicate prevention. Coaching and integrated model services remain separate future work.
+
+## Publication
+
+- Final tested source `2634241e72c793f631f86b9fa2bef21e5ab8f796`; [exact-source Linux CI](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42451694950): **241 Chromium (1.6m), 134 WebKit (3.2m)** passed, without reported flaky/failed cases.
+- Deployment `aca52cdc2a1dd7ab7b341816a85aaa80228d15bd`; [Pages run](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42452109123) succeeded. Earlier source `21a09be` was refined for clearer phone review before publication.
+- Exact staged package and live HTTPS passed both engines: unselected history absent from default preview; offline raw/review/new-routine and photo-estimate meal acceptance; deterministic confirmed snapshots (150 kcal, 15g protein, unknown carbohydrate, 1.5g fat in the synthetic fixture); estimated portion status; accepted result IDs and history unchanged after backup/reload. No photos were read or uploaded by handoff.
+- All 15 non-marker live runtime hashes match the manifest. Both engines passed Cobalt light/dark/light, offline swap/resume/finish, workout import twice without duplication/precision loss, byte-identical photo restoration and offline decode/reload, unchanged retired inventory records, Body-only database v1 and sync off. Zero page errors/network writes in both live flows.
+- Actual light/dark review screenshots were inspected. Only 17 allowlisted runtime files were published; no personal data, backups, tests, certificates or planning documents entered the Pages artifact. Main remains unchanged and no force push was used.
+
+All four authorized stages were published separately in order. Physical-device and external model-quality limits above remain open; automated checks do not establish those outcomes.
+
+Current Linux CI logger fixture (100,000 historical sets / 10,000 food entries) measured finish around **1,024ms Chromium / 1,014ms WebKit**, above the proposed 150ms target. These are synthetic runner measurements, not real-device latency or a full Muscle sets query benchmark. No faster performance claim is made for this release.
