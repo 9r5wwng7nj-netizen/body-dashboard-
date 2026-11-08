@@ -33,7 +33,7 @@ test('Today opens existing food, weight and workout flows and preserves calorie/
   expect(await page.evaluate(() => day(ymd()).weight)).toBeCloseTo(180 * .45359237);
   await expect(today).not.toContainText('No weigh-in logged today');
   await today.getByRole('button', { name: 'Start workout', exact: true }).click();
-  await expect(page.locator('#view-title')).toHaveText('Workouts');
+  await expect(page.locator('#view-title')).toHaveText('Train');
   await page.locator('#view [data-action="startEmpty"]').click();
   await expect(page.locator('[data-wctx="active"]')).toBeVisible();
   const id = await page.evaluate(() => Store.get('activeWorkout').id);
@@ -126,16 +126,16 @@ test('recipe cards keep access and known zero nutrition with missing, broken and
       { id: 'broken', title: 'Synthetic broken blob', photo: 'rp_broken', ingredients: '', steps: '' }
     ]); ui.recTab = 'recipes'; go('recipes');
   });
-  const missing = page.locator('[data-action="recView"][data-id="missing"]');
+  const missing = page.locator('[data-action="libraryOpen"][data-id="missing"]');
   await expect(missing).toContainText('Per serving: 0 kcal · 0 g protein');
   await expect(missing).toContainText('No photo yet');
   await expect(page.locator('[data-id="remote"] img')).toBeHidden();
   await expect(page.locator('[data-id="broken"] img')).toBeHidden();
   for (const id of ['missing', 'remote', 'local', 'broken']) {
-    await page.locator(`[data-action="recView"][data-id="${id}"]`).focus(); await page.keyboard.press('Enter');
+    await page.locator(`[data-action="libraryOpen"][data-id="${id}"]`).focus(); await page.keyboard.press('Enter');
     await expect(page.getByRole('dialog')).toContainText('Synthetic');
     await page.keyboard.press('Escape');
-    await expect(page.locator(`[data-action="recView"][data-id="${id}"]`)).toBeFocused();
+    await expect(page.locator(`[data-action="libraryOpen"][data-id="${id}"]`)).toBeFocused();
   }
   expect(await page.evaluate(() => Store.get('recipes').find(r => r.id === 'remote').img)).toBe('https://example.invalid/image.jpg');
   expect(errors).toEqual([]);
@@ -219,7 +219,7 @@ test('backup restores identifiers, units, recipe and progress photo bytes, then 
     await page.evaluate(() => { ui.recTab = 'recipes'; go('recipes'); });
     const img = page.locator('[data-id="recipe-stable-id"] img');
     await expect(img).toHaveJSProperty('naturalWidth', 12);
-    await page.locator('[data-id="recipe-stable-id"]').click();
+    await page.locator('[data-action="libraryOpen"][data-id="recipe-stable-id"]').click();
     await expect(page.getByRole('dialog')).toContainText('Synthetic offline soup');
     await page.keyboard.press('Escape');
     await page.evaluate(() => { ui.nutTab = 'body'; go('nutrition'); });

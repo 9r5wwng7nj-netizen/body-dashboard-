@@ -1,4 +1,4 @@
-// Day-to-day behaviour: the counts beside menu items, hiding tabs, and typing on a phone.
+// Day-to-day behavior: projected navigation counts, retained old preferences and phone input.
 import { test, expect } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -13,7 +13,7 @@ async function open(page) {
   await page.evaluate(() => A.helpDismiss({ dataset: { what: 'tour' } })); // the start-here card has its own test
   return errors;
 }
-test('menu items show what needs attention today', async ({ page }) => {
+test('projected navigation retains today-only attention counts without a fourth Meals root', async ({ page }) => {
   const errors = await open(page);
   const chip = view => page.locator(`#bottom-bar [data-view="${view}"] .nav-count`);
   await expect(page.locator('#bottom-bar .nav-count')).toHaveCount(0);
@@ -33,7 +33,8 @@ test('menu items show what needs attention today', async ({ page }) => {
     Store.set('mealPlan', { [y]: [{ id: 'm', text: 'Soup' }], [ymd()]: [{ id: 'l', text: 'Sandwiches', slot: 'lunch' }] }); render();
   });
   await expect(chip('nutrition')).toHaveText('2');
-  await expect(chip('recipes')).toHaveText('1');
+  await expect(page.locator('#bottom-bar [data-view="recipes"]')).toHaveCount(0);
+  expect(await page.evaluate(() => NAV_COUNTS.recipes().n)).toBe(1);
   // Several missed days still count once: nothing carries over.
   expect(await page.evaluate(() => NAV_COUNTS.nutrition().n + NAV_COUNTS.recipes().n)).toBe(3);
   await page.evaluate(() => {
@@ -84,26 +85,29 @@ test('on a touch screen, buttons and tabs are finger-sized and no text is under 
   await context.close();
 });
 
-test('section tabs can be hidden and shown again, but never all of them', async ({ page }) => {
+test('legacy hidden page preferences remain intact while named pages and retired notices stay reachable', async ({ page }) => {
   const errors = await open(page);
-  await page.evaluate(() => { ui.recTab = 'grocery'; go('recipes'); });
-  const tab = id => page.locator(`#view [data-action="setTab"][data-key="recTab"][data-val="${id}"]`);
-  await expect(tab('grocery')).toHaveAttribute('aria-pressed', 'true');
-  await page.click('#view [data-action="tabsEdit"][data-key="recTab"]');
-  const box = id => page.locator(`#modal [data-change="tabsToggle"][data-val="${id}"]`);
-  await box('grocery').uncheck();
-  await page.click('#modal button:has-text("Done")');
-  await expect(tab('grocery')).toHaveCount(0);
-  await expect(tab('recipes')).toHaveAttribute('aria-pressed', 'true'); // a hidden tab that was open falls back to the first
-  expect(await page.evaluate(() => S.hiddenTabs.recTab)).toEqual(['grocery']);
-
-  // Every tab cannot be hidden.
-  await page.click('#view [data-action="tabsEdit"][data-key="recTab"]');
-  for (const id of ['recipes', 'plan']) await box(id).uncheck();
-  await box('pantry').click(); // refused: it is the last one
-  await expect(box('pantry')).toBeChecked();
-  await box('grocery').check();
-  await page.click('#modal button:has-text("Done")');
-  await expect(tab('grocery')).toHaveCount(1);
+  const hidden = await page.evaluate(() => {
+    S.hiddenTabs = { fitTab: ['history', 'library'], nutTab: ['foods', 'trend'], recTab: ['grocery', 'pantry'] };
+    saveSettings(); return structuredClone(S.hiddenTabs);
+  });
+  for (const route of [
+    { action: 'trainPage', page: 'history', title: 'Workout history' },
+    { action: 'trainPage', page: 'library', title: 'Exercise library' },
+    { action: 'nutPage', page: 'library', title: 'Library' },
+    { action: 'nutPage', page: 'body', title: 'Weight & measurements' }
+  ]) {
+    await page.evaluate(route => A[route.action]({ dataset: { page: route.page } }), route);
+    await expect(page.locator('#view-title')).toHaveText(route.title);
+    await expect(page.locator('#view .tabs-row')).toHaveCount(0);
+  }
+  for (const tab of ['grocery', 'pantry', 'freezer']) {
+    await page.evaluate(tab => { ui.recTab = tab; go('recipes'); }, tab);
+    await expect(page.locator('#view')).toContainText('retired');
+  }
+  expect(await page.evaluate(() => S.hiddenTabs)).toEqual(hidden);
+  await page.reload(); await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready);
+  expect(await page.evaluate(() => S.hiddenTabs)).toEqual(hidden);
+  await expect(page.locator('#view')).not.toBeEmpty();
   expect(errors, errors.join('\n')).toEqual([]);
 });

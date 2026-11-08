@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Body Dashboard</title>
-<meta name="theme-color" content="#0f766e" />
+<meta name="theme-color" content="#315c4b" />
 <meta name="robots" content="noindex" />
 <link rel="manifest" href="./manifest.webmanifest" />
 <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png" />
@@ -534,7 +534,7 @@ const Modal = {
     const m = $('#modal'), replacing = this.isOpen(), focused = replacing && m.contains(document.activeElement) ? focusSnapshot() : null;
     if (!replacing) this.origin = focusSnapshot();
     m.innerHTML = `<div class="absolute inset-0 bg-black/50" data-action="closeModal"></div>
-      <div class="relative mx-auto mt-4 sm:mt-12 ${wide ? 'max-w-3xl' : 'max-w-lg'} w-[calc(100%-1.5rem)] max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-6rem)] overflow-y-auto scroll-thin card p-0 ${replacing ? '' : 'sheet-in'}" role="dialog" aria-modal="true"><div class="sheet-grab" aria-hidden="true"></div>${html}</div>`;
+      <div class="relative mx-auto mt-4 sm:mt-12 ${wide ? 'max-w-3xl' : 'max-w-lg'} w-[calc(100%-1.5rem)] max-h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-6rem)] overflow-y-auto scroll-thin card p-0 ${replacing ? '' : 'sheet-in'}" role="dialog" aria-modal="true"><div class="sheet-grab" aria-hidden="true"></div>${retireMarkup(html)}</div>`;
     m.classList.remove('hidden'); this.onClose = onClose; refreshIcons();
     const dialog = $('[role="dialog"]', m), heading = $('h2, h3', dialog);
     dialog.tabIndex = -1;
@@ -665,11 +665,82 @@ function md(src) {
 /* =====================================================================
    ROUTER / SHELL
    ===================================================================== */
+// Approved task navigation. Legacy roots/preferences stay portable; only presentation is projected.
+function navRoots() {
+  const valid = ['dashboard', 'fitness', 'nutrition'];
+  if (Array.isArray(S.navOrder) && S.navOrder.length === 3 && new Set(S.navOrder).size === 3 && S.navOrder.every(x => valid.includes(x))) return S.navOrder;
+  return [...new Set([...barViews().map(x => x === 'recipes' ? 'nutrition' : x), ...valid])].filter(x => valid.includes(x));
+}
+function pageBack(root, label) { return `<button class="btn btn-ghost mb-4" data-action="pageHome" data-view="${root}">${icon('arrow-left')} ${label}</button>`; }
+function pageLink(action, label, detail, attrs = '') { return `<button class="card w-full text-left flex items-center gap-3" data-action="${action}" ${attrs}><span class="flex-1 min-w-0"><strong class="block">${label}</strong>${detail ? `<span class="block text-sm muted mt-1">${detail}</span>` : ''}</span>${icon('chevron-right')}</button>`; }
+const retiredAction = name => /^(groc|grocery|panAdd|panDel|panLow|basicAdd|basicDel|fz|staple|storeAdd|storeDel|gBudget|spend|cmGroc|recToGrocery|cookFreeze)/.test(name || '');
+function retiredNotice() { return `<div class="card"><h3 class="font-semibold">This feature has been retired</h3><p class="text-sm muted mt-2">Pantry, Grocery and Freezer are no longer active. Your original records remain preserved in backups.</p><button class="btn mt-3" data-action="pageHome" data-view="nutrition">Back to Nutrition</button></div>`; }
+function retireMarkup(html) {
+  const t = document.createElement('template'); t.innerHTML = html;
+  for (const el of t.content.querySelectorAll('[data-action],[data-change],[data-submit]')) if (retiredAction(el.dataset.action || el.dataset.change || el.dataset.submit) || (el.dataset.action === 'goRecTab' && ['grocery','pantry','freezer'].includes(el.dataset.tab))) el.remove();
+  for (const el of t.content.querySelectorAll('[name="freezer"],#ck-freeze')) (el.closest('label') || el.parentElement).remove();
+  for (const el of t.content.querySelectorAll('option[value^="fz:"],optgroup[label="From the freezer"]')) el.remove();
+  return t.innerHTML;
+}
+function libraryNutritionText(n) { return `${fmtNum(n.cal)} kcal · P ${fmtNum(n.p)} g · C ${fmtNum(n.c)} g · F ${fmtNum(n.f)} g`; }
+function nutritionLibrary() {
+  ui.pageTitle='Library';
+  const q = String(ui.libraryQ || '').trim().toLowerCase(), type = ui.libraryType || 'all', fav = !!ui.libraryFav;
+  const rows = [
+    ...Store.get('foods').map(x => ({type:'food', label:'Food', x, name:x.name, text:`${unitsOf(x)[0].label} · ${libraryNutritionText(foodNutr(x,0,1))}`, used:x.lastUsed || ''})),
+    ...Store.get('meals').map(x => ({type:'meal', label:'Saved meal', x, name:x.name, text:`1 meal · ${libraryNutritionText(mealTotals(x))}`, used:x.lastUsed || ''})),
+    ...Store.get('recipes').map(x => ({type:'recipe', label:'Recipe', x, name:x.title, text:recipeNutritionLine(x), used:lastMade(x) || ''}))
+  ].filter(r => (type === 'all' || r.type === type) && (!fav || r.x.fav) && (!q || `${r.name} ${r.x.brand || ''} ${r.x.ingredients || ''} ${(r.x.tags || []).join(' ')}`.toLowerCase().includes(q)))
+    .sort((a,b) => Number(!!b.x.fav)-Number(!!a.x.fav) || b.used.localeCompare(a.used) || a.name.localeCompare(b.name));
+  return `<div class="flex flex-wrap items-center gap-2 mb-4"><h2 class="text-xl font-semibold mr-auto">Your library</h2><button class="btn" data-action="libraryCreate">${icon('plus')} Create</button><button class="btn" data-action="recImport">${icon('download')} Import recipe</button></div>
+    <label class="label" for="library-search">Search foods, saved meals and recipes</label><input id="library-search" class="input mb-3" value="${esc(ui.libraryQ || '')}" data-input="librarySearch" placeholder="Name or ingredient">
+    <div class="flex flex-wrap items-center gap-2 mb-4"><button class="btn ${fav ? 'btn-primary' : ''}" data-action="libraryFavorites" aria-pressed="${fav}">${icon('heart')} Favorites</button><button class="btn" data-action="libraryFilters">${icon('sliders-horizontal')} Filter${type !== 'all' ? ` · ${esc({food:'Foods',meal:'Saved meals',recipe:'Recipes'}[type])}` : ''}</button>${fav || type !== 'all' || q ? '<button class="btn btn-ghost" data-action="libraryClear">Clear</button>' : ''}<span class="text-sm muted ml-auto" role="status">${rows.length} items</span></div>
+    <p class="text-xs muted mb-3">Favorites and recent use come first. Recipes use their made date; saved meals without a use date stay alphabetical.</p>
+    <div class="space-y-3">${rows.map(r => `<div class="card flex items-center gap-3"><button class="text-left flex-1 min-w-0" data-action="libraryOpen" data-kind="${r.type}" data-id="${esc(r.x.id)}">${r.type==='recipe' ? recThumb(r.x,'w-16 h-16 rounded-lg mb-2') : ''}<span class="text-xs muted">${r.label}</span><strong class="block break-words">${esc(r.name)}</strong><span class="block text-sm muted mt-1">${esc(r.text)}</span></button><button class="btn btn-ghost" data-action="libraryFavorite" data-kind="${r.type}" data-id="${esc(r.x.id)}" aria-label="${r.x.fav ? 'Unfavorite' : 'Favorite'} ${esc(r.name)}" aria-pressed="${!!r.x.fav}">${icon('heart',r.x.fav ? 'w-5 h-5 fill-current text-brand-700 dark:text-brand-300' : 'w-5 h-5')}</button><button class="btn" data-action="libraryLog" data-kind="${r.type}" data-id="${esc(r.x.id)}" aria-label="Log ${esc(r.name)}">${icon('plus')}</button></div>`).join('') || '<div class="card text-sm muted">No matching items. Clear filters or create a food, saved meal or recipe.</div>'}</div>`;
+}
+function libraryObject(kind,id) { return Store.get({food:'foods',meal:'meals',recipe:'recipes'}[kind] || 'foods').find(x => x.id === id); }
+function libraryPortion(kind,id) {
+  const x = libraryObject(kind,id); if (!x) return;
+  const date = ui.nutDate || ymd();
+  if (kind === 'food') { lfOpen(defaultMeal(), {date}); lfSelect(x); return; }
+  ui.libraryPortion = {kind,id};
+  Modal.open(modalShell(`Log ${esc(x.title || x.name)}`, `<p class="text-sm muted">${kind === 'recipe' ? 'Recipe · nutrition per serving' : 'Saved meal · copied food snapshots'}</p><label class="label">${kind === 'recipe' ? 'Servings' : 'Meal multiplier'}</label><input name="qty" type="number" inputmode="decimal" step="any" min="0.01" value="1" class="input" required><label class="label">Date</label><input name="date" type="date" class="input" value="${date}" required><label class="label">Meal</label><select name="meal" class="input">${MEALS.map(([k,l])=>`<option value="${k}" ${k===defaultMeal()?'selected':''}>${l}</option>`).join('')}</select>`, '<button class="btn" type="button" data-action="closeModal">Cancel</button><button class="btn btn-primary">Log portion</button>', 'libraryPortionSave'));
+}
+async function nutritionFormSave(form,purpose,prepare) {
+  if(ui.nutritionFormBusy)return;
+  const input=JSON.stringify(fd(form)),pending=ui.nutritionFormCommand;
+  if(pending && (pending.purpose!==purpose || pending.input!==input))return toast('Recover the pending save before changing its portion. Your input remains available.','error');
+  ui.nutritionFormBusy=true;form.setAttribute('aria-busy','true');const buttons=$$('button',form);buttons.forEach(b=>b.disabled=true);
+  try {await Store.flushDirty();const command=pending || {purpose,input,values:prepare()};ui.nutritionFormCommand=command;await WebWrites.command(command.values,purpose);ui.nutritionFormCommand=null;Modal.close();render();toast('Saved on device');}
+  catch(e){toast(e.message,'error');drawSaveRecovery();}
+  finally{ui.nutritionFormBusy=false;form.removeAttribute('aria-busy');buttons.forEach(b=>b.disabled=false);}
+}
+const A_NUT_WORKSPACE = {
+  pageHome: el => { if(el.dataset.view === 'fitness') ui.fitTab='workout'; else {ui.nutTab='today';ui.nutPage=null;} go(el.dataset.view); },
+  trainPage: el => { ui.fitTab=el.dataset.page; go('fitness'); },
+  nutPage: el => { ui.nutPage=el.dataset.page; ui.nutTab=({library:'foods',body:'trend',targets:'plan'}[ui.nutPage] || 'today'); if(ui.nutPage==='mealplan')ui.recTab='plan'; go('nutrition',ui.nutPage); },
+  librarySearch: el => {ui.libraryQ=el.value;rerender();},
+  libraryFavorites: () => {ui.libraryFav=!ui.libraryFav;render();},
+  libraryClear: () => {ui.libraryQ='';ui.libraryType='all';ui.libraryFav=false;render();},
+  libraryFilters: () => Modal.open(modalShell('Filter library', `<label class="label">Item type</label><select name="kind" class="input">${[['all','All items'],['food','Foods'],['meal','Saved meals'],['recipe','Recipes']].map(([v,l])=>`<option value="${v}" ${(ui.libraryType||'all')===v?'selected':''}>${l}</option>`).join('')}</select>`, '<button class="btn btn-primary">Apply filter</button>', 'libraryFilterSave')),
+  libraryFilterSave: f => {ui.libraryType=fd(f).kind;Modal.close();render();},
+  libraryFavorite: el => {const x=libraryObject(el.dataset.kind,el.dataset.id);if(!x)return;x.fav=!x.fav;Store.save({food:'foods',meal:'meals',recipe:'recipes'}[el.dataset.kind]);render();},
+  libraryOpen: el => {const x=libraryObject(el.dataset.kind,el.dataset.id);if(!x)return;if(el.dataset.kind==='recipe')recViewModal(x);else if(el.dataset.kind==='food')foodEditor(x);else Modal.open(modalShell(esc(x.name),`<p class="text-sm muted">Saved meal · ${esc(libraryNutritionText(mealTotals(x)))}</p><p class="text-sm">${x.items ? x.items.map(i=>esc(i.name)).join(', ') : 'Reusable meal macros'}</p>`,`<button class="btn btn-danger mr-auto" data-action="mealDel" data-id="${esc(x.id)}">Delete</button><button class="btn" data-action="libraryEditMeal" data-id="${esc(x.id)}">Edit saved meal</button><button class="btn btn-primary" data-action="libraryLog" data-kind="meal" data-id="${esc(x.id)}">Log portion</button>`));},
+  libraryEditMeal: el => { Modal.close();A.mealEdit(el); },
+  libraryLog: el => libraryPortion(el.dataset.kind,el.dataset.id),
+  libraryCreate: () => Modal.open(modalShell('Create library item', `<div class="grid gap-2"><button class="btn" data-action="libraryFoodNew">Food</button><button class="btn" data-action="libraryMealNew">Saved meal</button><button class="btn" data-action="recNew">Recipe</button></div>`)),
+  libraryFoodNew: () => {ui.lf=null;A.foodNew({dataset:{}});},
+  libraryMealNew: () => macroModal('New saved meal',{},'libraryMealSave',''),
+  libraryMealSave: f => {A.mealAdd(f);Modal.close();},
+  libraryPortionSave: async f => nutritionFormSave(f,'log-library-portion',()=>{const v=fd(f),k=num(v.qty),p=ui.libraryPortion,x=p&&libraryObject(p.kind,p.id);if(!x||!(k>0))throw new Error('Enter a valid portion');const data=structuredClone(Store.get('nutrition')),dd=data[v.date] ||= {entries:[]};dd.entries ||= [];const items=p.kind==='recipe'?[{name:x.title,qty:1,unit:'serving',...Object.fromEntries(NUTR.map(n=>[n,num(x[n])]))}]:mealItems(x);for(const item of items){const e={...stripEntry(item),id:uid(),meal:v.meal,time:nowTime()};for(const n of NUTR)if(e[n]!=null)e[n]*=k;if(e.qty!=null)e.qty*=k;dd.entries.push(e);}return {nutrition:data};}),
+  entrySnapshotSave: async f => nutritionFormSave(f,'edit-entry-snapshot',()=>{const v=fd(f),e=findEntry(v.id),k=num(v.qty);if(!e||!(k>0)||!(e.qty>0))throw new Error('Enter a valid quantity');const data=structuredClone(Store.get('nutrition')),target=data[ui.nutDate].entries.find(x=>x.id===e.id),ratio=k/e.qty;for(const n of NUTR)if(target[n]!=null)target[n]=ratio===1?target[n]:target[n]*ratio;target.qty=k;target.meal=v.meal;return {nutrition:data};})
+};
+
 const VIEWS = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard', render: () => renderDashboard() },
-  { id: 'fitness', label: 'Workouts', icon: 'dumbbell', render: () => renderFitness() },
+  { id: 'dashboard', label: 'Today', icon: 'layout-dashboard', render: () => renderDashboard() },
+  { id: 'fitness', label: 'Train', icon: 'dumbbell', render: () => renderFitness() },
   { id: 'nutrition', label: 'Nutrition', icon: 'apple', render: () => renderNutrition() },
-  { id: 'recipes', label: 'Recipes & Meals', icon: 'chef-hat', render: () => renderRecipes() }
+  { id: 'recipes', label: 'Nutrition', icon: 'chef-hat', render: () => renderRecipes() }
 ];
 let lastRendered = null, tickIv = null;
 // What needs attention in each section today. Every menu item has an entry, so any of them can show a
@@ -700,10 +771,10 @@ function barViews() {
 function renderBar() {
   const el = $('#bottom-bar'); if (!el) return;
   const item = id => {
-    const v = VIEWS.find(x => x.id === id), c = NAV_COUNTS[id] && NAV_COUNTS[id](), on = S.view === id, n = c && c.n ? c : null;
+    const v = VIEWS.find(x => x.id === id), c = NAV_COUNTS[id] && NAV_COUNTS[id](), on = (S.view === 'recipes' ? 'nutrition' : S.view) === id, n = c && c.n ? c : null;
     return `<button type="button" class="bar-item ${on ? 'bar-on' : ''}" data-action="go" data-view="${id}" aria-current="${on ? 'page' : 'false'}">${icon(v.icon, 'w-5 h-5')}<span class="truncate max-w-full">${esc(BAR_LABEL[id] || v.label)}</span>${n ? `<span class="nav-count bar-badge ${n.late ? 'bar-late' : ''}" aria-hidden="true">${n.dot ? '' : n.n > 99 ? '99+' : n.n}</span><span class="sr-only">, ${n.n} ${esc(n.what)}</span>` : ''}</button>`;
   };
-  el.innerHTML = barViews().map(item).join('');
+  el.innerHTML = navRoots().map(item).join('');
 }
 // The + sheet. Weight has a small form; food, a workout and a recipe link open their usual screens.
 const QUICK_ADD = [['food', 'Food', 'apple'], ['weight', 'Weight', 'scale'], ['workout', 'Workout', 'dumbbell'], ['link', 'Recipe from a link', 'link-2']];
@@ -740,16 +811,17 @@ function render() {
   _rendering = true; try { renderNow(); } finally { _rendering = false; }
 }
 function renderNow() {
-  const focused = focusSnapshot(), previousView = lastRendered;
+  const focused = focusSnapshot(), previousView = lastRendered; ui.pageTitle=null;
   _trC = null; _expC = null;
   try { autoCheckin(); } catch (e) { console.warn(e); }
-  for (const [key, ids] of Object.entries(S.hiddenTabs || {})) if (ids.includes(ui[key])) ui[key] = null;
+  for (const [key, ids] of Object.entries(S.hiddenTabs || {})) if (!['fitTab','nutTab','recTab'].includes(key) && ids.includes(ui[key])) ui[key] = null;
   const v = VIEWS.find(x => x.id === S.view) || VIEWS[0];
   const main = $('#view'), keep = lastRendered === v.id ? main.scrollTop : 0;
   $('#view-title').textContent = v.label;
   let html;
   try { html = v.render(); } catch (e) { console.error(e); html = `<div class="card text-rose-600">Something went wrong rendering this view: ${esc(e.message)}</div>`; }
-  main.innerHTML = `<div class="max-w-6xl mx-auto p-4 md:p-6 pb-28">${html}</div>`;
+  if(ui.pageTitle) $('#view-title').textContent=ui.pageTitle;
+  main.innerHTML = `<div class="max-w-6xl mx-auto p-4 md:p-6 pb-28">${retireMarkup(html)}</div>`;
   main.scrollTop = keep; lastRendered = v.id;
   renderNav(); refreshIcons(); afterRender(focused);
   if (previousView === v.id && !Modal.isOpen()) restoreFocus(focused);
@@ -782,10 +854,12 @@ function afterRender(focused) {
   document.querySelectorAll('#view .tabs-row').forEach(g => { const a = g.querySelector('.tab-active'); if (a && a.offsetLeft + a.offsetWidth > g.clientWidth) g.scrollLeft = a.offsetLeft - 8; tabFade(g); });
   hydratePhotos();
 }
-function go(view) { S.view = view; saveSettings(); lastRendered = null; render(); if (!Modal.isOpen()) $('#view-title').focus({ preventScroll: true }); }
+function go(view, namedPage = null) { if(view==='recipes') ui.libraryType='recipe'; if(view==='nutrition') ui.nutPage=namedPage; S.view = view; saveSettings(); lastRendered = null; render(); if (!Modal.isOpen()) $('#view-title').focus({ preventScroll: true }); }
 function applyTheme() {
   const dark = S.theme === 'dark' || (S.theme === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.classList.toggle('dark', dark);
+  // Recreate section markup after the theme paint so Safari refreshes inherited text colors.
+  requestAnimationFrame(() => requestAnimationFrame(() => { if (Store.ready) render(); }));
   const l = $('#theme-label'); if (l) l.textContent = `Theme: ${S.theme[0].toUpperCase() + S.theme.slice(1)}`;
 }
 
@@ -1101,15 +1175,19 @@ function setVolume(s, type, bw = null, info = null) {
   if (info && info.countBW && bw && BW_TYPES.has(type)) { const eff = bw * ((info.bwPct ?? 100) / 100) + (type === 'weighted_bw' ? (s.weight || 0) : type === 'assisted_bw' ? -(s.weight || 0) : 0); return Math.max(0, eff) * (s.reps || 0); }
   return VOL_TYPES.has(type) ? (s.weight || 0) * (s.reps || 0) : 0;
 }
-const workoutVolume = w => { let bw; const getBw = () => bw === undefined ? (bw = bodyweightOn(wDate(w))) : bw; return sum(w.exercises.map(e => { const info = exInfo(e.name), b = info.countBW ? getBw() : null; return sum(workSets(e).map(s => setVolume(s, info.type, b, info))); })); };
+const workoutVolume = w => { let bw; const getBw = () => bw === undefined ? (bw = bodyweightOn(wDate(w))) : bw; return sum(w.exercises.map(e => { const info = exerciseInfo(e), b = info.countBW ? getBw() : null; return sum(workSets(e).map(s => setVolume(s, info.type, b, info))); })); };
 const workoutSets = w => sum(w.exercises.map(e => workSets(e).length));
 const anyData = s => s.weight != null || s.reps != null || !!s.duration || !!s.distance;
 const fullData = (s, type) => typeCols(type).every(c => c === 'weight' ? s.weight != null : c === 'reps' ? s.reps != null : !!s[c]);
 function sortWorkouts() { W().sort((a, b) => b.start.localeCompare(a.start)); }
 function exerciseHistory(name, { before = null, exclude = null } = {}) {
-  const n = name.toLowerCase(), out = [];
-  for (const w of W()) { if (w.id === exclude || (before && w.start >= before)) continue; const ex = w.exercises.find(e => e.name.toLowerCase() === n); if (ex) out.push({ w, ex }); }
-  return out;
+  const n = String(name).toLowerCase(), out = [];
+  for (const w of W()) {
+    if (w.id === exclude || wDate(w) > ymd() || (before && w.start >= before)) continue;
+    w.exercises.forEach((ex,blockIndex) => { if (ex.name.toLowerCase() === n) out.push({ w, ex, blockIndex }); });
+  }
+  // Within a dated session, last stored block is a documented fallback, not an invented time.
+  return out.sort((a,b) => b.w.start.localeCompare(a.w.start) || b.blockIndex-a.blockIndex);
 }
 function primaryScore(s, type) {
   if (type === 'weight_reps' || type === 'weighted_bw') return e1rm(s.weight, s.reps) || s.weight || 0;
@@ -1160,19 +1238,22 @@ function setMetrics(s, type) {
 function fmtMetric(k, v) { return k === 'weight' || k === 'e1rm' ? wFmt(v) : k === 'vol' ? `${fmtNum(toUnit(v))} ${S.unit}` : k === 'reps' ? `${v} reps` : k === 'duration' ? fmtClock(v) : k === 'distance' ? `${distDisp(v)} ${distUnit()}` : fmtPace(v); }
 function allTimeBests(name, type, opts = {}) {
   const b = {}; let any = false;
-  for (const { w, ex } of exerciseHistory(name, opts)) for (const s of workSets(ex)) { any = true; for (const [k, v] of Object.entries(setMetrics(s, type))) if (!b[k] || v > b[k].v) b[k] = { v, w }; }
+  for (const {w,ex} of exerciseHistory(name,opts)) {
+    if (exerciseInfo(ex).type !== type || (opts.basis && !sameExerciseBasis(opts.basis,ex))) continue;
+    for (const set of workSets(ex)) { any = true; for (const [key,value] of Object.entries(setMetrics(set,type))) if (!b[key] || value > b[key].v) b[key] = {v:value,w}; }
+  }
   return any ? b : null;
 }
 function checkPR(w, i, j) {
   const ex = w.exercises[i], s = ex.sets[j]; if (s.type === 'warmup') return [];
-  const type = exInfo(ex.name).type, hb = allTimeBests(ex.name, type, { exclude: w.id }); if (!hb) return []; // first time doing it: no PRs yet
+  const type = exerciseInfo(ex).type, hb = allTimeBests(ex.name, type, { exclude: w.id, basis: ex }); if (!hb) return []; // first time doing it: no PRs yet
   const best = Object.fromEntries(Object.entries(hb).map(([k, x]) => [k, x.v]));
-  w.exercises.forEach((e, ii) => { if (e.name.toLowerCase() !== ex.name.toLowerCase()) return; e.sets.forEach((x, jj) => { if ((ii === i && jj === j) || !x.done || x.type === 'warmup') return; for (const [k, v] of Object.entries(setMetrics(x, type))) if (best[k] == null || v > best[k]) best[k] = v; }); });
+  w.exercises.forEach((e, ii) => { if (e.name.toLowerCase() !== ex.name.toLowerCase() || !sameExerciseBasis(ex,e)) return; e.sets.forEach((x, jj) => { if ((ii === i && jj === j) || !x.done || x.type === 'warmup') return; for (const [k, v] of Object.entries(setMetrics(x, type))) if (best[k] == null || v > best[k]) best[k] = v; }); });
   const m = setMetrics(s, type); return Object.keys(m).filter(k => best[k] != null && m[k] > best[k] + 1e-9);
 }
 function muscleSets(ws) {
   const out = {};
-  for (const w of ws) for (const e of w.exercises) { const info = exInfo(e.name), n = workSets(e).length; if (!n) continue; out[info.primary] = (out[info.primary] || 0) + n; (info.secondary || []).forEach(m => out[m] = (out[m] || 0) + n * 0.5); }
+  for (const w of ws) for (const e of w.exercises) { const info = exerciseInfo(e), n = workSets(e).length; if (!n) continue; out[info.primary] = (out[info.primary] || 0) + n; (info.secondary || []).forEach(m => out[m] = (out[m] || 0) + n * 0.5); }
   return out;
 }
 
@@ -1204,13 +1285,14 @@ const WorkoutCommands = {
       await Store.flushDirty();
       const active = structuredClone(Store.get('activeWorkout'));
       if (!active) return;
-      const i = +el.dataset.i, j = +el.dataset.j, ex = active.exercises[i], original = ex.sets[j], type = exInfo(ex.name).type;
+      const i = +el.dataset.i, j = +el.dataset.j, ex = active.exercises[i], original = ex.sets[j], type = exerciseInfo(ex).type;
       ex.id ||= uid(); original.id ||= uid();
       const undo = original.done && !original.draft;
       let timer;
       if (undo) { original.done = false; original.pr = []; if (Timer.source === original.id) timer = null; }
       else {
-        const set = workoutDraftValues(original), previous = exerciseHistory(ex.name)[0]?.ex.sets[j], above = ex.sets[j - 1];
+        ex.classification ||= { ...exerciseClassification(ex.name), type };
+        const set = workoutDraftValues(original), previous = previousExercise(ex)?.ex.sets[j], above = ex.sets[j - 1];
         for (const field of typeCols(type)) if (!(field in (original.draft || {})) && set[field] == null) set[field] = previous?.[field] ?? above?.[field] ?? (field === 'reps' ? parseInt(ex.targetReps) || null : field === 'duration' ? parseClock(ex.targetReps) : null);
         if (!fullData(set, type) || typeCols(type).some(f => !Number.isFinite(set[f]) || set[f] < 0 || ((f === 'duration' || f === 'distance') && set[f] <= 0)) || (typeCols(type).includes('reps') && (!Number.isInteger(set.reps) || (set.reps === 0 && set.type !== 'failure'))) || (set.rpe != null && (!Number.isFinite(set.rpe) || set.rpe < 1 || set.rpe > 10))) throw new Error('Enter valid values for every required field. RPE is optional (1–10).');
         delete set.draft; delete set.draftUnits; set.done = true; ex.sets[j] = set; set.pr = checkPR(active, i, j);
@@ -1251,7 +1333,11 @@ async function startWorkout(aw) {
   ui.fitTab = 'workout'; ui.editW = null; unlockAudio(); go('fitness');
 }
 function workoutFromRoutine(r) {
-  return { name: r.name, routineId: r.id, exercises: r.exercises.map((e, i) => ({ id: uid(), name: e.name, notes: '', ss: !!e.ss && i < r.exercises.length - 1, rest: e.rest ?? S.restSeconds, targetReps: e.reps || '', sets: Array.from({ length: +e.sets || 3 }, () => blankSet()) })) };
+  if (!r || !Array.isArray(r.exercises)) throw new Error('Choose a routine with an exercise list.');
+  const invalid = r.exercises.find(e => !Number.isInteger(e.sets) || e.sets < 0);
+  if (invalid) throw new Error(`Review set counts for ${invalid.name || 'this exercise'}: use whole numbers zero or greater.`);
+  if (!r.exercises.some(e => e.sets > 0)) throw new Error('Add at least one planned working set before starting this routine.');
+  return { name: r.name, routineId: r.id, exercises: r.exercises.map((e, i) => ({ id: uid(), name: e.name, ...(e.slotId ? {routineSlot:e.slotId} : {}), notes: '', ss: !!e.ss && i < r.exercises.length - 1, rest: e.rest ?? S.restSeconds, targetReps: e.reps || '', sets: Array.from({ length: e.sets }, () => blankSet()) })) };
 }
 function weeklyStreak() {
   const weeks = new Set(W().map(w => startOfWeek(wDate(w)))); let k = startOfWeek(); if (!weeks.has(k)) k = addDays(k, -7);
@@ -1293,38 +1379,41 @@ function renderFitness() {
   if (ui.editW) return fitEditor(ui.editW);
   const aw = Store.get('activeWorkout');
   if (aw && (!ui.fitTab || ui.fitTab === 'workout')) return fitActive(aw);
-  if (ui.fitTab === 'stats') ui.historyTotalsOpen = true;
-  ui.fitTab = { stats: 'history', data: 'history' }[ui.fitTab] || ui.fitTab; // tabs merged into History in 2026-10
-  const t = tabs('fitTab', [['workout', aw ? 'Active workout' : 'Workout', aw ? 'activity' : 'play', 'Workout'], ['history', 'History', 'history', 'History'], ['routines', 'Routines', 'folder', 'Routines'], ['library', 'Exercises', 'library', 'Exercises'], ['progress', 'Progress', 'trending-up', 'Progress']]);
-  return t + ({ workout: fitWorkoutTab, history: fitHistoryAll, routines: fitRoutinesTab, library: fitLibraryTab, progress: fitProgressTab }[ui.fitTab] || fitWorkoutTab)();
+  if(ui.fitTab==='stats')ui.historyTotalsOpen=true;
+  ui.fitTab=({stats:'history',data:'history'}[ui.fitTab] || ui.fitTab || 'workout');
+  const page=ui.fitTab;ui.pageTitle=({history:'Workout history',routines:'Routines',library:'Exercise library',progress:'Training progress'}[page]||'Train');
+  if(page!=='workout') return pageBack('fitness','Train')+`<h2 class="text-xl font-semibold mb-4">${esc({history:'Workout history',routines:'Routines',library:'Exercise library',progress:'Training progress'}[page]||'Train')}</h2>`+({history:fitHistoryAll,routines:fitRoutinesTab,library:fitLibraryTab,progress:fitProgressTab}[page]||fitWorkoutTab)();
+  return `<div class="flex flex-wrap items-center gap-2 mb-4"><button class="btn" data-action="trainPage" data-page="history">${icon('history')} History</button><button class="btn" data-action="trainPage" data-page="progress">${icon('trending-up')} Progress</button></div>`+fitWorkoutTab()+`<div class="grid sm:grid-cols-2 gap-3 mt-6">${pageLink('trainPage','Routines','Build and review your plan','data-page="routines"')}${pageLink('trainPage','Exercise library','Browse movements and equipment','data-page="library"')}</div>`;
 }
 function routineCard(r, isNext) {
   const lastDone = W().find(w => w.routineId === r.id || (!w.routineId && w.name === r.name));
   return `<div class="card flex flex-col ${isNext ? 'ring-2 ring-brand-400' : ''}"><div class="flex items-start gap-2"><div class="flex-1 min-w-0"><div class="font-semibold">${esc(r.name)}${isNext ? ' <span class="chip chip-on ml-1 align-middle">Next up</span>' : ''}</div><div class="text-xs muted">${routineSummary(r)} · ${lastDone ? `last ${fmtDate(wDate(lastDone), { month: 'short', day: 'numeric' })}` : 'not done yet'}</div></div><button class="btn btn-ghost btn-sm" data-action="routineEdit" data-id="${r.id}" title="Edit">${icon('pencil', 'w-3.5 h-3.5')}</button></div>
     <p class="text-sm muted mt-2 flex-1 line-clamp-2">${r.exercises.map(e => esc(e.name)).join(' · ')}</p>
+    <button class="btn mt-3" data-action="routineCoverageSaved" data-id="${r.id}">${icon('chart-no-axes-column')} Set coverage</button>
     <button class="btn btn-primary mt-3" data-action="startRoutine" data-id="${r.id}">${icon('play', 'w-3.5 h-3.5')} Start</button></div>`;
 }
 function fitWorkoutTab() {
   const aw = Store.get('activeWorkout'); if (aw) return fitActive(aw);
   const ws = W(), thisWeek = completedWorkoutsThisWeek(), folders = routineFolders();
-  return `<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+  return `  <div class="flex flex-wrap items-center gap-2 mb-4"><h3 class="font-semibold mr-auto">Start a workout</h3><button class="btn btn-primary" data-action="startEmpty">${icon('plus')} Empty workout</button></div>
+  ${folders.map(f => { const next = f.name ? nextInFolder(f) : null, pi = f.name ? programInfo(f.name) : null; return `<div class="mb-6"><div class="flex flex-wrap items-center gap-2 mb-2">${icon(f.name ? 'folder' : 'clipboard-list', 'w-4 h-4 muted')}<span class="font-semibold text-sm">${esc(f.name || 'My routines')}</span>${pi ? `<span class="chip">${pi}</span>` : ''}</div>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">${f.routines.map(r => routineCard(r, next && next.id === r.id)).join('')}</div></div>`; }).join('')}
+  <button class="btn btn-sm mb-6" data-action="routineEdit">${icon('plus', 'w-3.5 h-3.5')} New routine</button>
+  ${ws.length ? `<h3 class="font-semibold mb-3">Recent</h3><div class="space-y-2">${ws.slice(0, 3).map(w => `<div class="card py-3 flex items-center gap-3"><div class="flex-1 min-w-0"><div class="font-medium truncate">${esc(w.name)}</div><div class="text-xs muted">${fmtDateTime(w.start)} · ${fmtDur((new Date(w.end) - new Date(w.start)) / 1000)} · ${workoutSets(w)} sets</div></div><button class="btn btn-sm" data-action="repeatWorkout" data-id="${w.id}">${icon('repeat', 'w-3.5 h-3.5')} Repeat</button></div>`).join('')}</div>` : ''}
+  <details class="card mt-5"><summary class="min-h-11 cursor-pointer text-sm font-semibold">Training totals</summary><div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
     <div class="stat"><div class="text-xs muted">Completed this week</div><div class="text-2xl font-bold">${thisWeek.length}</div></div>
     <div class="stat"><div class="text-xs muted">Volume this week</div><div class="text-2xl font-bold">${fmtNum(toUnit(sum(thisWeek.map(workoutVolume))))}<span class="text-sm font-medium muted"> ${S.unit}</span></div></div>
     <div class="stat"><div class="text-xs muted">All-time workouts</div><div class="text-2xl font-bold">${ws.length}</div></div></div>
   <p class="text-xs muted mb-4">${workoutWeekRange()}. Counts use the recorded workout date; active and future-dated workouts are excluded.</p>
-  <div class="flex flex-wrap items-center gap-2 mb-4"><h3 class="font-semibold mr-auto">Start a workout</h3><button class="btn" data-action="logPast">${icon('calendar-plus')} Log past workout</button><button class="btn btn-primary" data-action="startEmpty">${icon('plus')} Empty workout</button></div>
-  ${folders.map(f => { const next = f.name ? nextInFolder(f) : null, pi = f.name ? programInfo(f.name) : null; return `<div class="mb-6"><div class="flex flex-wrap items-center gap-2 mb-2">${icon(f.name ? 'folder' : 'clipboard-list', 'w-4 h-4 muted')}<span class="font-semibold text-sm">${esc(f.name || 'My routines')}</span>${pi ? `<span class="chip">${pi}</span>` : ''}</div>
-    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">${f.routines.map(r => routineCard(r, next && next.id === r.id)).join('')}</div></div>`; }).join('')}
-  <button class="btn btn-sm mb-6" data-action="routineEdit">${icon('plus', 'w-3.5 h-3.5')} New routine</button>
-  ${ws.length ? `<h3 class="font-semibold mb-3">Recent</h3><div class="space-y-2">${ws.slice(0, 3).map(w => `<div class="card py-3 flex items-center gap-3"><div class="flex-1 min-w-0"><div class="font-medium truncate">${esc(w.name)}</div><div class="text-xs muted">${fmtDateTime(w.start)} · ${fmtDur((new Date(w.end) - new Date(w.start)) / 1000)} · ${workoutSets(w)} sets</div></div><button class="btn btn-sm" data-action="repeatWorkout" data-id="${w.id}">${icon('repeat', 'w-3.5 h-3.5')} Repeat</button></div>`).join('')}</div>` : ''}`;
+</details>`;
 }
 function setBadge(s, n) {
   const m = { warmup: ['W', 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'], drop: ['D', 'bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300'], failure: ['F', 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300'] };
   return m[s.type] || [String(n), 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'];
 }
 function exerciseCard(ex, i, w, ctx, grp) {
-  const count = w.exercises.length, info = exInfo(ex.name), type = EX_TYPES[info.type] ? info.type : 'weight_reps', cols = typeCols(type);
-  const prev = exerciseHistory(ex.name, ctx === 'edit' ? { before: w.start, exclude: w.id } : {})[0], prevSets = prev ? prev.ex.sets : [];
+  const count = w.exercises.length, info = exerciseInfo(ex), type = EX_TYPES[info.type] ? info.type : 'weight_reps', cols = typeCols(type);
+  const prev = previousExercise(ex, ctx === 'edit' ? { before: w.start, exclude: w.id } : {}), prevSets = prev ? prev.ex.sets : [];
   const showPrevious = ctx !== 'active' || prevSets.some(anyData);
   const head = c => c === 'weight' ? (type === 'assisted_bw' ? `−${S.unit}` : type === 'weighted_bw' ? `+${S.unit}` : S.unit) : c === 'reps' ? 'Reps' : c === 'duration' ? 'Time' : distUnit();
   const showRpe = S.rpe || ex.sets.some(s => s.rpe != null || s.draft?.rpe != null);
@@ -1342,7 +1431,7 @@ function exerciseCard(ex, i, w, ctx, grp) {
     if (s.type !== 'warmup') n++; const p = prevSets[j], [lab, cls] = setBadge({ ...s, type: s.draft?.type || s.type }, n);
     return `<tr data-set-state="${s.draft ? 'draft' : s.done ? 'committed' : 'suggestion'}" class="${s.done && ctx !== 'edit' ? 'bg-emerald-50 dark:bg-emerald-950/30' : ''}">
       <td class="py-1 pl-1 whitespace-nowrap"><button class="w-8 h-8 rounded-md text-xs font-bold ${cls}" data-action="awSetType" data-i="${i}" data-j="${j}" aria-label="Options for set ${lab}" title="Set type or remove set">${lab}</button><span class="set-status-space"><span class="text-xs muted" data-row-save-state>${s.draft ? 'Draft' : s.done ? 'Saved' : 'Suggested'}</span></span>${s.pr && s.pr.length ? `<span class="ml-0.5" title="${s.pr.map(k => PR_LABELS[k]).join(', ')}">🏆</span>` : ''}</td>
-      ${showPrevious ? `<td class="py-1 pr-1">${p ? `<button class="text-xs muted hover:text-brand-600 text-left whitespace-nowrap tabular-nums min-h-[2.75rem] min-w-11" data-action="awFillPrev" data-i="${i}" data-j="${j}" title="Tap to copy into this set" aria-label="Previous from ${esc(wDate(prev.w))}: ${esc(setLabel(p, type))}. Copy into this set">${setShort(p, type)}</button>` : '<span class="text-xs muted">—</span>'}</td>` : ''}
+      ${showPrevious ? `<td class="py-1 pr-1">${p ? `<button class="text-xs muted hover:text-brand-600 text-left whitespace-nowrap tabular-nums min-h-[2.75rem] min-w-11" data-action="awFillPrev" data-i="${i}" data-j="${j}" title="Tap to copy into this set" aria-label="Previous from ${esc(wDate(prev.w))}, block ${prev.blockIndex + 1}: ${esc(setLabel(p, type))}. Copy into this set">${setShort(p, type)}</button>` : '<span class="text-xs muted">—</span>'}</td>` : ''}
       ${cols.map(c => `<td data-field-label="${head(c)}" class="py-1 px-0.5 sm:px-1">${cell(c, s, p, j)}</td>`).join('')}
       ${showRpe ? `<td data-field-label="RPE" class="py-1 px-0.5 sm:px-1 w-12 sm:w-16"><input type="number" inputmode="decimal" step="0.5" min="1" max="10" class="input h-11 px-1 py-1.5 text-center tabular-nums" value="${esc(s.draft?.rpe ?? s.rpe ?? '')}" placeholder="RPE" data-input="awSet" data-i="${i}" data-j="${j}" data-f="rpe" aria-label="RPE"></td>` : ''}
       ${ctx === 'edit' ? '' : `<td class="py-1 px-0.5 sm:px-1"><button class="w-11 h-11 rounded-lg grid place-items-center ${s.done ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-emerald-600'}" data-action="awSetDone" data-i="${i}" data-j="${j}" aria-label="${s.draft && s.done ? 'Save set changes' : s.done ? 'Undo completed set' : 'Complete set'}" title="${s.draft ? 'Draft: save changes' : s.done ? 'Saved on device; tap to undo' : 'Accept and save this set'}">${icon(s.draft && s.done ? 'save' : s.done ? 'undo-2' : 'check')}</button></td>`}
@@ -1352,7 +1441,7 @@ function exerciseCard(ex, i, w, ctx, grp) {
     ${grp ? `<div class="text-[11px] font-semibold text-violet-600 dark:text-violet-300 mb-1 flex items-center gap-1">${icon('link', 'w-3 h-3')} Superset ${grp.label} · ${grp.pos}/${grp.size}${grp.pos < grp.size ? ' · go straight to the next exercise' : ' · rest after this one'}</div>` : ''}
     <div class="workout-exercise-head flex flex-wrap items-center gap-2 mb-3">
       <div class="flex-1 min-w-[10rem]"><button class="font-semibold text-brand-700 dark:text-brand-300 hover:underline text-left" data-action="libEdit" data-name="${esc(ex.name)}" title="Exercise settings">${esc(ex.name)}</button>
-        <div class="exercise-context text-xs muted flex flex-wrap gap-x-2"><span>${esc(info.primary)} · ${typeLabel(type)}${info.countBW && BW_TYPES.has(type) ? ' · body weight counts' : ''}</span>${prev ? `<span>Last ${fmtDate(wDate(prev.w), { month: 'short', day: 'numeric' })}: ${setLabel(bestSet(prev.ex, type), type)}</span>` : '<span>First time logging this</span>'}${info.howto ? `<a href="${esc(webUrl(info.howto))}" target="_blank" rel="noopener" class="text-brand-600 dark:text-brand-400 underline">How-to</a>` : ''}</div></div>
+        <div class="exercise-context text-xs muted flex flex-wrap gap-x-2"><span>${esc(info.primary)} · ${typeLabel(type)}${info.countBW && BW_TYPES.has(type) ? ' · body weight counts' : ''}</span>${prev ? `<span>Last ${fmtDate(wDate(prev.w), { month: 'short', day: 'numeric' })} · block ${prev.blockIndex + 1}: ${setLabel(bestSet(prev.ex, type), type)}${prev.ex.classification ? ' · recorded mapping' : ' · legacy current mapping'}</span>` : '<span>First time logging this</span>'}${info.howto ? `<a href="${esc(webUrl(info.howto))}" target="_blank" rel="noopener" class="text-brand-600 dark:text-brand-400 underline">How-to</a>` : ''}</div></div>
       <button class="btn btn-ghost btn-sm" data-action="awExMenu" data-i="${i}" aria-label="More for ${esc(ex.name)}" title="Move, superset or remove">${icon('ellipsis', 'w-4 h-4')}</button>
       <div class="exercise-tools flex items-center gap-2 w-full">
         <label class="flex items-center gap-1 text-xs muted" title="Rest after each set">${icon('timer', 'w-3.5 h-3.5')} Rest <select class="input py-1 px-1.5 w-auto text-xs" data-change="awRest" data-i="${i}" aria-label="Rest after each set">${restOptions(ex.rest)}</select></label>
@@ -1381,7 +1470,7 @@ function setStepper(ex, i, type, prevSets) {
 }
 function fitActive(aw) {
   let done = 0, vol = 0;
-  const bwNow = bodyweightOn(ymd()); aw.exercises.forEach(e => { const info = exInfo(e.name), t = info.type; e.sets.forEach(s => { if (s.done) { done++; if (s.type !== 'warmup') vol += setVolume(s, t, info.countBW ? bwNow : null, info); } }); });
+  const bwNow = bodyweightOn(ymd()); aw.exercises.forEach(e => { const info = exerciseInfo(e), t = info.type; e.sets.forEach(s => { if (s.done) { done++; if (s.type !== 'warmup') vol += setVolume(s, t, info.countBW ? bwNow : null, info); } }); });
   const g = supersetGroups(aw.exercises);
   return `<div data-wctx="active" class="workout-session">
   <div class="workout-summary card mb-4">
@@ -1390,7 +1479,7 @@ function fitActive(aw) {
   </div>
   ${aw.notes || ui.noteOpen.has(aw) ? `<textarea class="input mb-4" rows="2" placeholder="Workout notes…" data-input="awField" data-f="notes" aria-label="Workout notes">${esc(aw.notes)}</textarea>` : ''}
   <div class="space-y-4">${aw.exercises.map((ex, i) => exerciseCard(ex, i, aw, 'active', g[i])).join('')}</div>
-  <form data-submit="awAddExercise" class="card mt-4 flex gap-2"><input name="name" list="ex-list" class="input" placeholder="Add exercise (type to search)…" autocomplete="off" required><button class="btn btn-primary">${icon('plus')} Add</button></form>
+  <button class="btn btn-primary w-full mt-4" data-action="exercisePick" data-context="session-add">${icon('plus')} Add exercises</button>${aw.swapToken ? '<button class="btn w-full mt-2" data-action="undoExerciseSwap">Undo last swap</button>' : ''}
   <p class="text-xs muted mt-2">Tip: for a time, type 130 for 1:30 or 45 for 0:45; tap a “Previous” value to copy it; tap ${icon('ellipsis', 'w-3 h-3 inline')} to move an exercise or superset it with the next one; tap an exercise name to set its type and muscles. Turn on the RPE column in Settings.</p>
   ${exDatalist('ex-list')}</div>`;
 }
@@ -1402,7 +1491,7 @@ function fitEditor(w) {
     <div><label class="label">Date</label><input type="date" class="input" value="${w._date}" data-input="editWhen" data-f="date"></div><div><label class="label">Start time</label><input type="time" class="input" value="${w._time}" data-input="editWhen" data-f="time"></div><div><label class="label">Minutes</label><input type="number" inputmode="numeric" min="1" class="input" value="${w._dur}" data-input="editWhen" data-f="dur"></div></div>
     <textarea class="input mt-3" rows="2" placeholder="Workout notes…" data-input="awField" data-f="notes">${esc(w.notes || '')}</textarea></div>
   <div class="space-y-4">${w.exercises.map((ex, i) => exerciseCard(ex, i, w, 'edit', g[i])).join('')}</div>
-  <form data-submit="awAddExercise" class="card mt-4 flex gap-2"><input name="name" list="ex-list" class="input" placeholder="Add exercise…" autocomplete="off" required><button class="btn btn-primary">${icon('plus')} Add</button></form>
+  <button class="btn btn-primary w-full mt-4" data-action="exercisePick" data-context="edit-add">${icon('plus')} Add exercises</button>
   <p class="text-xs muted mt-2">Sets with any value entered are saved. Empty sets are dropped.</p>${exDatalist('ex-list')}</div>`;
 }
 // History: expandable calendar/totals, followed by personal workout previews.
@@ -1421,7 +1510,7 @@ function fitHistoryTab() {
       ${icon('chevron-down', 'w-4 h-4 muted group-open:rotate-180 transition')}<span class="feed-preview w-full">${w.exercises.slice(0,3).map(e => `<span>${icon('dumbbell', 'w-5 h-5 shrink-0 muted')}<span>${e.sets.length} ${e.sets.length === 1 ? 'set' : 'sets'} · ${esc(e.name)}</span></span>`).join('')}${w.exercises.length > 3 ? `<span class="muted">${w.exercises.length - 3} more ${w.exercises.length === 4 ? 'exercise' : 'exercises'} · expand for details</span>` : ''}</span></summary>
       <div class="px-4 pb-4 border-t border-slate-100 dark:border-slate-800 pt-3 space-y-3">
         ${w.notes ? `<p class="text-sm italic muted">${esc(w.notes)}</p>` : ''}
-        ${w.exercises.map((e, i) => { let n = 0; const type = exInfo(e.name).type; return `<div class="${g[i] ? 'border-l-4 border-l-violet-400 pl-2' : ''}"><div class="font-medium text-sm">${esc(e.name)}${g[i] ? ` <span class="text-[11px] text-violet-600 dark:text-violet-300">Superset ${g[i].label}</span>` : ''}</div>${e.notes ? `<div class="text-xs muted">${esc(e.notes)}</div>` : ''}<div class="flex flex-wrap gap-1.5 mt-1">${e.sets.map(s => { if (s.type !== 'warmup') n++; const [lab] = setBadge(s, n); return `<span class="chip">${lab}: ${setLabel(s, type)}${s.pr && s.pr.length ? ' 🏆' : ''}</span>`; }).join('')}</div></div>`; }).join('')}
+        ${w.exercises.map((e, i) => { let n = 0; const type = exerciseInfo(e).type; return `<div class="${g[i] ? 'border-l-4 border-l-violet-400 pl-2' : ''}"><div class="font-medium text-sm">${esc(e.name)}${g[i] ? ` <span class="text-[11px] text-violet-600 dark:text-violet-300">Superset ${g[i].label}</span>` : ''}</div>${e.classification ? `<p class="text-xs muted">Recorded mapping · ${esc(typeLabel(type))}</p>` : `<p class="text-xs muted">Legacy · ${EX_TYPES[e.type] ? 'imported tracking type; current muscle mapping' : 'current library mapping; historical classification unavailable'}</p>`}${e.notes ? `<div class="text-xs muted">${esc(e.notes)}</div>` : ''}<div class="flex flex-wrap gap-1.5 mt-1">${e.sets.map(s => { if (s.type !== 'warmup') n++; const [lab] = setBadge(s, n); return `<span class="chip">${lab}: ${setLabel(s, type)}${s.pr && s.pr.length ? ' 🏆' : ''}</span>`; }).join('')}</div></div>`; }).join('')}
         <div class="flex flex-wrap gap-2 pt-2"><button class="btn btn-sm" data-action="workoutEdit" data-id="${w.id}">${icon('pencil', 'w-3.5 h-3.5')} Edit</button><button class="btn btn-sm" data-action="repeatWorkout" data-id="${w.id}">${icon('repeat', 'w-3.5 h-3.5')} Repeat</button><button class="btn btn-sm" data-action="workoutToRoutine" data-id="${w.id}">${icon('clipboard-plus', 'w-3.5 h-3.5')} Save as routine</button><button class="btn btn-sm btn-danger ml-auto" data-action="workoutDelete" data-id="${w.id}">${icon('trash-2', 'w-3.5 h-3.5')} Delete</button></div>
       </div></details>`;
   }
@@ -1439,17 +1528,18 @@ function fitRoutinesTab() {
 function drawRoutineModal() {
   const d = ui.rDraft, g = supersetGroups(d.exercises), folders = [...new Set(Store.get('routines').map(r => r.folder).filter(Boolean))];
   Modal.open(modalShell(d.id ? 'Edit routine' : 'New routine', `
+    <button class="btn w-full" data-action="routineCoverageDraft">${icon('chart-no-axes-column')} Set coverage overview</button>
     <div class="grid sm:grid-cols-3 gap-3"><div><label class="label">Name</label><input class="input" value="${esc(d.name)}" data-input="rdField" data-f="name" placeholder="e.g. Day A" ${d.exercises.length ? '' : 'autofocus'}></div>
     <div><label class="label">Folder / program</label><input class="input" list="folder-list" value="${esc(d.folder || '')}" data-input="rdField" data-f="folder" placeholder="e.g. 4-Week Conditioning"><datalist id="folder-list">${folders.map(f => `<option value="${esc(f)}">`).join('')}</datalist></div>
     <div><label class="label">Notes</label><input class="input" value="${esc(d.notes)}" data-input="rdField" data-f="notes" placeholder="Optional"></div></div>
     <div><div class="hidden sm:grid grid-cols-12 gap-2 text-xs muted font-medium mb-1"><div class="col-span-4">Exercise</div><div class="col-span-2">Sets</div><div class="col-span-2">Target reps / time</div><div class="col-span-2">Rest</div></div>
     <div class="space-y-2">${d.exercises.map((e, i) => `<div class="grid grid-cols-12 gap-2 items-center pb-2 sm:pb-0 border-b sm:border-0 border-slate-100 dark:border-slate-800 ${g[i] ? 'border-l-4 border-l-violet-400 pl-2' : ''}">
-      <div class="col-span-12 sm:col-span-4"><input class="input" list="ex-list-m" value="${esc(e.name)}" data-input="rdEx" data-i="${i}" data-f="name" placeholder="Exercise">${g[i] ? `<div class="text-[10px] text-violet-600 dark:text-violet-300 mt-0.5">Superset ${g[i].label} · ${g[i].pos}/${g[i].size}</div>` : ''}</div>
+      <div class="col-span-12 sm:col-span-4"><button class="btn w-full justify-start text-left whitespace-normal" data-action="exercisePick" data-context="routine-replace" data-i="${i}" aria-label="Replace ${esc(e.name)} in routine">${esc(e.name)} ${icon('chevrons-up-down','w-4 h-4 shrink-0 ml-auto')}</button>${g[i] ? `<div class="text-[10px] text-violet-600 dark:text-violet-300 mt-0.5">Superset ${g[i].label} · ${g[i].pos}/${g[i].size}</div>` : ''}</div>
       <input type="number" inputmode="numeric" min="1" class="input col-span-3 sm:col-span-2" value="${e.sets}" data-input="rdEx" data-i="${i}" data-f="sets" title="Sets">
       <input class="input col-span-3 sm:col-span-2" value="${esc(e.reps)}" data-input="rdEx" data-i="${i}" data-f="reps" placeholder="8-12 / 0:45" title="Target reps or time">
       <select class="input col-span-3 sm:col-span-2 px-2" data-input="rdEx" data-i="${i}" data-f="rest" title="Rest">${restOptions(e.rest)}</select>
       <div class="col-span-3 sm:col-span-2 flex justify-end"><button type="button" class="btn btn-ghost btn-sm" data-action="rdMove" data-i="${i}" aria-label="Move up">${icon('arrow-up', 'w-3.5 h-3.5')}</button>${i < d.exercises.length - 1 ? `<button type="button" class="btn btn-ghost btn-sm ${e.ss ? 'text-violet-600' : ''}" data-action="rdLink" data-i="${i}" title="${e.ss ? 'Unlink superset' : 'Superset with next'}">${icon(e.ss ? 'unlink' : 'link', 'w-3.5 h-3.5')}</button>` : ''}<button type="button" class="btn btn-ghost btn-sm btn-danger" data-action="rdDel" data-i="${i}" aria-label="Remove">${icon('x', 'w-3.5 h-3.5')}</button></div></div>`).join('') || '<p class="text-sm muted">Add exercises below.</p>'}</div></div>
-    <div class="flex gap-2"><input id="rd-new" list="ex-list-m" class="input" placeholder="Add exercise…" autocomplete="off"><button type="button" class="btn" data-action="rdAdd">${icon('plus')} Add</button></div>
+    <button type="button" class="btn btn-primary w-full" data-action="exercisePick" data-context="routine-add">${icon('plus')} Add exercises</button>
     ${exDatalist('ex-list-m')}`,
     `${d.id ? `<button type="button" class="btn btn-danger mr-auto" data-action="rdDelete">${icon('trash-2')} Delete</button>` : ''}<button type="button" class="btn" data-action="closeModal">Cancel</button><button type="button" class="btn btn-primary" data-action="rdSave">Save routine</button>`), { wide: true });
 }
@@ -1512,15 +1602,15 @@ function fitProgressTab() {
   const names = Object.keys(counts).sort((a, b) => a.localeCompare(b));
   if (!names.length) return emptyState('trending-up', 'No progress data yet', 'Log or import workouts to see strength trends and personal records.');
   if (!ui.progEx || !counts[ui.progEx]) ui.progEx = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
-  const type = exInfo(ui.progEx).type, defs = metricDefs(type);
+  const basis = exerciseHistory(ui.progEx)[0]?.ex || {name:ui.progEx}, type = exerciseInfo(basis).type, defs = metricDefs(type);
   if (!defs.some(d => d[0] === ui.progMetric)) ui.progMetric = defs[0][0];
-  const [, mLabel, mFn, kind] = defs.find(d => d[0] === ui.progMetric), hist = exerciseHistory(ui.progEx).reverse();
+  const [, mLabel, mFn, kind] = defs.find(d => d[0] === ui.progMetric), hist = exerciseHistory(ui.progEx).filter(row=>sameExerciseBasis(basis,row.ex)).reverse();
   const pts = hist.map(({ w, ex }) => ({ x: +new Date(w.start), v: mFn(ex) })).filter(p => p.v > 0).map(p => ({ x: p.x, y: plotVal(kind, p.v) }));
-  const bests = allTimeBests(ui.progEx, type) || {};
-  return `<div class="flex flex-wrap items-center gap-2 mb-4"><select class="input sm:w-80" data-change="progEx">${names.map(n => `<option ${n === ui.progEx ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+  const bests = allTimeBests(ui.progEx, type, {basis}) || {};
+  return `<div class="flex flex-wrap items-center gap-2 mb-4"><select class="input sm:w-80" data-change="progEx" aria-label="Exercise for training progress">${names.map(n => `<option ${n === ui.progEx ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
     <div class="flex gap-1 flex-wrap">${defs.map(([k, l]) => `<button class="chip ${ui.progMetric === k ? 'chip-on' : ''}" data-action="progMetric" data-v="${k}">${l}</button>`).join('')}</div>
     <button class="btn btn-sm sm:ml-auto" data-action="libEdit" data-name="${esc(ui.progEx)}">${icon('settings-2', 'w-3.5 h-3.5')} ${typeLabel(type)} · ${esc(exInfo(ui.progEx).primary)}</button></div>
-  <div class="card mb-4"><div class="text-sm font-semibold mb-2">${mLabel}${kind === 'p' ? ` <span class="muted font-normal">(time per ${distUnit()}, lower is faster)</span>` : ''} <span class="muted font-normal">· ${hist.length} sessions</span></div>${lineChart([{ points: pts, color: '#0d9488', dots: true }], { yFmt: v => fmtKind(kind, v) })}</div>
+  <div class="card mb-4"><div class="text-sm font-semibold mb-2">${mLabel}${kind === 'p' ? ` <span class="muted font-normal">(time per ${distUnit()}, lower is faster)</span>` : ''} <span class="muted font-normal">· ${hist.length} exercise blocks</span></div>${lineChart([{ points: pts, color: '#0d9488', dots: true }], { yFmt: v => fmtKind(kind, v) })}</div>
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">${Object.entries(bests).map(([k, b]) => `<div class="stat"><div class="text-xs muted">🏆 ${PR_LABELS[k]}</div><div class="font-bold">${fmtMetric(k, b.v)}</div><div class="text-xs muted">${fmtDate(wDate(b.w), { month: 'short', day: 'numeric', year: 'numeric' })}</div></div>`).join('')}</div>
   <div class="card"><div class="text-sm font-semibold mb-2">Recent sessions</div><table class="w-full text-sm"><tbody>${hist.slice(-10).reverse().map(({ w, ex }) => `<tr class="border-t border-slate-100 dark:border-slate-800"><td class="py-1.5 muted whitespace-nowrap pr-3 align-top">${fmtDate(wDate(w), { month: 'short', day: 'numeric', year: '2-digit' })}</td><td class="py-1.5">${workSets(ex).map(s => setLabel(s, type) + (s.pr && s.pr.length ? ' 🏆' : '')).join(', ')}</td></tr>`).join('')}</tbody></table></div>`;
 }
@@ -1545,7 +1635,7 @@ function fitStatsTab() {
   const anchor = ym === today.slice(0, 7) ? startOfWeek() : startOfWeek(`${ym}-${pad(nDays)}`), weeks = [21, 14, 7, 0].map(k => addDays(anchor, -k));
   const wk = weeks.map(s => muscleSets(W().filter(w => wDate(w) >= s && wDate(w) <= addDays(s, 6))));
   const muscRows = MUSCLES.filter(mm => wk.some(x => x[mm]));
-  const shade = v => !v ? '' : v >= 10 ? 'bg-emerald-200 dark:bg-emerald-800/70' : v >= 5 ? 'bg-emerald-100 dark:bg-emerald-900/50' : 'bg-slate-100 dark:bg-slate-800';
+  const shade = v => v ? 'bg-slate-100 dark:bg-slate-800' : '';
   return `<div class="flex items-center gap-2 mb-4"><button class="btn" data-action="statMonth" data-v="${shift(-1)}" aria-label="Previous month">${icon('chevron-left')}</button><h3 class="font-semibold text-lg min-w-[10rem] text-center">${monthName}</h3><button class="btn" data-action="statMonth" data-v="${shift(1)}" aria-label="Next month">${icon('chevron-right')}</button>${ym !== today.slice(0, 7) ? `<button class="btn btn-sm" data-action="statMonth" data-v="${today.slice(0, 7)}">This month</button>` : ''}</div>
   <div class="grid lg:grid-cols-5 gap-4 mb-4">
     <div class="card lg:col-span-2"><div class="grid grid-cols-7 gap-1">${cal}</div>
@@ -1560,18 +1650,18 @@ function fitStatsTab() {
         <div class="stat"><div class="text-xs muted">Personal records</div><div class="text-xl font-bold">🏆 ${R.prs}</div>${delta(R.prs, P.prs)}</div></div>
       ${top.length ? `<div class="label mt-4">Most-trained exercises</div><div class="flex flex-wrap gap-1.5">${top.map(([n, c]) => `<span class="chip">${esc(n)} · ${c} set${c === 1 ? '' : 's'}</span>`).join('')}</div>` : '<p class="text-sm muted mt-4">No workouts logged this month.</p>'}</div></div>
   <div class="grid lg:grid-cols-2 gap-4">
-    <div class="card">${cardHead('pie-chart', `Muscle distribution · ${first.toLocaleDateString(undefined, { month: 'long' })}`)}
-      ${ms.length ? `<div class="space-y-1.5">${ms.map(([mm, v]) => `<div class="flex items-center gap-2 text-sm"><span class="w-24 shrink-0 truncate">${mm}</span><div class="flex-1 h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden"><div class="h-full rounded-full bg-brand-500" style="width:${v / msMax * 100}%"></div></div><span class="w-12 text-right tabular-nums text-xs muted">${fmtNum(v, 1)}</span></div>`).join('')}</div><p class="text-xs muted mt-2">Working sets per muscle (secondary muscles count as ½).</p>` : '<p class="text-sm muted">No data this month.</p>'}</div>
-    <div class="card overflow-x-auto">${cardHead('grid-3x3', 'Sets per muscle per week')}
-      ${muscRows.length ? `<table class="w-full text-sm"><thead><tr class="text-xs muted"><th class="text-left font-medium py-1">Muscle</th>${weeks.map(s => `<th class="font-medium text-center">${fmtDate(s, { month: 'short', day: 'numeric' })}</th>`).join('')}</tr></thead><tbody>${muscRows.map(mm => `<tr class="border-t border-slate-100 dark:border-slate-800"><td class="py-1">${mm}</td>${wk.map(x => `<td class="text-center tabular-nums"><span class="inline-block min-w-[2.5rem] rounded px-1 py-0.5 ${shade(x[mm])}">${x[mm] ? fmtNum(x[mm], 1) : '·'}</span></td>`).join('')}</tr>`).join('')}</tbody></table><p class="text-xs muted mt-2">Weeks start Monday. Green = 5+ sets, darker = 10+.</p>` : '<p class="text-sm muted">No sets in these four weeks.</p>'}</div></div>`;
+    <div class="card">${cardHead('pie-chart', `Estimated muscle-set credits · ${first.toLocaleDateString(undefined, { month: 'long' })}`)}
+      ${ms.length ? `<div class="space-y-1.5">${ms.map(([mm, v]) => `<div class="flex items-center gap-2 text-sm"><span class="w-24 shrink-0 truncate">${esc(mm)}</span><div class="flex-1 h-2.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden"><div class="h-full rounded-full bg-brand-500" style="width:${v / msMax * 100}%"></div></div><span class="w-12 text-right tabular-nums text-xs muted">${fmtNum(v, 1)}</span></div>`).join('')}</div><p class="text-xs muted mt-2">Logged-row estimate: primary mapping = 1 credit, secondary = 0.5. Counts overlap. Recorded mappings are used where available; legacy records use the current library mapping.</p>` : '<p class="text-sm muted">No data this month.</p>'}</div>
+    <div class="card overflow-x-auto">${cardHead('grid-3x3', 'Estimated credits per muscle per week')}
+      ${muscRows.length ? `<table class="w-full text-sm"><thead><tr class="text-xs muted"><th class="text-left font-medium py-1">Muscle</th>${weeks.map(s => `<th class="font-medium text-center">${fmtDate(s, { month: 'short', day: 'numeric' })}</th>`).join('')}</tr></thead><tbody>${muscRows.map(mm => `<tr class="border-t border-slate-100 dark:border-slate-800"><td class="py-1">${esc(mm)}</td>${wk.map(x => `<td class="text-center tabular-nums"><span class="inline-block min-w-[2.5rem] rounded px-1 py-0.5 ${shade(x[mm])}">${x[mm] ? fmtNum(x[mm], 1) : '·'}</span></td>`).join('')}</tr>`).join('')}</tbody></table><p class="text-xs muted mt-2">Weeks start Monday. Primary = 1, secondary = 0.5 estimated credits; tint only marks recorded work, not an optimal target. Legacy classification uses current mapping.</p>` : '<p class="text-sm muted">No sets in these four weeks.</p>'}</div></div>`;
 }
 function workoutSummaryModal(w) {
   const num_ = W().filter(x => x.start <= w.start).length, prs = w.exercises.flatMap(e => e.sets.filter(s => s.pr && s.pr.length).map(s => ({ e, s })));
   const ms = Object.entries(muscleSets([w])).sort((a, b) => b[1] - a[1]);
   Modal.open(modalShell(`🎉 Workout #${num_} complete`, `<div class="text-lg font-semibold">${esc(w.name)}</div>
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2"><div class="stat"><div class="text-xs muted">Duration</div><div class="font-bold">${fmtDur((new Date(w.end) - new Date(w.start)) / 1000)}</div></div><div class="stat"><div class="text-xs muted">Volume</div><div class="font-bold">${fmtNum(toUnit(workoutVolume(w)))} ${S.unit}</div></div><div class="stat"><div class="text-xs muted">Sets</div><div class="font-bold">${workoutSets(w)}</div></div><div class="stat"><div class="text-xs muted">Exercises</div><div class="font-bold">${w.exercises.length}</div></div></div>
-    ${prs.length ? `<div><div class="label">New personal records</div>${prs.map(({ e, s }) => { const t = exInfo(e.name).type; return `<div class="flex flex-wrap items-baseline gap-x-2 text-sm py-1 border-t border-slate-100 dark:border-slate-800">🏆 <span class="font-medium">${esc(e.name)}</span><span class="muted">${setLabel(s, t)} — ${s.pr.map(k => PR_LABELS[k]).join(', ')}</span></div>`; }).join('')}</div>` : ''}
-    ${ms.length ? `<div><div class="label">Muscles worked (sets)</div><div class="flex flex-wrap gap-1.5">${ms.map(([m, v]) => `<span class="chip">${m} ${fmtNum(v, 1)}</span>`).join('')}</div></div>` : ''}
+    ${prs.length ? `<div><div class="label">New personal records</div>${prs.map(({ e, s }) => { const t = exerciseInfo(e).type; return `<div class="flex flex-wrap items-baseline gap-x-2 text-sm py-1 border-t border-slate-100 dark:border-slate-800">🏆 <span class="font-medium">${esc(e.name)}</span><span class="muted">${setLabel(s, t)} — ${s.pr.map(k => PR_LABELS[k]).join(', ')}</span></div>`; }).join('')}</div>` : ''}
+    ${ms.length ? `<div><div class="label">Estimated muscle-set credits</div><div class="flex flex-wrap gap-1.5">${ms.map(([m, v]) => `<span class="chip">${esc(m)} ${fmtNum(v, 1)}</span>`).join('')}</div><p class="text-xs muted mt-2">Primary mapping = 1 credit; secondary = 0.5. Counts overlap. Recorded mapping when available; legacy records use the current library mapping.</p></div>` : ''}
     <p class="text-sm muted">${completedWorkoutsThisWeek().length} completed this week · ${workoutWeekRange()}. Counted by workout date; active and future-dated workouts are excluded.</p>`,
     `<button type="button" class="btn btn-primary" data-action="closeModal">Done</button>`));
 }
@@ -1637,6 +1727,160 @@ function toHevyCSV() {
   return lines.join('\n');
 }
 
+// Classification snapshots belong to new accepted instances, never backfilled history.
+function exerciseClassification(name) {
+  const info = exInfo(name), key = String(name).toLowerCase();
+  return { version: 1, type: info.type, primary: info.primary || 'Other', secondary: [...(info.secondary || [])], equipment: info.equipment || 'Other', countBW: !!info.countBW, bwPct: info.bwPct ?? 100, source: Store.get('exMeta')[key] ? 'user' : DEFAULT_LIB_LC[key] ? 'builtin' : 'inferred' };
+}
+function exerciseInfo(ex) {
+  const snap = ex?.classification;
+  if (snap?.version === 1 && EX_TYPES[snap.type]) return { ...exInfo(ex?.name || ''), ...snap, secondary: Array.isArray(snap.secondary) ? snap.secondary : [] };
+  const info = exInfo(ex?.name || '');
+  return EX_TYPES[ex?.type] ? { ...info, type: ex.type } : info;
+}
+function sameExerciseBasis(a, b) {
+  const x = exerciseInfo(a), y = exerciseInfo(b);
+  return x.type === y.type && (x.equipment || 'Other') === (y.equipment || 'Other') && !!x.countBW === !!y.countBW && (!x.countBW || (x.bwPct ?? 100) === (y.bwPct ?? 100));
+}
+function previousExercise(ex, opts = {}) {
+  const all = exerciseHistory(ex.name, opts).filter(row => sameExerciseBasis(ex, row.ex));
+  return (ex.routineSlot && all.find(row => row.ex.routineSlot === ex.routineSlot)) || all[0] || null;
+}
+function pickerNames() {
+  const names = [...libNames(), ...Store.get('routines').flatMap(r => r.exercises.map(e => e.name)), ...(Store.get('activeWorkout')?.exercises || []).map(e => e.name)];
+  const byName = new Map(); for (const name of names) if (name && !byName.has(name.toLowerCase())) byName.set(name.toLowerCase(), name);
+  return [...byName.values()];
+}
+function exercisePickerItems() {
+  const recent = new Map();
+  for (const w of W()) for (const ex of w.exercises) { const key = ex.name.toLowerCase(); if (!recent.has(key) || w.start > recent.get(key)) recent.set(key, w.start); }
+  return pickerNames().map(name => ({ name, info: exerciseInfo({ name }), recent: recent.get(name.toLowerCase()) || '' })).sort((a,b) => b.recent.localeCompare(a.recent) || a.name.localeCompare(b.name));
+}
+function exerciseSearchText(text) { return String(text).toLowerCase().replace(/\bdl\b/g, 'deadlift').replace(/\brdl\b/g, 'romanian deadlift').replace(/\bdb\b/g, 'dumbbell').replace(/\bbb\b/g, 'barbell').replace(/[^a-z0-9]+/g, ' ').trim(); }
+function openExercisePicker(context, index = null) {
+  const routine = context.startsWith('routine'), target = routine ? ui.rDraft : context === 'edit-add' ? ui.editW : Store.get('activeWorkout');
+  if (!target) return toast('Open a routine or workout first.', 'error');
+  ui.exercisePicker = { context, index, targetId: target.id, baseline: webJSON(target), q: '', muscle: 'all', equipment: 'all', selected: [], items: exercisePickerItems(), parentRoutine: routine, busy: false };
+  drawExercisePicker();
+}
+function pickerClosed() {
+  const p = ui.exercisePicker; ui.exercisePicker = null;
+  if (p?.parentRoutine) drawRoutineModal();
+}
+function finishExercisePicker() {
+  const p = ui.exercisePicker; ui.exercisePicker = null; Modal.close();
+  if (p?.parentRoutine) drawRoutineModal(); else render();
+}
+function drawExercisePicker() {
+  const p = ui.exercisePicker; if (!p) return;
+  const replace = p.context === 'session-replace' || p.context === 'routine-replace';
+  const query = exerciseSearchText(p.q), words = query.split(' ').filter(Boolean);
+  const matches = p.items.filter(row => { const text = exerciseSearchText([row.name,row.info.primary,...row.info.secondary,row.info.equipment,typeLabel(row.info.type)].join(' ')); return words.every(w => text.includes(w)) && (p.muscle === 'all' || row.info.primary === p.muscle || row.info.secondary.includes(p.muscle)) && (p.equipment === 'all' || row.info.equipment === p.equipment); });
+  const shown = matches.slice(0,p.limit || 60), target = p.parentRoutine ? ui.rDraft : p.context === 'edit-add' ? ui.editW : Store.get('activeWorkout'), old = replace && target?.exercises[p.index];
+  const chosen = p.selected[0], sameName = old && chosen?.toLowerCase() === old.name.toLowerCase();
+  Modal.open(modalShell(replace ? 'Swap exercise' : 'Add exercises', `
+    <label class="label" for="exercise-picker-search">Search names, muscles or equipment</label><input id="exercise-picker-search" class="input" type="search" value="${esc(p.q)}" placeholder="Browse below or search" data-input="epSearch">
+    <details ${p.muscle !== 'all' || p.equipment !== 'all' ? 'open' : ''}><summary class="min-h-11 text-sm cursor-pointer">Filters${p.muscle !== 'all' || p.equipment !== 'all' ? ' · active' : ''}</summary><div class="grid sm:grid-cols-2 gap-2 mt-2"><label class="label">Muscle<select class="input mt-1" data-change="epFilter" data-f="muscle"><option value="all">All muscles</option>${MUSCLES.map(m=>`<option ${p.muscle === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select></label><label class="label">Equipment<select class="input mt-1" data-change="epFilter" data-f="equipment"><option value="all">All equipment</option>${EQUIPMENT.map(m=>`<option ${p.equipment === m ? 'selected' : ''}>${esc(m)}</option>`).join('')}</select></label></div><button class="btn btn-sm mt-2" data-action="epClear">Clear filters</button></details>
+    ${old ? `<p class="text-sm muted">This ${p.parentRoutine ? 'routine draft' : 'workout'} only · replacing <strong>${esc(old.name)}</strong>.</p>` : '<p class="text-sm muted">Recent exercises first, then browse all. Select in the order you want to add.</p>'}
+    <p class="text-xs muted" role="status">${matches.length} results · ${p.selected.length} selected</p>
+    <div class="divide-y divide-slate-200 dark:divide-slate-800">${shown.map(row => { const selected = p.selected.includes(row.name); return `<div class="py-2"><button class="btn btn-ghost w-full justify-start text-left whitespace-normal min-h-11" data-action="epSelect" data-name="${esc(row.name)}" aria-pressed="${selected}" aria-label="${replace ? 'Choose' : 'Select'} ${esc(row.name)}">${icon(selected ? 'check-square' : 'square', 'w-5 h-5 shrink-0')}<span class="min-w-0"><span class="font-semibold block">${esc(row.name)}</span><span class="text-xs muted block">${esc(row.info.primary)} · ${esc(row.info.equipment)} · ${esc(typeLabel(row.info.type))}</span></button><details class="pl-2 text-xs muted"><summary class="min-h-11 flex items-center cursor-pointer">Details for ${esc(row.name)}</summary><p class="pb-2">Secondary: ${esc(row.info.secondary.join(', ') || 'Not specified')}. ${row.recent ? `Last workout ${fmtDate(wDate({start:row.recent}))}.` : 'No recorded performance.'} ${row.info.howto ? `<a class="underline" href="${esc(webUrl(row.info.howto))}" target="_blank" rel="noopener">How-to</a>` : ''}</p></details></div>`; }).join('') || '<p class="text-sm muted py-4">No exercises match. Clear filters or create your own.</p>'}</div>
+    ${shown.length < matches.length ? `<button class="btn w-full" data-action="epMore">Show more exercises (${matches.length-shown.length})</button>` : ''}
+    <button class="btn w-full whitespace-normal" data-action="epCustom">${icon('plus')} Create a custom exercise${p.q ? `: ${esc(p.q)}` : ''}</button>
+    ${replace && chosen ? `<div class="card text-sm"><strong>${esc(old.name)} → ${esc(chosen)}</strong><p class="muted mt-2">${p.parentRoutine ? 'Only this routine draft changes; saved workouts stay unchanged.' : 'Completed sets stay under their original exercise. Replacement rows are unchecked; old loads, RPE and observations are not copied.'}</p>${!p.parentRoutine && old.sets.some(s=>s.done) && supersetGroups(target.exercises)[p.index] ? '<p class="muted mt-2">This superset stays unchanged. The remaining replacement work is placed after its group.</p>' : ''}</div>` : ''}
+    ${p.error ? `<p class="text-sm text-rose-600 dark:text-rose-300" role="alert">${esc(p.error)} Your selection is retained. Retry this action or use Retry save.</p>` : ''}`,
+    `<button class="btn" data-action="closeModal" ${p.busy ? 'disabled' : ''}>Cancel</button><button class="btn btn-primary" data-action="epApply" ${!p.selected.length || p.busy || sameName ? 'disabled' : ''}>${p.busy ? 'Saving…' : replace ? (p.parentRoutine ? 'Use in this routine' : 'Use for this workout') : `Add selected (${p.selected.length})`}</button>`), {wide:true,onClose:pickerClosed});
+  const recovering = !!p.prepared && [...WebWrites.pending.values()].some(intent=>intent.purpose === p.prepared.purpose && webJSON(intent.values) === webJSON(p.prepared.values));
+  if (p.busy || recovering) for (const el of $$('#modal input, #modal select, #modal button')) if (p.busy || !['epApply','closeModal'].includes(el.dataset.action)) el.disabled = true;
+}
+function newPickedExercise(name) { return { id: uid(), name, notes: '', rest: S.restSeconds, sets: [blankSet(),blankSet(),blankSet()] }; }
+function prepareExerciseSwap(original, index, name) {
+  const next = structuredClone(original), ex = next.exercises[index]; if (!ex) throw new Error('That exercise is no longer available. Reopen the picker.');
+  if (ex.sets.some(set => set.done && set.draft)) throw new Error('Save or undo the pending changes to completed sets before swapping.');
+  const before = structuredClone(original), accepted = ex.sets.filter(set=>set.done), remaining = ex.sets.filter(set=>!set.done), hadAccepted = accepted.length > 0;
+  const fresh = remaining.length ? remaining.map(s=>({ ...blankSet(s.type), id: s.id || uid() })) : hadAccepted ? [blankSet(),blankSet(),blankSet()] : [];
+  const replacement = { id: hadAccepted ? uid() : ex.id || uid(), name, notes: '', rest: ex.rest ?? S.restSeconds, targetReps: '', sets: fresh, ...(ex.routineSlot ? {routineSlot:ex.routineSlot} : {}) };
+  if (!hadAccepted) { replacement.ss = !!ex.ss; next.exercises[index] = replacement; }
+  else {
+    const group = supersetGroups(next.exercises)[index];
+    if (group) { let end = index; while (end < next.exercises.length-1 && next.exercises[end].ss) end++; ex.sets = accepted; replacement.ss = false; next.exercises.splice(end+1,0,replacement); }
+    else { ex.sets = accepted; replacement.ss = false; next.exercises.splice(index+1,0,replacement); }
+  }
+  next.swapToken = uid(); return { before, next, swapToken:next.swapToken };
+}
+async function applyExercisePicker() {
+  const p = ui.exercisePicker; if (!p || p.busy || !p.selected.length) return;
+  try {
+    p.busy = true; p.error = ''; drawExercisePicker();
+    if (p.parentRoutine) {
+      if (webJSON(ui.rDraft) !== p.baseline) throw new Error('The routine changed. Close and reopen this picker.');
+      if (p.context === 'routine-replace') { const old = ui.rDraft.exercises[p.index], type = exInfo(p.selected[0]).type; ui.rDraft.exercises[p.index] = { ...old, name:p.selected[0], reps: type === exInfo(old.name).type ? old.reps : '' }; }
+      else for (const name of p.selected) ui.rDraft.exercises.push({ slotId:uid(),name,sets:3,reps:['duration','weight_duration'].includes(exInfo(name).type)?'0:45':exInfo(name).type==='distance_duration'?'':'8-12',rest:S.restSeconds });
+      finishExercisePicker(); return;
+    }
+    if (p.context === 'edit-add') { if (webJSON(ui.editW) !== p.baseline) throw new Error('The editor changed. Close and reopen this picker.'); p.selected.forEach(name=>ui.editW.exercises.push(newPickedExercise(name))); finishExercisePicker(); return; }
+    await Store.flushDirty();
+    const current = Store.get('activeWorkout');
+    if (!p.prepared) {
+      if (!current || current.id !== p.targetId || webJSON(current) !== p.baseline) throw new Error('This workout changed. Close and reopen the picker to review it.');
+      const expected = {activeWorkout:structuredClone(WebWrites.bases.activeWorkout)};
+      if (p.context === 'session-replace') { const swap = prepareExerciseSwap(current,p.index,p.selected[0]); p.prepared={values:{activeWorkout:swap.next},purpose:'swap-exercise',expected,extra:{pickerToken:uid(),workoutId:current.id,swapToken:swap.swapToken,beforeWorkout:swap.before,afterDigest:await webDigest(swap.next)}}; }
+      else { const next=structuredClone(current);p.selected.forEach(name=>next.exercises.push(newPickedExercise(name)));p.prepared={values:{activeWorkout:next},purpose:'add-exercises',expected,extra:{pickerToken:uid(),workoutId:current.id}}; }
+    }
+    const recovered = webJSON(current) === webJSON(p.prepared.values.activeWorkout) && (await idbEntries('local')).some(([key,value])=>key.startsWith('bd.web.receipt.')&&value.pickerToken===p.prepared.extra.pickerToken);
+    if (!recovered) await WebWrites.command(p.prepared.values,p.prepared.purpose,p.prepared.extra,p.prepared.expected);
+    finishExercisePicker(); toast(p.context === 'session-replace' ? 'Exercise swapped. Completed work is preserved.' : 'Exercises added');
+  } catch(e) { if(ui.exercisePicker){p.error=e.message;p.busy=false;drawExercisePicker();} toast(e.message,'error');drawSaveRecovery(); }
+}
+async function undoExerciseSwap() {
+  if (WorkoutCommands.busy) return; WorkoutCommands.pending(true);
+  try {
+    await Store.flushDirty(); const aw=Store.get('activeWorkout'); if(!aw?.swapToken)return;
+    const entry=(await idbEntries('local')).find(([key,v])=>key.startsWith('bd.web.receipt.')&&v.purpose==='swap-exercise'&&v.swapToken===aw.swapToken), receipt=entry?.[1];
+    if(!receipt?.beforeWorkout || await webDigest(aw)!==receipt.afterDigest) throw new Error('This workout changed after the swap. Use Swap exercise again to preserve the newer work.');
+    await WebWrites.command({activeWorkout:receipt.beforeWorkout},'undo-swap',{workoutId:aw.id,swapToken:aw.swapToken});render();toast('Swap undone');
+  } catch(e){toast(e.message,'error');drawSaveRecovery();}finally{WorkoutCommands.pending(false);}
+}
+function customPickerForm() {
+  const p=ui.exercisePicker;if(!p)return;const d=p.custom || {name:p.q,type:'weight_reps',primary:'Other',equipment:'Other'};p.custom=d;
+  Modal.open(modalShell('Create exercise', `<p class="text-sm muted">Confirm the tracking type. Unknown muscle or equipment can stay Other.</p><label class="label">Name<input class="input mt-1" name="name" value="${esc(d.name)}" required></label><label class="label">Tracking type<select name="type" class="input mt-1">${Object.entries(EX_TYPES).map(([key,v])=>`<option value="${key}" ${d.type===key?'selected':''}>${esc(typeLabel(key))}</option>`).join('')}</select></label><label class="label">Primary muscle<select class="input mt-1" name="primary">${MUSCLES.map(m=>`<option ${d.primary===m?'selected':''}>${esc(m)}</option>`).join('')}</select></label><label class="label">Equipment<select class="input mt-1" name="equipment">${EQUIPMENT.map(m=>`<option ${d.equipment===m?'selected':''}>${esc(m)}</option>`).join('')}</select></label>${p.error?`<p class="text-sm text-rose-600" role="alert">${esc(p.error)}</p>`:''}`, `<button type="button" class="btn" data-action="epCustomBack">Back</button><button class="btn btn-primary">Save and select</button>`, 'epCustomSave'),{onClose:drawExercisePicker});
+}
+async function saveCustomPickerExercise(form) {
+  const p=ui.exercisePicker;if(!p||p.customBusy)return;p.customBusy=true;
+  const d=p.customPrepared?p.custom:fd(form);p.custom=d;
+  try {
+    const name=d.name.trim();if(!name)throw new Error('Give the exercise a name.');
+    const exists=pickerNames().find(n=>n.toLowerCase()===name.toLowerCase());
+    if(exists&&!p.customPrepared)throw new Error('That name already exists. Go back and select it.');
+    if(!EX_TYPES[d.type]||!MUSCLES.includes(d.primary)||!EQUIPMENT.includes(d.equipment))throw new Error('Choose a valid tracking type, muscle and equipment.');
+    if(!p.customPrepared){await Store.flushDirty();const names=[...Store.get('exercises'),name].sort((a,b)=>a.localeCompare(b)),meta=structuredClone(Store.get('exMeta'));meta[name.toLowerCase()]={type:d.type,primary:d.primary,secondary:[],equipment:d.equipment};p.customPrepared={values:{exercises:names,exMeta:meta},name,extra:{pickerToken:uid()},expected:{exercises:structuredClone(WebWrites.bases.exercises),exMeta:structuredClone(WebWrites.bases.exMeta)}};}
+    const acknowledged = (await idbEntries('local')).some(([key,value])=>key.startsWith('bd.web.receipt.')&&value.purpose==='save-custom-exercise'&&value.pickerToken===p.customPrepared.extra.pickerToken);
+    if (!acknowledged) await WebWrites.command(p.customPrepared.values,'save-custom-exercise',p.customPrepared.extra,p.customPrepared.expected);
+    else if (!pickerNames().some(name=>name.toLowerCase()===p.customPrepared.name.toLowerCase())) throw new Error('The saved exercise is no longer in this library. Reopen the picker.');
+    const chosen=p.customPrepared.name;p.items=exercisePickerItems();p.selected=p.context.endsWith('replace')?[chosen]:[...new Set([...p.selected,chosen])];p.q=chosen;p.customPrepared=null;p.custom=null;p.error='';drawExercisePicker();
+  } catch(e){p.error=e.message;customPickerForm();toast(e.message,'error');drawSaveRecovery();}finally{p.customBusy=false;}
+}
+function routineCoverage(routine, credit = 0, frequency = 1) {
+  const byMuscle={},unknown=[],separate=[];let total=0,invalid=0;
+  for(const ex of routine.exercises){const n=ex.sets,info=exInfo(ex.name);if(!Number.isInteger(n)||n<0){invalid++;continue;}if(!n)continue;
+    if(!['weight_reps','bodyweight','weighted_bw','assisted_bw'].includes(info.type)||info.primary==='Cardio'){separate.push({name:ex.name,sets:n});continue;}
+    total+=n;const source=Store.get('exMeta')[ex.name.toLowerCase()]?'user':DEFAULT_LIB_LC[ex.name.toLowerCase()]?'builtin':'inferred';
+    if(!info.primary||info.primary==='Other'||source==='inferred')unknown.push({name:ex.name,sets:n,source});
+    const primary=info.primary||'Other';const ensure=m=>byMuscle[m]||=( {muscle:m,primary:0,secondary:0,contributors:[]} );
+    if(primary!=='Other'){const row=ensure(primary);row.primary+=n;row.contributors.push({name:ex.name,sets:n,role:'Primary'});}
+    for(const muscle of new Set(info.secondary||[])){if(muscle===primary||muscle==='Other')continue;const row=ensure(muscle);row.secondary+=n;row.contributors.push({name:ex.name,sets:n,role:'Secondary'});}
+  }
+  return {total:total*frequency,invalid,unknown,separate,rows:Object.values(byMuscle).map(row=>({...row,primary:row.primary*frequency,secondary:row.secondary*frequency,credited:(row.primary+row.secondary*credit)*frequency})).sort((a,b)=>b.primary-a.primary||a.muscle.localeCompare(b.muscle))};
+}
+function showRoutineCoverage(fromDraft=true,id=null) {
+  if(!fromDraft){const saved=Store.get('routines').find(r=>r.id===id);if(!saved)return;ui.coverage={routine:structuredClone(saved),parentDraft:false,credit:0,frequency:''};}
+  else ui.coverage={routine:ui.rDraft,parentDraft:true,credit:0,frequency:''};
+  drawRoutineCoverage();
+}
+function drawRoutineCoverage() {
+  const c=ui.coverage;if(!c)return;const f=c.frequency===''?1:Number(c.frequency),valid=Number.isInteger(f)&&f>=0&&f<=14,result=routineCoverage(c.routine,c.credit,valid?f:1);
+  Modal.open(modalShell('Routine set coverage', `<h4 class="font-semibold">${esc(c.routine.name||'Unsaved routine')}</h4><p class="text-sm muted">${c.frequency===''?'Per routine · frequency not specified':valid?`Planned week scenario · ${f} repeats/week`:'Enter a whole frequency from 0 to 14.'}. Primary and secondary mappings are planning estimates, not a balance or readiness score.</p><div class="grid sm:grid-cols-2 gap-3"><label class="label">Secondary credit<select class="input mt-1" data-change="coverageSetting" data-f="credit">${[0,.5,1].map(n=>`<option value="${n}" ${c.credit===n?'selected':''}>${n===0?'Separate counts only':n+' estimated credit'}</option>`).join('')}</select></label><label class="label">Optional repeats per week<input class="input mt-1" type="number" inputmode="numeric" min="0" max="14" step="1" value="${esc(c.frequency)}" placeholder="Not specified" data-input="coverageSetting" data-f="frequency"></label></div><p class="text-sm"><strong>${result.total}</strong> planned working sets${c.frequency!==''&&valid?' in this scenario':''}. Muscle totals overlap; they are not percentages of all sets.</p><div class="space-y-3">${result.rows.map(row=>`<details class="card p-3"><summary class="min-h-11 flex flex-wrap justify-between items-center gap-2 cursor-pointer"><strong>${esc(row.muscle)}</strong><span class="text-sm tabular-nums">Primary ${row.primary} · Secondary ${row.secondary}</span></summary>${c.credit?`<p class="text-sm mt-2">Estimated credited sets: ${fmtNum(row.credited,1)}</p>`:''}<ul class="text-sm muted mt-2 space-y-1">${row.contributors.map(x=>`<li>${esc(x.name)}: ${x.sets}${c.frequency!==''&&valid?' × '+f:''} · ${x.role}</li>`).join('')}</ul></details>`).join('')||'<p class="muted text-sm">No mapped resistance sets yet.</p>'}</div>${result.unknown.length?`<p class="text-sm muted">Mapping review needed: ${result.unknown.map(x=>`${esc(x.name)} (${x.source==='inferred'?'inferred':'unknown'})`).join(', ')}. Missing mapping is not zero.</p>`:''}<p class="text-sm muted">No assigned primary sets: ${MUSCLES.filter(m=>!['Other','Cardio','Full Body'].includes(m)&&!result.rows.some(row=>row.muscle===m&&row.primary>0)).map(esc).join(', ') || 'None'}. Unmapped work may affect coverage.</p>${result.invalid?`<p class="text-sm text-rose-600">${result.invalid} exercise(s) need a valid nonnegative whole set count.</p>`:''}${result.separate.length?`<p class="text-sm muted">Timed/conditioning work shown separately: ${result.separate.map(x=>`${esc(x.name)} (${x.sets} planned segments)`).join(', ')}. Not assumed equivalent to resistance working sets.</p>`:''}<p class="text-xs muted">Warm-ups are excluded from performed working-set reports. Current routine prescriptions are scalar working-set counts. No automatic doubling for unilateral work and no failure-set multiplier.</p>`, `<button class="btn" data-action="closeModal">Done</button>`),{wide:true,onClose:()=>{const parent=ui.coverage?.parentDraft;ui.coverage=null;if(parent)drawRoutineModal();}});
+}
+
 /* ---------- Fitness actions ---------- */
 Object.assign(ui, { editW: null, libSearch: '', libMuscle: 'all', libEquip: 'all', statMonth: ymd().slice(0, 7), calDay: null, noteOpen: new WeakSet(), stepOpen: new Set(), historyTotalsOpen: false });
 const wctx = el => el.closest('[data-wctx]')?.dataset.wctx === 'edit' ? 'edit' : 'active';
@@ -1656,8 +1900,23 @@ function renameExerciseEverywhere(from, to) {
   ['workouts', 'routines', 'activeWorkout', 'exMeta'].forEach(k => Store.save(k)); return n;
 }
 const A_FIT = {
+  exercisePick: el => openExercisePicker(el.dataset.context,el.dataset.i == null ? null : +el.dataset.i),
+  swapPicker: el => openExercisePicker('session-replace',+el.dataset.i),
+  epSearch: el => { ui.exercisePicker.q=el.value; ui.exercisePicker.limit=60; drawExercisePicker(); },
+  epFilter: el => { ui.exercisePicker[el.dataset.f]=el.value; ui.exercisePicker.limit=60; drawExercisePicker(); },
+  epClear: () => { Object.assign(ui.exercisePicker,{q:'',muscle:'all',equipment:'all',limit:60});drawExercisePicker(); },
+  epMore: () => { ui.exercisePicker.limit=(ui.exercisePicker.limit||60)+60;drawExercisePicker(); },
+  epSelect: el => { const p=ui.exercisePicker,name=el.dataset.name;if(p.context.endsWith('replace'))p.selected=[name];else if(p.selected.includes(name))p.selected=p.selected.filter(n=>n!==name);else p.selected.push(name);p.prepared=null;drawExercisePicker(); },
+  epApply: applyExercisePicker,
+  epCustom: customPickerForm,
+  epCustomBack: () => {ui.exercisePicker.error='';drawExercisePicker();},
+  epCustomSave: saveCustomPickerExercise,
+  undoExerciseSwap,
+  routineCoverageDraft: () => showRoutineCoverage(true),
+  routineCoverageSaved: el => showRoutineCoverage(false,el.dataset.id),
+  coverageSetting: el => {const c=ui.coverage;c[el.dataset.f]=el.dataset.f==='credit'?+el.value:el.value;drawRoutineCoverage();},
   startEmpty: () => startWorkout({}),
-  startRoutine: el => { const r = Store.get('routines').find(x => x.id === el.dataset.id); if (r) startWorkout(workoutFromRoutine(r)); },
+  startRoutine: el => { const r = Store.get('routines').find(x => x.id === el.dataset.id); if (!r) return; try { return startWorkout(workoutFromRoutine(r)); } catch (e) { toast(e.message, 'error'); } },
   repeatWorkout: el => { const w = W().find(x => x.id === el.dataset.id); if (w) startWorkout({ name: w.name, routineId: w.routineId || null, exercises: w.exercises.map(e => ({ id: uid(), name: e.name, notes: '', ss: !!e.ss, rest: S.restSeconds, sets: e.sets.map(s => blankSet(s.type)) })) }); },
   logPast: el => { const d = el.dataset.date || ymd(), st = parseYmd(d); st.setHours(7, 0, 0, 0); if (Modal.isOpen()) Modal.close(); openEditor({ id: uid(), _new: true, name: 'Workout', start: st.toISOString(), end: new Date(+st + 3600e3).toISOString(), notes: '', routineId: null, exercises: [] }); },
   workoutEdit: el => { const w = W().find(x => x.id === el.dataset.id); if (!w) return; const c = structuredClone(w); c.exercises.forEach(e => { e.id ||= uid(); e.rest = e.rest ?? S.restSeconds; e.sets.forEach(s => { s.id ||= uid(); s.done = true; }); }); openEditor(c); },
@@ -1706,14 +1965,14 @@ const A_FIT = {
   awSetDone: el => WorkoutCommands.complete(el),
   awStep: el => {
     const w = wObj(el), ex = w.exercises[+el.dataset.i], j = +el.dataset.j, s = ex.sets[j], f = el.dataset.f, d = +el.dataset.d; if (!s) return;
-    const p = exerciseHistory(ex.name)[0]?.ex.sets[j], cur = stepStart(ex, j, f, p) ?? 0;
+    const p = previousExercise(ex)?.ex.sets[j], cur = stepStart(ex, j, f, p) ?? 0;
     if (wctx(el) === 'active') setWorkoutDraft(s, f, String(f === 'weight' ? Math.max(0, round(toUnit(cur) + d, 2)) : Math.max(0, cur + d)));
     else if (f === 'weight') s.weight = fromUnit(Math.max(0, round(toUnit(cur) + d, 2))); else s.reps = Math.max(0, cur + d);
     wSave(el); render();
   },
   awFillPrev: el => {
     const w = wObj(el), ctx = wctx(el), i = +el.dataset.i, j = +el.dataset.j, ex = w.exercises[i], s = ex.sets[j];
-    const p = exerciseHistory(ex.name, ctx === 'edit' ? { before: w.start, exclude: w.id } : {})[0]?.ex.sets[j]; if (!p) return;
+    const p = previousExercise(ex, ctx === 'edit' ? { before: w.start, exclude: w.id } : {})?.ex.sets[j]; if (!p) return;
     for (const c of ['weight', 'reps', 'duration', 'distance']) if (p[c] != null) { if (ctx === 'active') setWorkoutDraft(s, c, String(c === 'weight' ? toUnit(p[c]) : c === 'distance' ? (S.unit === 'lbs' ? p[c] / 1.609344 : p[c]) : c === 'duration' ? fmtClock(p[c]) : p[c])); else s[c] = p[c]; }
     wSave(el); render();
   },
@@ -1727,6 +1986,7 @@ const A_FIT = {
     const ctx = wctx(el), w = wObj(el), i = +el.dataset.i, ex = w.exercises[i], n = w.exercises.length;
     const b = (act, ic, label, extra = '', cls = '') => `<button type="button" class="btn justify-start gap-3 py-3 text-base ${cls}" data-action="awExDo" data-do="${act}" data-i="${i}" ${extra}>${icon(ic, 'w-5 h-5 shrink-0')}<span>${label}</span></button>`;
     Modal.open(modalShell(esc(ex.name), `<div class="grid gap-2" data-wctx="${ctx}">
+      ${ctx === 'active' ? b('swapPicker', 'repeat-2', 'Swap exercise') : ''}
       ${i > 0 ? b('awMoveEx', 'arrow-up', 'Move up', 'data-d="-1"') : ''}${i < n - 1 ? b('awMoveEx', 'arrow-down', 'Move down', 'data-d="1"') : ''}
       ${i < n - 1 ? b('awLink', ex.ss ? 'unlink' : 'link', ex.ss ? 'Remove from superset' : 'Superset with the next exercise') : ''}
       ${b('libEditDo', 'settings-2', 'Exercise type and muscles', `data-name="${esc(ex.name)}"`)}
@@ -1743,11 +2003,11 @@ const A_FIT = {
   // history
   histMore: () => { ui.histLimit += 25; render(); },
   workoutDelete: el => { if (!confirm('Delete this workout permanently?')) return; Store.set('workouts', W().filter(w => w.id !== el.dataset.id)); render(); },
-  workoutToRoutine: el => { const w = W().find(x => x.id === el.dataset.id); if (!w) return; ui.rDraft = { id: null, name: w.name, folder: '', notes: '', exercises: w.exercises.map(e => { const t = exInfo(e.name).type, b = bestSet(e, t); return { name: e.name, sets: workSets(e).length || e.sets.length, reps: t === 'duration' || t === 'weight_duration' ? (b?.duration ? fmtClock(b.duration) : '') : String(b?.reps ?? ''), rest: S.restSeconds, ss: !!e.ss }; }) }; drawRoutineModal(); },
+  workoutToRoutine: el => { const w = W().find(x => x.id === el.dataset.id); if (!w) return; ui.rDraft = { id: null, name: w.name, folder: '', notes: '', exercises: w.exercises.map(e => { const t = exerciseInfo(e).type, b = bestSet(e, t); return { name: e.name, sets: workSets(e).length || e.sets.length, reps: t === 'duration' || t === 'weight_duration' ? (b?.duration ? fmtClock(b.duration) : '') : String(b?.reps ?? ''), rest: S.restSeconds, ss: !!e.ss }; }) }; drawRoutineModal(); },
   // routines, folders, programs
   routineEdit: el => { const r = Store.get('routines').find(x => x.id === el.dataset.id); ui.rDraft = structuredClone(r || { id: null, name: '', folder: '', notes: '', exercises: [] }); drawRoutineModal(); },
   rdField: el => { ui.rDraft[el.dataset.f] = el.value; },
-  rdEx: el => { const e = ui.rDraft.exercises[+el.dataset.i], f = el.dataset.f; e[f] = f === 'sets' || f === 'rest' ? (+el.value || 0) : el.value; },
+  rdEx: el => { const e = ui.rDraft.exercises[+el.dataset.i], f = el.dataset.f; e[f] = f === 'sets' ? (el.value.trim() === '' ? null : Number(el.value)) : f === 'rest' ? (+el.value || 0) : el.value; },
   rdAdd: () => { const inp = $('#rd-new'), n = inp.value.trim(); if (!n) return inp.focus(); const t = exInfo(n).type; ui.rDraft.exercises.push({ name: n, sets: 3, reps: t === 'duration' || t === 'weight_duration' ? '0:45' : t === 'distance_duration' ? '' : '8-12', rest: S.restSeconds }); drawRoutineModal(); setTimeout(() => $('#rd-new')?.focus(), 40); },
   rdDel: el => { const a = ui.rDraft.exercises; a.splice(+el.dataset.i, 1); if (a.length) a[a.length - 1].ss = false; drawRoutineModal(); },
   rdMove: el => { const a = ui.rDraft.exercises, i = +el.dataset.i; if (i > 0) { [a[i - 1], a[i]] = [a[i], a[i - 1]]; a[a.length - 1].ss = false; drawRoutineModal(); } },
@@ -1758,7 +2018,7 @@ const A_FIT = {
     if (d.exercises.length) d.exercises[d.exercises.length - 1].ss = false;
     const rs = Store.get('routines');
     if (d.id) rs[rs.findIndex(r => r.id === d.id)] = d; else { d.id = uid(); rs.push(d); }
-    addToLibrary(d.exercises.map(e => e.name)); Store.save('routines'); Modal.close(); toast('Routine saved'); render();
+    d.exercises.forEach(e=>{e.slotId ||= uid();}); addToLibrary(d.exercises.map(e => e.name)); Store.save('routines'); Modal.close(); toast('Routine saved'); render();
   },
   rdDelete: () => { if (!confirm('Delete this routine?')) return; Store.set('routines', Store.get('routines').filter(r => r.id !== ui.rDraft.id)); Modal.close(); render(); },
   routineMove: el => { const rs = Store.get('routines'), r = rs.find(x => x.id === el.dataset.id); if (!r) return; const same = rs.map((x, i) => [x, i]).filter(([x]) => (x.folder || '') === (r.folder || '')), k = same.findIndex(([x]) => x === r), o = same[k + +el.dataset.d]; if (!o) return; const a = same[k][1], b = o[1]; [rs[a], rs[b]] = [rs[b], rs[a]]; Store.save('routines'); render(); },
@@ -2008,7 +2268,7 @@ const defaultQty = u => u.label === 'g' ? 100 : u.label === 'oz' ? 3 : 1;
 const amtLabel = (qty, unit) => !unit ? fmtQty(qty) : /^\d|^½|^¼|^¾/.test(unit) ? (qty === 1 ? unit : `${fmtQty(qty)} × ${unit}`) : `${fmtQty(qty)} ${unit}`;
 function foodNutr(f, unitIdx, qty) {
   const u = unitsOf(f)[unitIdx] || unitsOf(f)[0], k = u.factor * (qty || 0), o = {};
-  NUTR.forEach(n => { const v = f.base[n]; o[n] = v == null ? (['cal', 'p', 'c', 'f'].includes(n) ? 0 : null) : round(v * k, n === 'cal' || n === 'sodium' ? 0 : 1); });
+  NUTR.forEach(n => { const v = f.base[n]; o[n] = v == null ? null : round(v * k, n === 'cal' || n === 'sodium' ? 0 : 1); });
   return o;
 }
 const roundBase = b => Object.fromEntries(NUTR.map(k => [k, b[k] == null || isNaN(b[k]) ? null : round(+b[k], 2)]));
@@ -2069,8 +2329,8 @@ function logFoodAgain(f, date, meal) {
   ensureDay(date).entries.push({ id: uid(), name: f.name, ...foodNutr(f, i, qty), meal, foodId: f.id, qty, unit: us[i].label, time: nowTime() });
   saveFoodUse(f, qty, us[i].label);
 }
-const mealTotals = m => m.items ? Object.fromEntries(NUTR.map(k => [k, sum(m.items.map(x => x[k]))])) : { cal: m.cal || 0, p: m.p || 0, c: m.c || 0, f: m.f || 0 };
-const mealItems = m => m.items || [{ name: m.name, cal: m.cal || 0, p: m.p || 0, c: m.c || 0, f: m.f || 0 }];
+const mealTotals = m => m.items ? Object.fromEntries(NUTR.map(k => [k, m.items.length && m.items.every(x=>x[k]!=null)?sum(m.items.map(x=>x[k])):null])) : Object.fromEntries(NUTR.map(k=>[k,m[k]??null]));
+const mealItems = m => m.items || [{ name: m.name, ...Object.fromEntries(NUTR.map(k=>[k,m[k]??null])) }];
 const stripEntry = e => { const { id, time, meal, ...r } = e; return r; };
 function addEntries(date, meal, items, mult = 1) {
   const dd = ensureDay(date), t = nowTime();
@@ -2146,9 +2406,10 @@ function macroBar(label, val, target, color, unit = 'g') {
     <div class="text-xs muted mt-0.5">${target ? (val <= target ? `${fmtNum(target - val)}${unit} left` : `${fmtNum(val - target)}${unit} over`) : ''}</div></div>`;
 }
 function renderNutrition() {
-  ui.nutTab = { body: 'trend', history: 'plan' }[ui.nutTab] || ui.nutTab; // tabs merged in 2026-10
-  return tabs('nutTab', [['today', 'Daily log', 'utensils', 'Log'], ['plan', 'Plan', 'target', 'Plan'], ['trend', 'Body & weight', 'line-chart', 'Body'], ['foods', 'Foods & meals', 'bookmark', 'Foods']])
-    + ({ today: nutToday, plan: () => nutPlanTab() + `<div class="mt-6">${nutHistory()}</div>`, trend: () => nutTrend() + `<div class="mt-6">${nutBody()}</div>`, foods: nutFoods }[ui.nutTab] || nutToday)();
+  const page=ui.nutPage || ({foods:'library',body:'body',trend:'body',plan:'targets',history:'targets'}[ui.nutTab] || 'log');
+  const title={library:'Your library',mealplan:'Meal plan',body:'Weight & measurements',targets:'Targets & check-ins'}[page];ui.pageTitle=title || 'Nutrition';
+  if(page!=='log') return pageBack('nutrition','Nutrition')+(page==='library'?nutritionLibrary():`<h2 class="text-xl font-semibold mb-4">${title || 'Nutrition'}</h2>`+(page==='mealplan'?recPlan():page==='body'?nutTrend()+`<div class="mt-6">${nutBody()}</div>`:nutPlanTab()+`<div class="mt-6">${nutHistory()}</div>`));
+  return `<div class="flex flex-wrap items-center gap-2 mb-4"><h2 class="text-xl font-semibold mr-auto">Daily log</h2><button class="btn" data-action="nutPage" data-page="library">${icon('bookmark')} Library</button></div>`+nutToday()+`<div class="grid sm:grid-cols-3 gap-3 mt-6">${pageLink('nutPage','Meal plan','Plan recipes and everyday meals','data-page="mealplan"')}${pageLink('nutPage','Weight & measurements','Your observations and trends','data-page="body"')}${pageLink('nutPage','Targets & check-ins','Review targets and logging history','data-page="targets"')}</div>`;
 }
 function checkinBanner() {
   const p = nutPlan(); if (!p) return '';
@@ -2517,7 +2778,7 @@ function nutHistory() {
       <div class="stat"><div class="text-xs muted">Protein goal hit</div><div class="text-xl font-bold">${pct(A_.onP, A_.logged)}</div><div class="text-[11px] muted">≥ 90% of target</div></div>
       <div class="stat"><div class="text-xs muted">Avg vs target</div><div class="text-xl font-bold">${A_.avgIn ? `${A_.avgIn - A_.avgT > 0 ? '+' : ''}${fmtNum(A_.avgIn - A_.avgT)}` : '–'}</div><div class="text-[11px] muted">kcal / logged day</div></div></div>
     <div class="flex flex-wrap gap-1">${A_.cells.map(c => `<span class="w-4 h-4 rounded ${c.st === 'ok' ? 'bg-emerald-500' : c.st === 'off' ? 'bg-amber-400' : 'bg-slate-200 dark:bg-slate-700'}" title="${fmtDate(c.d)}: ${c.st === 'ok' ? 'on target' : c.st === 'off' ? 'logged, off target' : 'not logged'}"></span>`).join('')}</div>
-    <div class="flex gap-4 text-xs muted mt-2"><span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-500 inline-block"></span>On target</span><span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-amber-400 inline-block"></span>Logged, off target</span><span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-slate-300 dark:bg-slate-600 inline-block"></span>Not logged</span><span class="ml-auto">Today isn't counted until it's over.</span></div></div>
+    <div class="flex flex-wrap gap-4 text-xs muted mt-2"><span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-500 inline-block"></span>On target</span><span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-amber-400 inline-block"></span>Logged, off target</span><span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-slate-300 dark:bg-slate-600 inline-block"></span>Not logged</span><span class="ml-auto">Today isn't counted until it's over.</span></div></div>
   <div class="card mb-4"><div class="text-sm font-semibold mb-3">Calories — last 14 days <span class="muted font-normal">(dashed line = base target)</span></div>${barChart(items, { target: baseTargets().cal, color: MACRO_COLORS.cal })}</div>
   <div class="card overflow-x-auto"><div class="text-sm font-semibold mb-2">Weekly averages (logged days)</div><table class="w-full text-sm"><thead><tr class="text-xs muted text-left"><th class="font-medium">Week of</th><th class="font-medium text-center">Days</th><th class="font-medium text-right">kcal</th><th class="font-medium text-right">P</th><th class="font-medium text-right">C</th><th class="font-medium text-right">F</th><th class="font-medium text-right">Trend</th></tr></thead><tbody>${weeks.join('')}</tbody></table></div>`;
 }
@@ -2736,7 +2997,7 @@ const A_NUT = {
   kcalTyped: el => { if (el.value.trim()) el.dataset.typed = '1'; else delete el.dataset.typed; },
   lfQuickAdd: f => { const v = fd(f), m = readMacros(v); if (!num(v.cal) && !num(v.p) && !num(v.c) && !num(v.f)) return toast('Enter calories or macros', 'error'); ensureDay(ui.lf.date).entries.push({ id: uid(), ...m, name: m.name || 'Quick add', meal: ui.lf.meal, time: nowTime() }); Store.save('nutrition'); toast(`Added to ${mealLabel(ui.lf.meal)}`); lfDraw(); },
   lfMealTpl: el => { const m = Store.get('meals').find(x => x.id === el.dataset.id); if (!m) return; const k = num($('#lf-mult')?.value) || 1; addEntries(ui.lf.date, ui.lf.meal, mealItems(m), k); toast(`Added ${m.name}`); lfDraw(); },
-  lfRecipe: el => { const r = Store.get('recipes').find(x => x.id === el.dataset.id); if (!r) return; const k = num($('#lf-rserv')?.value) || 1; ensureDay(ui.lf.date).entries.push({ id: uid(), name: r.title, qty: k, unit: k === 1 ? 'serving' : 'servings', cal: round((+r.cal || 0) * k, 0), p: round((+r.p || 0) * k, 1), c: round((+r.c || 0) * k, 1), f: round((+r.f || 0) * k, 1), meal: ui.lf.meal, time: nowTime() }); Store.save('nutrition'); toast(`Added ${r.title}`); lfDraw(); },
+  lfRecipe: el => { const r = Store.get('recipes').find(x => x.id === el.dataset.id); if (!r) return; const k = num($('#lf-rserv')?.value) || 1; ensureDay(ui.lf.date).entries.push({ id: uid(), name: r.title, qty: k, unit: k === 1 ? 'serving' : 'servings', cal: (num(r.cal) == null ? null : round(num(r.cal) * k, 0)), p: (num(r.p) == null ? null : round(num(r.p) * k, 1)), c: (num(r.c) == null ? null : round(num(r.c) * k, 1)), f: (num(r.f) == null ? null : round(num(r.f) * k, 1)), meal: ui.lf.meal, time: nowTime() }); Store.save('nutrition'); toast(`Added ${r.title}`); lfDraw(); },
   // foods
   foodNew: el => { if (ui.lf) ui.lf.returnFood = true; foodEditor(null, { barcode: el.dataset.barcode || '' }); },
   foodEdit: el => { const f = Store.get('foods').find(x => x.id === el.dataset.id); if (f) foodEditor(f); },
@@ -2755,7 +3016,7 @@ const A_NUT = {
   foodDelete: el => { if (!confirm('Delete this food? Past log entries keep their numbers.')) return; Store.set('foods', Store.get('foods').filter(f => f.id !== el.dataset.id)); if (ui.lf) { ui.lf.sel = null; ui.lf.returnFood = false; lfDraw(); } else Modal.close(); },
   quickFood: el => { const f = Store.get('foods').find(x => x.id === el.dataset.id); if (!f) return; const meal = $('#quick-meal')?.value || defaultMeal(); logFoodAgain(f, ui.nutDate, meal); Store.save('nutrition'); toast(`Added ${f.name} to ${mealLabel(meal)}`); render(); },
   // entries, meals, clipboard
-  entryEdit: el => { const e = findEntry(el.dataset.id); if (!e) return; const f = e.foodId && Store.get('foods').find(x => x.id === e.foodId); if (f) { ui.lf = { date: ui.nutDate, meal: mealOf(e), tab: 'search', q: '', online: {}, loading: {}, editId: e.id, code: '', bcMsg: '' }; lfSelect(f, { qty: e.qty, unit: e.unit }); } else macroModal('Edit entry', e, 'entrySave', e.id, true); },
+  entryEdit: el => {const e=findEntry(el.dataset.id);if(!e)return;if(e.qty>0)Modal.open(modalShell('Edit logged portion',`<p class="text-sm muted">Using the original logged nutrition for ${esc(e.name)}. Changes to its saved food or recipe do not alter this snapshot.</p><input type="hidden" name="id" value="${esc(e.id)}"><label class="label">Quantity (${esc(e.unit || 'portions')})</label><input name="qty" type="number" inputmode="decimal" min="0.01" step="any" value="${e.qty}" class="input" required><label class="label">Meal</label><select name="meal" class="input">${MEALS.map(([k,l])=>`<option value="${k}" ${mealOf(e)===k?'selected':''}>${l}</option>`).join('')}</select>`,'<button class="btn" type="button" data-action="closeModal">Cancel</button><button class="btn btn-primary">Save portion</button>','entrySnapshotSave'));else macroModal('Edit entry',e,'entrySave',e.id,true);},
   entrySave: f => { const v = fd(f), e = findEntry(v.id); if (e) { Object.assign(e, readMacros(v)); if (v.meal) e.meal = v.meal; delete e.qty; } Store.save('nutrition'); Modal.close(); render(); },
   entryDel: el => { const d = day(ui.nutDate); d.entries = d.entries.filter(e => e.id !== el.dataset.id); Store.save('nutrition'); render(); },
   entryCopy: el => { const e = findEntry(el.dataset.id); if (!e) return; ui.clip = { items: [{ ...e, meal: mealOf(e) }] }; toast('Copied — open any day and tap Paste'); render(); },
@@ -2765,7 +3026,7 @@ const A_NUT = {
   clipClear: () => { ui.clip = null; render(); },
   mealSaveTpl: el => { const items = day(ui.nutDate).entries.filter(e => mealOf(e) === el.dataset.meal); if (!items.length) return; const name = prompt('Name this saved meal:', `My ${mealLabel(el.dataset.meal).toLowerCase()}`); if (!name) return; Store.get('meals').push({ id: uid(), name: name.trim(), items: items.map(stripEntry) }); Store.save('meals'); toast('Saved meal created'); render(); },
   addMeal: el => { const m = Store.get('meals').find(x => x.id === el.dataset.id); if (!m) return; const meal = $('#quick-meal')?.value || (ui.nutDate === ymd() ? defaultMeal() : 'snacks'); addEntries(ui.nutDate, meal, mealItems(m)); toast(`Logged ${m.name} to ${mealLabel(meal)}`); render(); },
-  addRecipeServing: el => { const r = Store.get('recipes').find(x => x.id === el.dataset.id); if (!r) return; ensureDay(ui.nutDate).entries.push({ id: uid(), name: r.title, qty: 1, unit: 'serving', cal: +r.cal || 0, p: +r.p || 0, c: +r.c || 0, f: +r.f || 0, meal: ui.nutDate === ymd() ? defaultMeal() : 'snacks', time: nowTime() }); Store.save('nutrition'); toast(`Logged ${r.title}`); if (Modal.isOpen()) Modal.close(); else render(); },
+  addRecipeServing: el => { const r = Store.get('recipes').find(x => x.id === el.dataset.id); if (!r) return; ensureDay(ui.nutDate).entries.push({ id: uid(), name: r.title, qty: 1, unit: 'serving', cal: num(r.cal), p: num(r.p), c: num(r.c), f: num(r.f), meal: ui.nutDate === ymd() ? defaultMeal() : 'snacks', time: nowTime() }); Store.save('nutrition'); toast(`Logged ${r.title}`); if (Modal.isOpen()) Modal.close(); else render(); },
   mealAdd: f => { const m = readMacros(fd(f)); if (!m.name) return; Store.get('meals').push({ id: uid(), ...m }); Store.save('meals'); toast('Meal saved'); render(); },
   mealEdit: el => { const m = Store.get('meals').find(x => x.id === el.dataset.id); if (!m) return; if (m.items) { const n = prompt('Rename saved meal:', m.name); if (n) { m.name = n.trim(); Store.save('meals'); render(); } } else macroModal('Edit meal', m, 'mealSave', m.id); },
   mealSave: f => { const v = fd(f), m = Store.get('meals').find(x => x.id === v.id); if (m) Object.assign(m, readMacros(v)); Store.save('meals'); Modal.close(); render(); },
@@ -2826,7 +3087,7 @@ function openSettings() {
       <div class="grid sm:grid-cols-2 gap-3"><div><label class="label">Your name (for greeting)</label><input name="name" class="input" value="${esc(S.name)}"></div>
       <div><label class="label">Theme</label><select name="theme" class="input">${['system', 'light', 'dark'].map(t => `<option value="${t}" ${S.theme === t ? 'selected' : ''}>${t[0].toUpperCase() + t.slice(1)}</option>`).join('')}</select></div>
       </div>
-      <fieldset><legend class="label">Bottom navigation order</legend><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${barViews().map((id, i) => `<select name="bar${i}" class="input" aria-label="Bottom bar, place ${i + 1}">${VIEWS.filter(v => v.id).map(v => `<option value="${v.id}" ${v.id === id ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select>`).join('')}</div><p class="text-xs muted mt-1">Four destinations. Quick add is in the header; settings and help are always one tap away.</p></fieldset></section>
+      <fieldset><legend class="label">Bottom navigation order</legend><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${navRoots().map((id, i) => `<select name="nav${i}" class="input" aria-label="Bottom bar, place ${i + 1}">${VIEWS.filter(v => v.id && v.id !== 'recipes').map(v => `<option value="${v.id}" ${v.id === id ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select>`).join('')}</div><p class="text-xs muted mt-1">Three destinations. Quick add is in the header; settings and help are always one tap away.</p></fieldset></section>
     <section class="space-y-3"><h4 class="font-semibold text-sm">Workouts</h4>
       <div class="grid sm:grid-cols-3 gap-3"><div><label class="label">Weight unit</label><select name="unit" class="input"><option value="lbs" ${S.unit === 'lbs' ? 'selected' : ''}>lbs</option><option value="kg" ${S.unit === 'kg' ? 'selected' : ''}>kg</option></select></div>
       <div><label class="label">Default rest</label><select name="restSeconds" class="input">${restOptions(S.restSeconds)}</select></div>
@@ -3123,7 +3384,7 @@ function validateWebEntries(entries) {
     if (key === 'bd.web.context') { if (['actorId', 'workspaceId', 'athleteId'].some(k => typeof value[k] !== 'string' || !validRecordId(value[k]))) throw new Error('Invalid local ownership context.'); continue; }
     if (typeof value.id !== 'string' || !validRecordId(value.id)) throw new Error('Invalid recovery operation ID.');
     if (key.includes('.intent.') || key.includes('.receipt.')) {
-      if (!key.endsWith('.' + value.id) || !['snapshot', 'start', 'complete-set', 'amend-set', 'undo-set', 'finish-workout', 'amend-workout', 'import-workouts'].includes(value.purpose)) throw new Error('Invalid recovery operation.');
+      if (!key.endsWith('.' + value.id) || !['snapshot', 'start', 'complete-set', 'amend-set', 'undo-set', 'finish-workout', 'amend-workout', 'import-workouts', 'add-exercises', 'swap-exercise', 'undo-swap', 'save-custom-exercise', 'log-library-portion', 'edit-entry-snapshot'].includes(value.purpose)) throw new Error('Invalid recovery operation.');
     }
     if (key.includes('.intent.')) {
       if (!plainObject(value.values) || !Object.keys(value.values).length || Object.keys(value.values).some(k => !Object.hasOwn(COLLECTIONS, k)) || !plainObject(value.expected) || Object.keys(value.values).some(k => !/^[a-f0-9]{64}$/.test(value.expected[k] || '')) || !plainObject(value.extra)) throw new Error('Invalid recovery intent.');
@@ -3545,7 +3806,7 @@ const GS_RULES = [
   ['drinks', /juice|soda|sparkling|water bottle|bottled water|lacrosse|seltzer|gatorade|kombucha|wine|beer/],
   ['produce', /onion|garlic|pepper|tomato|potato|lettuce|romaine|spinach|kale|carrot|celery|broccoli|cauliflower|cabbage|zucchini|squash|mushroom|cucumber|green bean|corn|\bpeas?\b|asparagus|brussels|avocado|lemon|lime|banana|apple|berr|grape|orange|mango|pineapple|peach|pear|melon|cilantro|parsley|basil|mint|dill|chive|ginger|jalapeño|jalapeno|scallion|shallot|herb|salad|arugula|sprout|radish|beet|plum|cherr|kiwi|fruit|veggie|vegetable/]
 ];
-const gkit = () => { const k = Store.get('gkit'); k.stores = k.stores || []; k.staples = k.staples || []; k.sectionMap = k.sectionMap || {}; k.spend = k.spend || []; k.basics = k.basics || ['salt', 'black pepper', 'olive oil', 'water', 'cooking spray', 'garlic powder', 'onion powder', 'flour', 'sugar', 'baking soda', 'baking powder', 'vanilla extract']; if (k.budget == null) k.budget = null; return k; };
+const gkit = () => ({stores:[],staples:[],sectionMap:{},spend:[],basics:[],budget:null,...(Store.get('gkit') || {})});
 function gSection(name) { const n = String(name || '').toLowerCase().trim(), m = gkit().sectionMap[n]; if (m) return m; for (const [s, re] of GS_RULES) if (re.test(n)) return s; return 'other'; }
 const gsLabel = k => (GSECTIONS.find(s => s[0] === k) || GSECTIONS[GSECTIONS.length - 1])[1];
 
@@ -3581,14 +3842,15 @@ function planDayMacros(d) { const t = { cal: 0, p: 0, c: 0, f: 0, known: 0, n: 0
 function planWeekCost(ws) { let c = 0, n = 0; for (let i = 0; i < 7; i++) for (const it of mpItems(addDays(ws, i))) { if (it.left || it.freezerId) continue; const r = it.recipeId && recFind(it.recipeId); if (r && num(r.cost)) { c += num(r.cost) * (num(it.batch) || 1); n++; } } return { c, n }; }
 const planItemLabel = it => { const r = it.recipeId && recFind(it.recipeId); return r ? r.title : (it.text || '(deleted recipe)'); };
 function tonightMeals(d = ymd()) { const items = mpItems(d); const din = items.filter(i => i.slot === 'dinner'); return din.length ? din : items; }
-function thawSoon() { const tm = addDays(ymd(), 1); return [...mpItems(ymd()), ...mpItems(tm)].filter(i => i.freezerId).map(i => ({ it: i, fz: Store.get('freezer').find(f => f.id === i.freezerId), tomorrow: mpItems(tm).some(x => x.id === i.id) })).filter(x => x.fz); }
+function thawSoonLegacy() { const tm = addDays(ymd(), 1); return [...mpItems(ymd()), ...mpItems(tm)].filter(i => i.freezerId).map(i => ({ it: i, fz: Store.get('freezer').find(f => f.id === i.freezerId), tomorrow: mpItems(tm).some(x => x.id === i.id) })).filter(x => x.fz); }
+function thawSoon() { return []; }
 function grocSpendWeek(ws = startOfWeek()) { const we = addDays(ws, 7); return sum(gkit().spend.filter(s => s.date >= ws && s.date < we).map(s => +s.amount || 0)); }
 
 
 function renderRecipes() {
-  const open = Store.get('grocery').filter(x => !x.checked).length;
-  return tabs('recTab', [['recipes', 'Recipe box', 'book-heart', 'Recipes'], ['plan', 'Meal plan', 'calendar-days', 'Plan'], ['grocery', `Grocery list${open ? ` (${open})` : ''}`, 'shopping-cart', `Grocery${open ? ` (${open})` : ''}`], ['pantry', 'Pantry & freezer', 'refrigerator', 'Pantry']])
-    + ({ recipes: recList, plan: recPlan, grocery: recGrocery, pantry: recPantry }[ui.recTab] || recList)();
+  if(['grocery','pantry','freezer'].includes(ui.recTab))return pageBack('nutrition','Nutrition')+retiredNotice();
+  if(ui.recTab==='plan'){ui.pageTitle='Meal plan';return pageBack('nutrition','Nutrition')+'<h2 class="text-xl font-semibold mb-4">Meal plan</h2>'+recPlan();}
+  ui.libraryType ||= 'recipe';return pageBack('nutrition','Nutrition')+nutritionLibrary();
 }
 // ---------- Recipe box ----------
 const REC_SPECIAL = [['__fav', '♥ Favorites'], ['__kids', '🧒 Kids ate it'], ['__frz', '🧊 Freezer-friendly'], ['__new', 'Never made']];
@@ -3631,7 +3893,7 @@ function recEditor(r, pre) {
 }
 function recViewModal(r) {
   const serv = ui.recServ || r.servings || 1, scale = serv / (r.servings || 1), ings = String(r.ingredients || '').split('\n').filter(l => l.trim()), lm = lastMade(r), t = ymd(), pc = perServCost(r);
-  const pantryOn = Store.get('pantry').length > 0;
+  const pantryOn = false;
   Modal.open(modalShell(esc(r.title), `
     ${recThumb(r, 'w-full h-48 rounded-xl')}
     <div class="flex flex-wrap items-center gap-2">
@@ -3639,7 +3901,7 @@ function recViewModal(r) {
       <span class="flex items-center" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button type="button" class="text-xl leading-none px-0.5 ${(r.rating || 0) >= n ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600'}" data-action="recRate" data-id="${r.id}" data-v="${n}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`).join('')}</span>
       <button type="button" class="btn btn-sm ${r.kids ? 'btn-primary' : ''}" data-action="recKids" data-id="${r.id}">🧒 Kids ate it</button>
       <span class="text-xs muted ml-auto">${(r.made || []).length ? `Made ${(r.made || []).length}× · last ${daysBetween(lm, t) === 0 ? 'today' : fmtDate(lm, { month: 'short', day: 'numeric' })}` : 'Not made yet'}</span></div>
-    <div class="flex flex-wrap gap-1.5">${(r.tags || []).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${r.time ? `<span class="chip">${icon('clock', 'w-3 h-3')} ${esc(r.time)} min</span>` : ''}${r.freezer ? '<span class="chip">🧊 Freezer-friendly</span>' : ''}${pc ? `<span class="chip">${money(pc)} / serving · ${money(r.cost)} total</span>` : ''}</div>
+    <div class="flex flex-wrap gap-1.5">${(r.tags || []).map(x => `<span class="chip">${esc(x)}</span>`).join('')}${r.time ? `<span class="chip">${icon('clock', 'w-3 h-3')} ${esc(r.time)} min</span>` : ''}${pc ? `<span class="chip">${money(pc)} / serving · ${money(r.cost)} total</span>` : ''}</div>
     <div>${r.cal ? `<div class="grid grid-cols-4 gap-2">${[['kcal', r.cal, ''], ['Protein', r.p, 'g'], ['Carbs', r.c, 'g'], ['Fat', r.f, 'g']].map(([l, v, u]) => `<div class="stat text-center"><div class="text-xs muted">${l}</div><div class="font-bold">${fmtNum(v)}${u}</div></div>`).join('')}</div>` : ''}
       <div class="flex flex-wrap items-center gap-2 mt-2"><span class="text-xs muted">${r.cal ? `Per serving${r.macroCalc ? ' · calculated from ingredients' : ''}` : 'No macros yet'}</span><button type="button" class="btn btn-sm btn-ghost" data-action="recMacros" data-id="${r.id}">${icon('calculator', 'w-3.5 h-3.5')} ${r.cal ? 'Recalculate' : 'Calculate from ingredients'}</button>
       ${r.cal ? `<span class="flex-1"></span><select id="rec-log-meal" class="input w-auto py-1 text-xs" aria-label="Meal">${MEALS.map(([k, l]) => `<option value="${k}" ${defaultMeal() === k ? 'selected' : ''}>${l}</option>`).join('')}</select><input id="rec-log-serv" type="number" inputmode="decimal" step="0.25" min="0.25" value="1" class="input w-16 py-1 text-xs" aria-label="Servings"><button type="button" class="btn btn-sm" data-action="recLog" data-id="${r.id}">${icon('utensils', 'w-3.5 h-3.5')} Log</button>` : ''}</div></div>
@@ -3687,7 +3949,6 @@ function ckDraw() {
   el.innerHTML = CK.done ? `<div class="flex-1 grid place-items-center p-6"><div class="max-w-md w-full space-y-5 text-center"><div class="text-4xl">🍽️</div><h2 class="text-2xl font-bold">${esc(r.title)} — done!</h2>
       <div><div class="label mb-1">How was it?</div><div class="flex justify-center">${[1, 2, 3, 4, 5].map(k => `<button class="text-4xl px-1 ${(r.rating || 0) >= k ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600'}" data-action="ckRate" data-v="${k}" aria-label="${k} stars">★</button>`).join('')}</div></div>
       <div class="flex justify-center gap-2"><button class="btn ${r.kids ? 'btn-primary' : ''}" data-action="ckKids">🧒 Kids ate it</button><button class="btn ${r.fav ? 'text-rose-600 border-rose-300' : ''}" data-action="ckFav">${r.fav ? '♥' : '♡'} Favorite</button></div>
-      <div class="flex items-center justify-center gap-2 text-sm"><span class="muted">Freeze leftovers:</span><input id="ck-freeze" type="number" inputmode="numeric" min="0" step="1" value="0" class="input w-20 py-1" aria-label="Portions to freeze"><span class="muted">portions</span></div>
       <label class="flex items-center justify-center gap-2 text-sm"><input id="ck-left" type="checkbox" class="w-4 h-4 accent-brand-600"> Leftovers for lunch tomorrow</label>
       <button class="btn btn-primary w-full text-base py-3" data-action="ckFinish">${icon('check')} Save & close</button></div></div>`
     : `<div class="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800"><button class="btn btn-sm" data-action="ckClose" aria-label="Exit cook mode">${icon('x')}</button><div class="flex-1 min-w-0"><div class="font-semibold truncate">${esc(r.title)}</div><div class="text-xs muted">${n ? `Step ${i + 1} of ${n}` : ''}${CK.wake ? ' · screen stays on' : ''}</div></div><button class="btn btn-sm lg:hidden" data-action="ckIngToggle">${icon('list', 'w-3.5 h-3.5')} Ingredients</button><button class="btn btn-sm" data-action="ckTimerNew">${icon('timer', 'w-3.5 h-3.5')} Timer</button></div>
@@ -3758,7 +4019,7 @@ const RECIPE_LIBRARY = [
   ['cheese-crackers', 'Cheese and Crackers', 'snacks', 4, 5, 220, 9, 18, 12, 4.00, ['Quick'], '8 oz cheddar\n1 box whole grain crackers', 'Slice the cheese and serve with the crackers.']
 ].map(([key, title, slot, servings, time, cal, p, c, f, cost, tags, ingredients, steps]) => ({ key, title, slot, servings, time, cal, p, c, f, cost, tags, ingredients, steps }));
 Object.assign(ui, { mpw: null });
-const mpwPrefs = () => { const k = gkit(); return { people: 2, budget: num(k.budget) || 150, slots: ['breakfast', 'lunch', 'dinner'], maxTime: 0, library: true, ...(k.planPrefs || {}) }; };
+const mpwPrefs = () => { const k = gkit(); return { people: 2, budget: 150, slots: ['breakfast', 'lunch', 'dinner'], maxTime: 0, library: true, ...(k.planPrefs || {}) }; };
 // What the planner can choose from for a slot: the user's own recipes (by their tags) and, if wanted, the library.
 function mpwPool(slot, P) {
   const tagged = r => (r.tags || []).map(t => String(t).toLowerCase()), slotOf = r => { const t = tagged(r); return t.includes('breakfast') ? ['breakfast'] : t.some(x => /snack/.test(x)) ? ['snacks'] : t.includes('lunch') ? ['lunch'] : ['lunch', 'dinner']; };
@@ -3817,7 +4078,7 @@ function mpwView() {
     <div class="grid grid-cols-2 gap-3 mb-4"><div class="card"><div class="text-xs muted uppercase tracking-wide">Estimated, of ${money(W.budget)}</div><div class="text-2xl font-bold ${over ? 'text-rose-700 dark:text-rose-400' : ''}">${money(total)}</div>
         <div class="h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 mt-2 overflow-hidden" role="progressbar" aria-label="Estimated cost against the budget" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><div class="h-full ${over ? 'bg-rose-500' : 'bg-brand-500'}" style="width:${pct}%"></div></div>
         <div class="text-xs muted mt-1">${n} meal${n === 1 ? '' : 's'} for ${W.people}${unknown ? ` · ${unknown} without a cost` : ''}</div></div>
-      <div class="card"><div class="text-xs muted uppercase tracking-wide">Grocery list</div><div class="text-2xl font-bold">${mpwGroceryCount(W.picks)} items</div><div class="text-xs muted mt-1">Built when you tap Looks great</div></div></div>
+      <div class="card"><div class="text-xs muted">Planned meals</div><div class="text-2xl font-bold">${n}</div><div class="text-xs muted mt-1">No shopping or inventory changes</div></div></div>
     <div class="space-y-2">${days.filter(d => W.days.includes(d)).flatMap(d => MSLOTS.filter(([k]) => W.slots.includes(k)).map(([k, l]) => { const ref = W.picks[d + '|' + k], c = ref && mpwFind(ref, W); return `<div class="card p-3 flex items-center gap-3"><div class="flex-1 min-w-0"><div class="text-xs muted uppercase tracking-wide">${parseYmd(d).toLocaleDateString(undefined, { weekday: 'short' })} · ${l}</div>
       ${c ? `<div class="font-medium">${esc(c.title)}</div><div class="text-xs muted">${[c.cost ? money(mpwMealCost(c, W.people)) : 'No cost yet', c.time ? `${c.time} min` : '', c.cal ? `${fmtNum(c.cal)} cal` : '', c.lib && ref.startsWith('lib:') ? 'Ready-made' : 'Your recipe'].filter(Boolean).join(' · ')}</div>` : '<div class="text-sm muted">Nothing fits. Try another cooking time or add a recipe.</div>'}</div>
       ${c ? `<button class="btn btn-sm" data-action="mpwSwap" data-k="${d}|${k}" aria-label="Swap ${esc(c.title)} for something else">${icon('arrow-left-right', 'w-3.5 h-3.5')}</button><button class="btn btn-sm btn-ghost" data-action="mpwDrop" data-k="${d}|${k}" aria-label="Leave ${l} on ${fmtDate(d, { weekday: 'long' })} unplanned">${icon('x', 'w-3.5 h-3.5')}</button>` : ''}</div>`; })).join('')}</div>
@@ -3840,11 +4101,11 @@ function mpwApply() {
     const batch = Math.round((W.people / (num(r.servings) || 1)) * 2) / 2 || 0.5;
     day.push({ id: uid(), recipeId: r.id, slot, ...(batch !== 1 ? { batch } : {}) }); n++;
   }
-  const k = gkit(); k.planPrefs = { people: W.people, budget: W.budget, slots: W.slots, maxTime: W.maxTime, library: W.library }; if (!num(k.budget)) k.budget = W.budget;
+  const k = {...Store.get('gkit'),planPrefs:{people:W.people,budget:W.budget,slots:W.slots,maxTime:W.maxTime,library:W.library}}; Store.set('gkit',k);
   Store.save('recipes'); Store.save('mealPlan'); Store.save('gkit');
   ui.planWeek = W.ws; ui.mpw = null; ui.recTab = 'plan';
-  A.groceryBuild();
-  toast(`Planned ${n} meal${n === 1 ? '' : 's'} and built your grocery list`);
+  render();
+  toast(`Planned ${n} meal${n === 1 ? '' : 's'}`);
 }
 const A_MPW = {
   mpwOpen: () => mpwStart(),
@@ -3870,12 +4131,12 @@ const A_MPW = {
 function recPlan() {
   if (ui.mpw) return mpwView();
   if (ui.prepOn) return prepView();
-  const ws = ui.planWeek, recipes = Store.get('recipes').slice().sort((a, b) => a.title.localeCompare(b.title)), days = Array.from({ length: 7 }, (_, i) => addDays(ws, i)), t = ymd(), slot = ui.planSlot || 'dinner', fz = Store.get('freezer').filter(f => (f.portions || 0) > 0);
+  const ws = ui.planWeek, recipes = Store.get('recipes').slice().sort((a, b) => a.title.localeCompare(b.title)), days = Array.from({ length: 7 }, (_, i) => addDays(ws, i)), t = ymd(), slot = ui.planSlot || 'dinner', fz = [];
   const cost = planWeekCost(ws), isThis = ws === startOfWeek(), anyToday = isThis && mpItems(t).some(it => it.recipeId && (recFind(it.recipeId) || {}).cal);
   return `${isThis ? tableCard() : ''}
   <div class="flex flex-wrap items-center gap-2 mb-3"><button class="btn" data-action="planWeek" data-d="-7" aria-label="Previous week">${icon('chevron-left')}</button><div class="font-semibold">Week of ${fmtDate(ws, { month: 'long', day: 'numeric' })}</div><button class="btn" data-action="planWeek" data-d="7" aria-label="Next week">${icon('chevron-right')}</button>${!isThis ? `<button class="btn btn-sm" data-action="planWeek" data-d="0">This week</button>` : ''}
     <span class="flex-1"></span><button class="btn btn-sm btn-primary" data-action="mpwOpen">${icon('sparkles', 'w-3.5 h-3.5')} Plan my week</button><button class="btn btn-sm" data-action="planCopyLast">${icon('copy', 'w-3.5 h-3.5')} Copy last week</button><button class="btn btn-sm" data-action="prepOpen">${icon('list-checks', 'w-3.5 h-3.5')} Prep day</button>${anyToday ? `<button class="btn btn-sm" data-action="planLogToday">${icon('utensils', 'w-3.5 h-3.5')} Log today’s meals</button>` : ''}<button class="btn btn-sm btn-primary" data-action="groceryBuild">${icon('shopping-cart', 'w-3.5 h-3.5')} Build grocery list</button></div>
-  <div class="flex flex-wrap items-center gap-1.5 mb-3 text-sm"><span class="muted mr-1">Adding to:</span>${MSLOTS.map(([k, l, ic]) => `<button class="chip ${slot === k ? 'chip-on' : ''}" data-action="planSlotSet" data-v="${k}">${icon(ic, 'w-3 h-3')} ${l}</button>`).join('')}<span class="flex-1"></span>${cost.n ? `<span class="text-xs muted">Est. ${money(cost.c)} for ${cost.n} planned meal${cost.n === 1 ? '' : 's'}${gkit().budget ? ` · budget ${money(gkit().budget)}/wk` : ''}</span>` : ''}</div>
+  <div class="flex flex-wrap items-center gap-1.5 mb-3 text-sm"><span class="muted mr-1">Adding to:</span>${MSLOTS.map(([k, l, ic]) => `<button class="chip ${slot === k ? 'chip-on' : ''}" data-action="planSlotSet" data-v="${k}">${icon(ic, 'w-3 h-3')} ${l}</button>`).join('')}<span class="flex-1"></span>${cost.n ? `<span class="text-xs muted">Est. ${money(cost.c)} for ${cost.n} planned meal${cost.n === 1 ? '' : 's'}</span>` : ''}</div>
   <div class="grid sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">${days.map(d => { const items = mpItems(d), today = d === t, mac = planDayMacros(d), T = targetsFor(d); return `<div class="card p-3 flex flex-col ${today ? 'ring-2 ring-brand-400' : ''}"><div class="text-xs font-semibold uppercase tracking-wide ${today ? 'text-brand-600' : 'muted'}">${parseYmd(d).toLocaleDateString(undefined, { weekday: 'short' })} <span class="font-normal">${fmtDate(d, { month: 'short', day: 'numeric' })}</span></div>
     ${mac.known ? `<div class="text-[11px] tabular-nums mt-0.5 ${T && T.cal && mac.cal > T.cal * 1.1 ? 'text-amber-600 dark:text-amber-400' : 'muted'}" title="Planned per-serving macros vs your targets">${fmtNum(mac.cal)}${T && T.cal ? `/${fmtNum(T.cal)}` : ''} kcal · P${fmtNum(mac.p)}${T && T.p ? `/${fmtNum(T.p)}` : ''}</div>` : ''}
     <div class="space-y-1.5 my-2 flex-1">${MSLOTS.filter(([k]) => items.some(i => i.slot === k)).map(([k, l]) => `<div class="text-[10px] uppercase tracking-wide muted pt-1">${l}</div>${items.filter(i => i.slot === k).map(it => { const r = it.recipeId && recFind(it.recipeId); return `<div class="text-sm rounded-lg bg-slate-50 dark:bg-slate-800/60 px-2 py-1.5 ${it.made ? 'opacity-70' : ''}">${r ? `<button class="block w-full text-left hover:underline leading-snug break-words" data-action="recView" data-id="${r.id}">${it.freezerId ? '🧊 ' : it.left ? '♻ ' : ''}${esc(r.title)}</button>` : `<span class="block leading-snug break-words">${it.freezerId ? '🧊 ' : it.left ? '♻ ' : ''}${esc(it.text || '(deleted recipe)')}</span>`}
@@ -3957,13 +4218,8 @@ function recPantry() {
     <div class="card">${cardHead('sparkles', 'What can I make?')}${pan.length || k.basics.length ? `<div class="space-y-2">${cm.map(({ r, m }) => `<div class="rounded-lg border border-slate-200 dark:border-slate-800 p-2.5"><div class="flex items-center gap-2"><button class="font-medium text-sm flex-1 text-left hover:underline" data-action="recView" data-id="${r.id}">${esc(r.title)}</button><span class="text-xs tabular-nums ${m.pct >= 80 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'muted'}">${m.have}/${m.total}</span></div><div class="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden mt-1.5"><div class="h-full ${m.pct >= 80 ? 'bg-emerald-500' : 'bg-amber-500'}" style="width:${m.pct}%"></div></div>${m.missing.length ? `<div class="text-xs muted mt-1">Need: ${esc(m.missing.slice(0, 5).join(', '))}${m.missing.length > 5 ? '…' : ''} <button class="text-brand-600 underline" data-action="cmGroc" data-id="${r.id}">add to list</button></div>` : '<div class="text-xs text-emerald-600 dark:text-emerald-400 mt-1">You have everything ✓</div>'}</div>`).join('')}</div>` : '<p class="text-sm muted">Add pantry items to see which recipes you can make tonight.</p>'}</div></div>`;
 }
 // ---------- Dashboard card ----------
-function dashMeals() {
-  const t = ymd(), din = tonightMeals(), thaw = thawSoon().filter(x => x.tomorrow), left = Store.get('grocery').filter(x => !x.checked).length;
-  return `<div class="card">${cardHead('chef-hat', 'Meals', `<button class="btn btn-sm btn-ghost" data-action="go" data-view="recipes">Plan ${icon('chevron-right', 'w-3.5 h-3.5')}</button>`)}
-    <div class="text-xs muted">Tonight</div>${din.length ? din.slice(0, 2).map(it => { const r = it.recipeId && recFind(it.recipeId); return `<div class="flex items-center gap-2"><span class="font-semibold flex-1 truncate">${it.freezerId ? '🧊 ' : it.left ? '♻ ' : ''}${esc(planItemLabel(it))}</span>${r ? `<button class="btn btn-sm" data-action="cookStart" data-id="${r.id}">${icon('chef-hat', 'w-3.5 h-3.5')} Cook</button>` : ''}</div>`; }).join('') : `<button class="text-sm text-brand-600 hover:underline" data-action="goRecTab" data-tab="plan">Nothing planned — pick dinner</button>`}
-    <div class="space-y-1.5 text-sm mt-3">${thaw.map(x => `<div class="flex gap-2 text-sky-700 dark:text-sky-300">${icon('snowflake', 'w-4 h-4 shrink-0')}<span>Thaw ${esc(x.fz.name)} tonight</span></div>`).join('')}
-      <button class="flex gap-2 w-full text-left hover:underline" data-action="goRecTab" data-tab="grocery">${icon('shopping-cart', 'w-4 h-4 muted shrink-0')}<span class="muted">${left ? `${left} item${left === 1 ? '' : 's'} on the grocery list` : 'Grocery list is empty'}</span></button></div></div>`;
-}
+function dashMeals() {const din=tonightMeals();return `<div class="card">${cardHead('chef-hat','Meals', '<button class="btn btn-sm" data-action="goRecTab" data-tab="plan">Meal plan</button>')}<div class="text-xs muted">Tonight</div>${din.length?din.map(it=>`<div class="py-2 font-semibold">${esc(planItemLabel(it))}</div>`).join(''):'<p class="text-sm muted mt-2">No dinner planned.</p>'}</div>`;}
+
 
 // ---------- Recipe clipper (bookmarklet) & import parsing ----------
 function RCLIP_FN() {
@@ -4070,7 +4326,7 @@ const A_RECIPES = {
   recImpParse: f => { const text = fd(f).text || '', d = parseRecipeClip(text), pre = d ? recipeFromClip(d) : parseRecipeText(text); if (!pre || !pre.ingredients) return toast('Couldn’t find a recipe in that text — try the Clip recipe button, or include an “Ingredients” heading', 'error'); const dup = pre.source && Store.get('recipes').find(r => r.source && r.source === pre.source); if (dup) toast(`You already have “${dup.title}” from this link — saving makes a copy`); recEditor(null, pre); },
   recSave: async f => {
     const v = fd(f), rs = Store.get('recipes'), file = f.querySelector('input[name=photo]')?.files?.[0];
-    const r = { title: v.title.trim(), tags: parseList(v.tags), servings: num(v.servings) || 1, time: v.time, cal: num(v.cal), p: num(v.p), c: num(v.c), f: num(v.f), ingredients: v.ingredients.trim(), steps: v.steps.trim(), notes: v.notes.trim(), source: v.source.trim(), cost: num(v.cost), freezer: v.freezer === '1' };
+    const r = { title: v.title.trim(), tags: parseList(v.tags), servings: num(v.servings) || 1, time: v.time, cal: num(v.cal), p: num(v.p), c: num(v.c), f: num(v.f), ingredients: v.ingredients.trim(), steps: v.steps.trim(), notes: v.notes.trim(), source: v.source.trim(), cost: num(v.cost), freezer: (rs.find(x=>x.id===v.id) || {}).freezer ?? false };
     if (v.img) r.img = v.img;
     let o = v.id && rs.find(x => x.id === v.id); if (o) Object.assign(o, r); else { o = { id: uid(), created: new Date().toISOString(), ...r }; rs.push(o); }
     if (v.photoDel === '1' && o.photo) { await Photos.del(o.photo); o.photo = null; }
@@ -4084,7 +4340,7 @@ const A_RECIPES = {
   recFav: el => { const r = recFind(el.dataset.id); if (!r) return; r.fav = !r.fav; recSaveNow(r); render(); recViewModal(r); },
   recRate: el => { const r = recFind(el.dataset.id); if (!r) return; const v = +el.dataset.v; r.rating = r.rating === v ? null : v; recSaveNow(r); render(); recViewModal(r); },
   recKids: el => { const r = recFind(el.dataset.id); if (!r) return; r.kids = !r.kids; recSaveNow(r); render(); recViewModal(r); },
-  recLog: el => { const r = recFind(el.dataset.id); if (!r || !r.cal) return; const k = num($('#rec-log-serv')?.value) || 1, meal = $('#rec-log-meal')?.value || defaultMeal(); ensureDay(ymd()).entries.push({ id: uid(), name: r.title, qty: k, unit: k === 1 ? 'serving' : 'servings', cal: round((+r.cal || 0) * k, 0), p: round((+r.p || 0) * k, 1), c: round((+r.c || 0) * k, 1), f: round((+r.f || 0) * k, 1), meal, time: nowTime() }); Store.save('nutrition'); toast(`Logged ${fmtQty(k)} × ${r.title} to ${mealLabel(meal)}`); },
+  recLog: el => { const r = recFind(el.dataset.id); if (!r || !r.cal) return; const k = num($('#rec-log-serv')?.value) || 1, meal = $('#rec-log-meal')?.value || defaultMeal(); ensureDay(ymd()).entries.push({ id: uid(), name: r.title, qty: k, unit: k === 1 ? 'serving' : 'servings', cal: (num(r.cal) == null ? null : round(num(r.cal) * k, 0)), p: (num(r.p) == null ? null : round(num(r.p) * k, 1)), c: (num(r.c) == null ? null : round(num(r.c) * k, 1)), f: (num(r.f) == null ? null : round(num(r.f) * k, 1)), meal, time: nowTime() }); Store.save('nutrition'); toast(`Logged ${fmtQty(k)} × ${r.title} to ${mealLabel(meal)}`); },
   recMacros: el => { const r = recFind(el.dataset.id); if (!r) return; ui.macroDraft = null; recMacroModal(r); },
   mcPick: el => { const d = ui.macroDraft, r = d && recFind(d.rid); if (!r) return; const raw = ingLines(r)[+el.dataset.i]; if (!raw) return; if (el.value) d.map[raw] = { key: el.value }; else delete d.map[raw]; recMacroModal(r); },
   mcGrams: el => { const d = ui.macroDraft, r = d && recFind(d.rid); if (!r) return; const raw = ingLines(r)[+el.dataset.i]; if (!raw) return; const o = { ...(d.map[raw] || {}) }; if (el.value === '') delete o.g; else o.g = +el.value; if (Object.keys(o).length) d.map[raw] = o; else delete d.map[raw]; recMacroModal(r); },
@@ -4108,7 +4364,7 @@ const A_RECIPES = {
   ckKids: () => { const r = recFind(CK.rid); if (!r) return; r.kids = !r.kids; recSaveNow(r); ckDraw(); },
   ckFav: () => { const r = recFind(CK.rid); if (!r) return; r.fav = !r.fav; recSaveNow(r); ckDraw(); },
   ckFinish: () => {
-    const r = recFind(CK.rid); if (!r) return ckClose(); const t = ymd(), fz = Math.max(0, Math.round(num($('#ck-freeze')?.value) || 0)), left = $('#ck-left')?.checked;
+    const r = recFind(CK.rid); if (!r) return ckClose(); const t = ymd(), fz = 0, left = $('#ck-left')?.checked;
     if (!(r.made || []).includes(t)) (r.made = r.made || []).push(t); recSaveNow(r);
     const it = (Store.get('mealPlan')[t] || []).find(x => x.recipeId === r.id && !x.made); if (it) { it.made = true; Store.save('mealPlan'); }
     if (fz) { Store.get('freezer').push({ id: uid(), name: r.title, recipeId: r.id, portions: fz, date: t, created: new Date().toISOString() }); Store.save('freezer'); }
@@ -4120,7 +4376,8 @@ const A_RECIPES = {
   planPick: el => {
     const d = el.dataset.date, v = el.value, slot = ui.planSlot || 'dinner'; if (!v) return;
     if (v === '__custom') { el.value = ''; return Modal.open(modalShell('Add to the plan', `<div><label class="label">What are you having?</label><input name="text" class="input" required autofocus placeholder="Leftovers, pizza night, eating at church…"></div><div class="grid grid-cols-2 gap-3"><div><label class="label">Date</label><input type="date" name="date" class="input" value="${d}"></div><div><label class="label">Meal</label><select name="slot" class="input">${MSLOTS.map(([k, l]) => `<option value="${k}" ${k === slot ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>`, `<button type="button" class="btn" data-action="closeModal">Cancel</button><button class="btn btn-primary">Add</button>`, 'planCustomSave')); }
-    if (v.startsWith('fz:')) { const f = Store.get('freezer').find(x => x.id === v.slice(3)); if (f) { planAdd(d, { recipeId: f.recipeId || null, text: f.name, freezerId: f.id, slot }); toast(d === addDays(ymd(), 1) || d > ymd() ? 'Planned — you’ll get a nudge to thaw it the night before' : 'Planned'); } }
+    if (v.startsWith('fz:')) return toast('Freezer planning has been retired; existing records remain preserved.');
+    if (false) { const f = Store.get('freezer').find(x => x.id === v.slice(3)); if (f) { planAdd(d, { recipeId: f.recipeId || null, text: f.name, freezerId: f.id, slot }); toast(d === addDays(ymd(), 1) || d > ymd() ? 'Planned — you’ll get a nudge to thaw it the night before' : 'Planned'); } }
     else planAdd(d, { recipeId: v, slot });
     render();
   },
@@ -4129,16 +4386,16 @@ const A_RECIPES = {
   mealMade: el => {
     const d = el.dataset.date, it = planFindItem(d, el.dataset.id); if (!it) return; it.made = !it.made; Store.save('mealPlan');
     const r = it.recipeId && recFind(it.recipeId); if (r && !it.left && !it.freezerId) { r.made = r.made || []; if (it.made && !r.made.includes(d)) r.made.push(d); if (!it.made) r.made = r.made.filter(x => x !== d); recSaveNow(r); }
-    const f = it.freezerId && Store.get('freezer').find(x => x.id === it.freezerId); if (f) { f.portions = Math.max(0, (+f.portions || 0) + (it.made ? -1 : 1)); Store.save('freezer'); }
+
     render();
   },
   mealLeft: el => { const d = el.dataset.date, it = planFindItem(d, el.dataset.id); if (!it) return; const plan = Store.get('mealPlan'), nx = addDays(d, 1), ex = (plan[nx] || []).find(x => x.from === it.id); if (ex) { plan[nx] = plan[nx].filter(x => x !== ex); if (!plan[nx].length) delete plan[nx]; Store.save('mealPlan'); toast('Leftovers removed'); } else { planAdd(nx, { recipeId: it.recipeId, slot: 'lunch', left: true, from: it.id }); toast(`♻ Leftovers planned for ${fmtDate(nx, { weekday: 'long' })} lunch`); } render(); },
   planCopyLast: () => {
     const ws = ui.planWeek, plan = Store.get('mealPlan'), idMap = {}; let n = 0;
-    for (let i = 0; i < 7; i++) { const from = addDays(ws, i - 7), to = addDays(ws, i); for (const it of mpItems(from)) { if ((plan[to] || []).some(x => (x.recipeId || x.text) === (it.recipeId || it.text) && (x.slot || 'dinner') === it.slot)) continue; const nid = uid(); idMap[it.id] = nid; const c = { ...it, id: nid }; delete c.made; delete c.logged; if (c.from) c.from = idMap[c.from] || null; if (c.freezerId && !Store.get('freezer').some(f => f.id === c.freezerId && f.portions > 0)) continue; (plan[to] = plan[to] || []).push(c); n++; } }
+    for (let i = 0; i < 7; i++) { const from = addDays(ws, i - 7), to = addDays(ws, i); for (const it of mpItems(from)) { if ((plan[to] || []).some(x => (x.recipeId || x.text) === (it.recipeId || it.text) && (x.slot || 'dinner') === it.slot)) continue; const nid = uid(); idMap[it.id] = nid; const c = { ...it, id: nid }; delete c.made; delete c.logged; if (c.from) c.from = idMap[c.from] || null;  (plan[to] = plan[to] || []).push(c); n++; } }
     Store.save('mealPlan'); toast(n ? `Copied ${n} meal${n === 1 ? '' : 's'} from last week` : 'Nothing new to copy from last week', n ? 'ok' : 'error'); render();
   },
-  planLogToday: () => { const t = ymd(), plan = Store.get('mealPlan'); let n = 0; for (const it of plan[t] || []) { const r = it.recipeId && recFind(it.recipeId); if (!r || !r.cal || it.logged) continue; const k = num(it.portions) || 1; ensureDay(t).entries.push({ id: uid(), name: r.title, qty: k, unit: k === 1 ? 'serving' : 'servings', cal: round((+r.cal || 0) * k, 0), p: round((+r.p || 0) * k, 1), c: round((+r.c || 0) * k, 1), f: round((+r.f || 0) * k, 1), meal: it.slot || 'dinner', time: nowTime() }); it.logged = true; n++; } Store.save('nutrition'); Store.save('mealPlan'); toast(n ? `Logged ${n} planned meal${n === 1 ? '' : 's'} to Nutrition` : 'Today’s planned meals are already logged (or have no macros)', n ? 'ok' : 'error'); render(); },
+  planLogToday: () => { const t = ymd(), plan = Store.get('mealPlan'); let n = 0; for (const it of plan[t] || []) { const r = it.recipeId && recFind(it.recipeId); if (!r || !r.cal || it.logged) continue; const k = num(it.portions) || 1; ensureDay(t).entries.push({ id: uid(), name: r.title, qty: k, unit: k === 1 ? 'serving' : 'servings', cal: (num(r.cal) == null ? null : round(num(r.cal) * k, 0)), p: (num(r.p) == null ? null : round(num(r.p) * k, 1)), c: (num(r.c) == null ? null : round(num(r.c) * k, 1)), f: (num(r.f) == null ? null : round(num(r.f) * k, 1)), meal: it.slot || 'dinner', time: nowTime() }); it.logged = true; n++; } Store.save('nutrition'); Store.save('mealPlan'); toast(n ? `Logged ${n} planned meal${n === 1 ? '' : 's'} to Nutrition` : 'Today’s planned meals are already logged (or have no macros)', n ? 'ok' : 'error'); render(); },
   prepOpen: () => { ui.prepOn = true; ui.prepSel = null; ui.prepChk = new Set(); render(); },
   prepClose: () => { ui.prepOn = false; render(); },
   prepToggle: el => { const id = el.dataset.id; ui.prepSel = ui.prepSel.includes(id) ? ui.prepSel.filter(x => x !== id) : [...ui.prepSel, id]; render(); },
@@ -4254,6 +4511,12 @@ const A_SHARE = {
 // would notice; each device shows the newest one once, as a card on the dashboard. A slide can show
 // a picture from assets/whatsnew/ (give it alt text) and a `go` shortcut: [view, ui key, tab, label].
 const RELEASES = [
+  { id: '2026-11-07-warm-mineral', title: 'A simpler training and nutrition space', slides: [
+    { title: 'Find exercises and adapt your session', body: '<p>Browse or filter exercises while building a routine or training. Swap an exercise for this workout without relabeling completed sets. Replacement loads stay unchecked until you accept them.</p>' },
+    { title: 'See your routine’s set coverage', body: '<p>Routine coverage separates primary sets and secondary involvement. Review contributing exercises and unknown mappings, or enter an optional frequency for a clearly labeled weekly scenario.</p>' },
+    { title: 'Three destinations, one nutrition library', body: '<p>Today, Train and Nutrition replace long section-tab rows. Foods, saved meals and recipes share a searchable Library. Warm Mineral brings warmer light surfaces and a clear dark theme.</p>' },
+    { title: 'Less inventory, same records', body: '<p>Pantry, Grocery and Freezer controls and automation are retired. Their original records stay preserved in full backups. Recipes, meal planning, photos and nutrition logging continue to work offline after preparation.</p>' }
+  ] },
   { id: '2026-11-07-focused-ui', title: 'A simpler space to train', slides: [
     { title: 'Four destinations, no drawer', body: '<p>Bottom navigation keeps Dashboard, Workouts, Nutrition and Meals in reach. Settings, Help and quick adds are in the header. Your saved order and dashboard preferences stay in place.</p>' },
     { title: 'Focus on the next set', body: '<p>Active workouts use the full screen with Finish and the timer at the top. Exercise sections are flatter, set numbers open options, and extra adjustment controls expand when needed. Minimize a workout to browse; Resume returns to the same session.</p>' }
@@ -4288,20 +4551,20 @@ const RELEASES = [
     { title: 'Windows from the bottom', body: '<p>On a phone, windows now open from the bottom of the screen, within reach of your thumb. Drag the handle at the top down to close one.</p>' }
   ] },
   { id: '2026-11-07b', title: 'Easier to use on a phone', slides: [
-    { title: 'Logging sets', body: '<p>The weight and reps boxes are wider and taller, so a weight like 182.5 shows in full. <strong>Previous</strong> fits on one line, and tapping it still copies last time’s numbers.</p><p>Moving, supersetting and removing an exercise are under <strong>⋯</strong> beside its rest time. Notes open from <strong>Add note</strong>.</p><p>The <strong>RPE</strong> column is hidden unless you turn it on in <strong>Settings → Workouts</strong>. Sets that already have an RPE still show it.</p>', go: ['fitness', '', '', 'Open Workouts'] },
+    { title: 'Logging sets', body: '<p>The weight and reps boxes are wider and taller, so a weight like 182.5 shows in full. <strong>Previous</strong> fits on one line, and tapping it still copies last time’s numbers.</p><p>Moving, supersetting and removing an exercise are under <strong>⋯</strong> beside its rest time. Notes open from <strong>Add note</strong>.</p><p>The <strong>RPE</strong> column is hidden unless you turn it on in <strong>Settings → Train</strong>. Sets that already have an RPE still show it.</p>', go: ['fitness', '', '', 'Open Workouts'] },
     { title: 'Calories left', body: '<p>The calorie ring and the Today card now lead with what’s <strong>left</strong> for the day, and how much protein is still to go.</p><p>To see calories eaten instead, open <strong>Settings → Nutrition → Big calorie number</strong>.</p>', go: ['nutrition', '', '', 'Open Nutrition'] },
     { title: 'Moving between days', body: '<p>In Nutrition, the day reads <strong>Today · Sat, Nov 7</strong>. Tap it to pick another day, or use the arrows.</p><p>Copying a whole day, or the day before into this one, is under <strong>⋯</strong> beside the day.</p>' },
     { title: 'Bigger and tidier', body: '<ul class="list-disc pl-5 space-y-1"><li>On a phone, buttons and fields are at least 44 points tall, and number fields open the number keypad.</li><li>Tabs use short names on a phone so they fit. A row that still doesn’t fit fades at the edge; swipe it for more.</li><li>Recipe filters sit in one row that you can swipe.</li><li>The backup reminder is one line, and <strong>Later</strong> puts it off for a week.</li></ul>' }
   ] },
   { id: '2026-11-07', title: 'Welcome to Body Dashboard', slides: [
-    { title: 'Training and diet, nothing else', body: '<p>Body Dashboard keeps the fitness and diet parts of Life Dashboard: <strong>Workouts</strong>, <strong>Nutrition</strong> and <strong>Recipes &amp; Meals</strong>, working as they did there.</p>', go: ['fitness', '', '', 'Open Workouts'] },
+    { title: 'Training and diet, nothing else', body: '<p>Body Dashboard keeps the fitness and diet parts of Life Dashboard: <strong>Train</strong>, <strong>Nutrition</strong> and <strong>Recipes &amp; Meals</strong>, working as they did there.</p>', go: ['fitness', '', '', 'Open Workouts'] },
     { title: 'Bring your records across', body: '<p>In Life Dashboard, open <strong>Settings &amp; Sync</strong> and tap <strong>Back up</strong>. Here, open <strong>Settings &amp; Sync → Import backup</strong> and choose that file.</p><p>Only workouts, food, weight, measurements, progress photos and recipes come across. Everything else stays in Life Dashboard, untouched.</p>' }
   ] }
 ];
 const TOUR = [
   { title: 'Welcome to Body Dashboard', body: '<p>Your training and your diet in one place.</p><p>Everything you enter is saved on this device. There is no account to create, and nobody else can see your records.</p>' },
-  { title: 'Getting around', body: '<p>Use the four destinations along the bottom. The <strong>+</strong> in the header opens quick adds; the sliders open Settings &amp; Sync. During a workout, the down arrow minimizes it without ending it, and Resume brings it back.</p><ul class="list-disc pl-5 space-y-1"><li><strong>Dashboard</strong> has direct Log food, Start/Resume workout and Log weight actions in Today. Show, hide or reorder cards with the sliders button.</li><li>Inside a section, the row of tabs across the top switches between its pages.</li><li>A number beside a destination means something there needs attention today.</li></ul>' },
-  { title: 'The three sections', body: '<ul class="list-disc pl-5 space-y-1"><li><strong>Workouts</strong>: log your sets as you train, follow a program, and see your progress, with a collapsible rest timer. Check each set to save it; unchecked suggestions do not enter a finished workout. Background alarms are not guaranteed.</li><li><strong>Nutrition</strong>: search for foods or scan a barcode to log what you eat, track your weight, and let the adaptive plan set your calories.</li><li><strong>Recipes &amp; Meals</strong>: recipes with their macros, a meal plan, Plan my week and a grocery list.</li></ul>', go: ['fitness', '', '', 'Open Workouts'] },
+  { title: 'Getting around', body: '<p>Use Today, Train and Nutrition along the bottom. The <strong>+</strong> in the header opens quick adds; the sliders open Settings &amp; Sync. During a workout, the down arrow minimizes it without ending it, and Resume brings it back.</p><ul class="list-disc pl-5 space-y-1"><li><strong>Today</strong> has direct Log food, Start/Resume workout and Log weight actions in Today. Show, hide or reorder cards with the sliders button.</li><li>Use named links such as History, Library, Meal plan and Weight &amp; measurements. A back button returns to the section overview.</li><li>A number beside a destination means something there needs attention today.</li></ul>' },
+  { title: 'The three sections', body: '<ul class="list-disc pl-5 space-y-1"><li><strong>Train</strong>: log your sets as you train, follow a program, and see your progress, with a collapsible rest timer. Check each set to save it; unchecked suggestions do not enter a finished workout. Background alarms are not guaranteed.</li><li><strong>Nutrition</strong>: search for foods or scan a barcode to log what you eat, track your weight, and let the adaptive plan set your calories.</li><li><strong>Nutrition Library</strong>: saved foods, meals and recipes, plus meal planning.</li></ul>', go: ['fitness', '', '', 'Open Workouts'] },
   { title: 'Coming from Life Dashboard?', body: '<p>For workouts only, use <strong>Settings → Import workout history</strong> to preview fitness JSON or extract training from a backup. It leaves other Life records out.</p><p>In Life Dashboard, open <strong>Settings &amp; Sync</strong> and tap <strong>Back up</strong>. Here, open <strong>Settings &amp; Sync → Import backup</strong> and choose that file. Your workouts, food, weight, measurements, progress photos and recipes come across; nothing else does.</p>' },
   { title: 'Put it on your phone', body: '<p>Open this page’s web address on your phone. On an iPhone use Safari: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>. On Android use Chrome: open the <strong>⋮</strong> menu and choose <strong>Add to Home screen</strong>.</p><p>Wait for <strong>Ready offline</strong> while online first. Then it opens from the Home Screen without a connection. Records stay in this browser; exporting a backup protects against storage being cleared. Updates wait until all Body tabs close.</p>' },
   { title: 'Keep your records safe', body: '<p>Your records live on this device. Removing the app from your home screen, or clearing the browser’s data, erases them.</p><p>Every week or so, open <strong>Settings &amp; Sync</strong>, tap <strong>Back up records + photos</strong>, and keep the file somewhere safe.</p><p>You can open this tour again from <strong>Help &amp; what’s new</strong> in the header.</p>' }
@@ -4356,7 +4619,7 @@ const A_HELP = {
 // (Sync.photos); API keys and downloaded libraries stay on the device. Sign-in is a plain redirect, so no
 // Google script is loaded.
 const DRIVE = { clientId: '', scope: 'https://www.googleapis.com/auth/drive.appdata', file: 'body-dashboard-sync.json', api: 'https://www.googleapis.com', auth: 'https://accounts.google.com/o/oauth2/v2/auth' };
-const SYNC_SETTINGS = ['name', 'hiddenTabs', 'tabsV', 'hiddenCards', 'cardOrder', 'bar', 'unit', 'restSeconds', 'timerSound', 'targets', 'bwFallback', 'rpe', 'calBig'];
+const SYNC_SETTINGS = ['name', 'hiddenTabs', 'tabsV', 'hiddenCards', 'cardOrder', 'bar', 'unit', 'restSeconds', 'timerSound', 'targets', 'bwFallback', 'rpe', 'calBig', 'navOrder'];
 const SYNC_SKIP = []; // photoMeta used to stay on each device; photos sync since 2026-10 (Sync.photos)
 const SYNC_BASE = 'sync.base';
 // A sync that would remove more than this many records (outside the lists that are routinely
@@ -4778,13 +5041,13 @@ const A = {
   },
   retrySave: async () => { if (Store.flushing) return; try { await WebWrites.retry(); toast('Changes saved on this device'); } catch (e) { toast(e.message, 'error'); } },
   // shell
-  go: el => go(el.dataset.view),
+  go: el => {if(el.dataset.view==='nutrition'){ui.nutPage=null;ui.nutTab='today';}if(el.dataset.view==='fitness'&&!Store.get('activeWorkout'))ui.fitTab='workout';go(el.dataset.view);},
   quickAdd: () => quickAddSheet(),
   qaPick: el => quickAddForm(el.dataset.what),
   dashWorkout: () => { ui.editW = null; ui.fitTab = 'workout'; go('fitness'); },
   qaWeight: f => { const v = num(fd(f).weight); if (v == null || v <= 0) return toast('Enter your weight', 'error'); ensureDay(ymd()).weight = fromUnit(v); Store.save('nutrition'); Modal.close(); savedNotice('Weight saved'); render(); },
   showMore: el => { const k = el.dataset.key; ui.more = { ...(ui.more || {}), [k]: ((ui.more || {})[k] || PAGE) + PAGE }; render(); },
-  setTab: el => { ui[el.dataset.key] = el.dataset.val; render(); },
+  setTab: el => { ui[el.dataset.key] = el.dataset.val; if(['nutTab','recTab'].includes(el.dataset.key))ui.nutPage=null; render(); },
   tabsEdit: el => tabsEditModal(el.dataset.key),
   dashCardsEdit: () => dashCardsModal(),
   dashCardMove: el => {
@@ -4838,13 +5101,13 @@ const A = {
   saveSettings: f => {
     const v = fd(f);
     Object.assign(S, { name: v.name.trim(), theme: v.theme, unit: v.unit, restSeconds: +v.restSeconds, bwFallback: num(v.bwFallback) ? (v.unit === 'lbs' ? num(v.bwFallback) * LB : num(v.bwFallback)) : null, timerSound: v.timerSound === '1', rpe: v.rpe === '1', calBig: v.calBig === 'eaten' ? 'eaten' : 'left', fdcKey: (v.fdcKey || '').trim(), targets: { cal: num(v.t_cal) || 2000, p: num(v.t_p) || 0, c: num(v.t_c) || 0, f: num(v.t_f) || 0 } });
-    const bar = [...new Set([v.bar0, v.bar1, v.bar2, v.bar3].filter(Boolean))];
-    if (bar.length === 4) S.bar = bar; else if ([v.bar0, v.bar1, v.bar2, v.bar3].some(Boolean)) toast('Choose four different sections for the bottom bar', 'error');
+    const nav=[v.nav0,v.nav1,v.nav2]; if(nav.every(x=>['dashboard','fitness','nutrition'].includes(x)) && new Set(nav).size===3) S.navOrder=nav;
     saveSettings(); applyTheme(); Modal.close(); toast('Settings saved'); render();
   }
 };
 
-Object.assign(A, A_FIT, A_NUT, A_MF, A_MEALS, A_RECIPES, A_MPW, A_SYNC, A_HELP, A_SHARE);
+Object.assign(A, A_FIT, A_NUT, A_MF, A_MEALS, A_RECIPES, A_MPW, A_SYNC, A_HELP, A_SHARE, A_NUT_WORKSPACE);
+for(const name of Object.keys(A))if(retiredAction(name))A[name]=()=>toast('Pantry, Grocery and Freezer have been retired. Original records remain in backups.');
 
 /* =====================================================================
    EVENT WIRING & INIT

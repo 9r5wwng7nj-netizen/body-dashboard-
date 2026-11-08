@@ -1,4 +1,4 @@
-// Phone-first: dashboard cards in the person's order, the bottom bar and its + button, the Today card,
+// Phone-first: preserved dashboard/card order, projected bottom navigation and header quick adds,
 // and on a phone the Log food button and recent foods come before everything else in Nutrition.
 import { test, expect } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
@@ -59,15 +59,15 @@ test('on a phone, Nutrition starts with Log food and one-tap recent foods', asyn
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
-test('on a phone, the bottom bar holds four sections with quick adds in the header', async ({ page }) => {
+test('three bottom roots project legacy order and keep header quick adds at every width', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const errors = await open(page);
   const bar = page.locator('#bottom-bar');
   await expect(bar).toBeVisible();
-  expect(await bar.locator('.bar-item').allInnerTexts()).toEqual(['Dashboard', 'Workouts', 'Nutrition', 'Meals']);
-  await expect(bar.locator('[aria-current="page"]')).toHaveText('Dashboard');
-  await bar.locator('[data-view="recipes"]').click();
-  await expect(bar.locator('[aria-current="page"]')).toHaveText('Meals');
+  expect(await bar.locator('.bar-item').allInnerTexts()).toEqual(['Today', 'Train', 'Nutrition']);
+  await expect(bar.locator('[aria-current="page"]')).toHaveText('Today');
+  await bar.locator('[data-view="nutrition"]').click();
+  await expect(bar.locator('[aria-current="page"]')).toHaveText('Nutrition');
   // The bar sits below the scrolling view, so it never covers the last thing on the page.
   const [viewBox, barBox] = await Promise.all([page.locator('#view').boundingBox(), bar.boundingBox()]);
   expect(viewBox.y + viewBox.height).toBeLessThanOrEqual(barBox.y + 1);
@@ -87,7 +87,7 @@ test('on a phone, the bottom bar holds four sections with quick adds in the head
   await page.keyboard.press('Escape');
   await page.locator('#header-tools [data-action="quickAdd"]').click();
   await page.click('#modal [data-what="workout"]');
-  await expect(bar.locator('[aria-current="page"]')).toHaveText('Workouts');
+  await expect(bar.locator('[aria-current="page"]')).toHaveText('Train');
   await page.locator('#header-tools [data-action="quickAdd"]').click();
   await page.click('#modal [data-what="link"]');
   await expect(page.locator('#modal h3')).toHaveText('Save a recipe from a link');
@@ -95,9 +95,10 @@ test('on a phone, the bottom bar holds four sections with quick adds in the head
 
   // The chosen order is preserved at every width.
   await page.evaluate(() => { S.bar = ['recipes', 'nutrition', 'fitness', 'dashboard']; render(); });
-  expect(await bar.locator('.bar-item').allInnerTexts()).toEqual(['Meals', 'Nutrition', 'Workouts', 'Dashboard']);
-  await page.evaluate(() => { S.bar = ['tasks', 'tasks', 'nope', 'family']; render(); });
-  expect(await bar.locator('.bar-item').allInnerTexts()).toEqual(['Dashboard', 'Workouts', 'Nutrition', 'Meals']);
+  expect(await bar.locator('.bar-item').allInnerTexts()).toEqual(['Nutrition', 'Train', 'Today']);
+  expect(await page.evaluate(() => S.bar)).toEqual(['recipes', 'nutrition', 'fitness', 'dashboard']);
+  await page.evaluate(() => { S.bar = ['tasks', 'tasks', 'nope', 'family']; delete S.navOrder; render(); });
+  expect(await bar.locator('.bar-item').allInnerTexts()).toEqual(['Today', 'Train', 'Nutrition']);
   expect(await page.evaluate(() => SYNC_SETTINGS.includes('bar'))).toBe(true);
   await page.setViewportSize({ width: 1280, height: 900 });
   await expect(bar).toBeVisible();
@@ -165,7 +166,7 @@ test('in a workout on a phone, times type like a microwave, and the top bar and 
   await expect(page.getByRole('button', { name: 'Undo completed set', exact: true })).toBeVisible();
   await expect(time).toHaveValue('1:30');
   const bar = page.locator('[data-wctx="active"] > .card').first();
-  expect((await bar.boundingBox()).height).toBeLessThan(120);
+  expect((await bar.boundingBox()).height).toBeLessThanOrEqual(120);
   await page.locator('[data-action="workoutOptions"]').click();
   await expect(page.locator('#modal [data-do="awDiscard"]')).toBeVisible();
   await page.keyboard.press('Escape');

@@ -1,5 +1,5 @@
 // Phase 1 of the refresh: a set row that fits a phone, RPE hidden until turned on, exercise tools behind ⋯,
-// notes behind "Add note", the Nutrition day bar, tabs that fit, one row of recipe filters, the slim backup
+// notes behind "Add note", the Nutrition day bar, named pages and searchable retained tags, the slim backup
 // reminder, calories left as the big number, and 44px fields and buttons on touch screens.
 import { test, expect } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
@@ -110,21 +110,25 @@ test('the Nutrition day bar names the day, and copying days lives behind ⋯', a
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
-test('tabs fit a phone, the Workouts row fades while there is more, and recipe filters take one row', async ({ page }) => {
+test('named pages replace scrolling tabs and tags remain searchable without the chip wall', async ({ page }) => {
   const errors = await open(page);
-  const tabRow = () => page.evaluate(() => { const g = document.querySelector('#view .tabs-row'); return { fits: g.scrollWidth <= g.clientWidth, fade: g.classList.contains('tabs-fade') }; });
-  for (const v of ['nutrition', 'recipes']) { await page.evaluate(v => go(v), v); expect(await tabRow()).toEqual({ fits: true, fade: false }); }
-  await page.evaluate(() => go('fitness'));
-  expect(await tabRow()).toEqual({ fits: false, fade: true });
-  await page.evaluate(() => { const g = document.querySelector('#view .tabs-row'); g.scrollLeft = g.scrollWidth; g.dispatchEvent(new Event('scroll')); });
-  expect((await tabRow()).fade).toBe(false);
-  // The short phone label shows, the full label is there for wider screens.
-  await page.evaluate(() => go('nutrition'));
-  await expect(page.locator('#view [data-action="setTab"][data-val="trend"]')).toHaveText(/Body/);
-  // Recipes: the filters scroll sideways in one row next to the sort menu.
-  await page.evaluate(() => { Store.get('recipes').forEach((r, i) => { r.tags = ['Quick', 'High Protein', `Tag ${i}`, 'Batch', 'Spicy', 'Comfort']; }); go('recipes'); });
-  const chips = await page.evaluate(() => { const g = document.querySelector('#view [aria-label="Filter recipes"]'); const tops = new Set([...g.querySelectorAll('.chip')].map(c => Math.round(c.getBoundingClientRect().top))); return tops.size; });
-  expect(chips).toBe(1);
+  for (const view of ['fitness', 'nutrition', 'recipes']) {
+    await page.evaluate(view => go(view), view);
+    await expect(page.locator('#view .tabs-row')).toHaveCount(0);
+    expect(await page.locator('#view').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  }
+  await page.evaluate(() => A.pageHome({ dataset: { view: 'nutrition' } }));
+  for (const pageName of ['library', 'mealplan', 'body', 'targets']) await expect(page.locator(`#view [data-action="nutPage"][data-page="${pageName}"]`)).toBeVisible();
+  await page.evaluate(() => {
+    Store.set('recipes', Array.from({ length: 3 }, (_, i) => ({ id: `synthetic-tags-${i}`, title: `Synthetic recipe ${i}`, ingredients: '1 cup rice', steps: 'Synthetic preparation.', tags: ['Quick', 'High Protein', `Tag ${i}`, 'Batch', 'Spicy', 'Comfort'] })));
+    A.nutPage({ dataset: { page: 'library' } });
+  });
+  await expect(page.locator('#view [data-action="libraryFilters"]')).toBeVisible();
+  await expect(page.locator('#view [data-action="libraryFavorites"]')).toBeVisible();
+  await expect(page.locator('#view [data-action="recTag"]')).toHaveCount(0);
+  await page.locator('#library-search').fill('Comfort');
+  await expect(page.locator('#view [data-action="libraryOpen"][data-kind="recipe"]')).toHaveCount(3);
+  expect(await page.evaluate(() => Store.get('recipes').map(r => r.tags))).toEqual(Array.from({ length: 3 }, (_, i) => ['Quick', 'High Protein', `Tag ${i}`, 'Batch', 'Spicy', 'Comfort']));
   expect(errors, errors.join('\n')).toEqual([]);
 });
 

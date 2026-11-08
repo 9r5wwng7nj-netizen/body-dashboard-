@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-07 — Warm Mineral training and nutrition
+
+- Added a shared offline exercise picker for routine building, active sessions and past-workout editing, with search, muscle/equipment filters, ordered multi-add and explicit custom creation.
+- Added durable session-only exercise swaps and guarded undo. Completed work retains original exercise/set identities, drafts/units remain in recovery metadata, and partial superset replacements are placed after the original group.
+- Fixed repeated-block historical lookup; new accepted exercise instances carry optional classification snapshots and comparisons disclose legacy mapping fallback.
+- Added routine primary/secondary set coverage, contributors, unmapped/timed-work disclosures and optional explicit weekly scenarios. Zero and missing set prescriptions remain distinct.
+- Adopted Warm Mineral light/dark colors, three projected bottom roots and named pages. Existing navigation/card preferences stay portable.
+- Combined foods, saved meals and recipes in Nutrition Library, including photos, favorites, portions and snapshot-based old-entry corrections. Missing nutrients remain unknown.
+- Retired Pantry, Grocery and Freezer controls and active effects, preserving their collections and references in backups. Recipes, meal planning, ordinary leftovers and cooking remain.
+- Improved enlarged-text reflow and theme-switch rendering; full source and live-release validation are recorded separately.
+
 ## 2026-11-07 — Focused training and simpler navigation
 
 - Replaced the left drawer with four bottom destinations at every screen width, preserving the saved order. Quick adds, settings and help moved to the header.

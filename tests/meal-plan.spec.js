@@ -1,5 +1,5 @@
 // Plan my week: a budget-aware week of meals from the user's recipes and a ready-made library,
-// with swaps, then into the meal plan and grocery list.
+// with swaps and recipe reuse; retired shopping and inventory records stay untouched.
 import { test, expect } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -29,8 +29,15 @@ test('the ready-made library is complete and usable', async ({ page }) => {
   for (const slot of ['breakfast', 'lunch', 'dinner']) expect(lib.filter(L => L.slot === slot).length, slot).toBeGreaterThanOrEqual(7);
 });
 
-test('a week is planned within budget, can be swapped, and becomes a meal plan and grocery list', async ({ page }) => {
+test('a week is planned within budget, swapped and applied without shopping or inventory writes', async ({ page }) => {
   const errors = await open(page);
+  const retained = await page.evaluate(() => {
+    Store.set('grocery', [{ id: 'synthetic-retained-grocery', name: 'Synthetic rice', checked: true, qty: 1.25, source: 'plan' }]);
+    Store.set('pantry', [{ id: 'synthetic-retained-pantry', name: 'Synthetic beans', low: true }]);
+    Store.set('freezer', [{ id: 'synthetic-retained-freezer', name: 'Synthetic batch', portions: 3.5 }]);
+    const k = gkit(); k.staples = [{ id: 'synthetic-due-staple', text: 'Synthetic oats', every: 7, last: null }]; k.spend = [{ date: '2026-10-01', amount: 12.125 }]; Store.set('gkit', k);
+    return { grocery: structuredClone(Store.get('grocery')), pantry: structuredClone(Store.get('pantry')), freezer: structuredClone(Store.get('freezer')), staples: structuredClone(k.staples), spend: structuredClone(k.spend), budget: k.budget };
+  });
   await page.click('[data-action="mpwOpen"]');
   const ws = await nextWeek(page);
   await page.click(`[data-action="mpwWeek"][data-v="${ws}"]`);
@@ -43,7 +50,8 @@ test('a week is planned within budget, can be swapped, and becomes a meal plan a
   expect(Object.keys(W.picks)).toHaveLength(21); // 7 days × breakfast, lunch, dinner
   expect(W.total).toBeLessThanOrEqual(150);
   expect(new Set(Object.values(W.picks)).size).toBe(21); // no meal repeats in the week
-  await expect(page.locator('#view')).toContainText('items');
+  await expect(page.locator('#view')).toContainText('21 meals');
+  await expect(page.locator('#view')).not.toContainText('Grocery list');
 
   // Swap Monday's dinner, then leave Tuesday's lunch unplanned.
   const monDinner = `${ws}|dinner`, tueLunch = `${await page.evaluate(w => addDays(w, 1), ws)}|lunch`;
@@ -54,15 +62,15 @@ test('a week is planned within budget, can be swapped, and becomes a meal plan a
   await page.click('[data-action="mpwApply"]');
   const after = await page.evaluate(w => {
     const plan = Store.get('mealPlan'), items = Array.from({ length: 7 }, (_, i) => plan[addDays(w, i)] || []).flat();
-    return { items: items.length, slots: [...new Set(items.map(i => i.slot))].sort(), batches: [...new Set(items.map(i => i.batch || 1))], recipes: Store.get('recipes').length, libCopies: Store.get('recipes').filter(r => r.lib).length, grocery: Store.get('grocery').filter(g => g.source === 'plan').length, tab: ui.recTab, prefs: gkit().planPrefs };
+    return { items: items.length, slots: [...new Set(items.map(i => i.slot))].sort(), batches: [...new Set(items.map(i => i.batch || 1))], recipes: Store.get('recipes').length, libCopies: Store.get('recipes').filter(r => r.lib).length, retained: { grocery: Store.get('grocery'), pantry: Store.get('pantry'), freezer: Store.get('freezer'), staples: gkit().staples, spend: gkit().spend, budget: gkit().budget }, tab: ui.recTab, prefs: gkit().planPrefs };
   }, ws);
   expect(after.items).toBe(20);
   expect(after.slots).toEqual(['breakfast', 'dinner', 'lunch']);
   expect(after.libCopies).toBe(after.recipes); // every planned ready-made recipe now lives in the recipe box
-  expect(after.grocery).toBeGreaterThan(10);
-  expect(after.tab).toBe('grocery');
+  expect(after.retained).toEqual(retained);
+  expect(after.tab).toBe('plan');
   expect(after.prefs).toMatchObject({ people: 2, budget: 150 });
-  await expect(page.locator('#view-title')).toHaveText('Recipes & Meals');
+  await expect(page.locator('#view-title')).toHaveText('Meal plan');
 
   // Planning again reuses the copies instead of duplicating them, and can replace what is planned.
   await page.evaluate(() => { ui.recTab = 'plan'; render(); });
@@ -73,6 +81,7 @@ test('a week is planned within budget, can be swapped, and becomes a meal plan a
   await page.click('[data-action="mpwApply"]');
   const again = await page.evaluate(w => ({ items: Array.from({ length: 7 }, (_, i) => Store.get('mealPlan')[addDays(w, i)] || []).flat().length, dupes: Object.values(Store.get('recipes').reduce((a, r) => { if (r.lib) a[r.lib] = (a[r.lib] || 0) + 1; return a; }, {})).filter(n => n > 1).length }), ws);
   expect(again).toEqual({ items: 21, dupes: 0 });
+  expect(await page.evaluate(() => ({ grocery: Store.get('grocery'), pantry: Store.get('pantry'), freezer: Store.get('freezer'), staples: gkit().staples, spend: gkit().spend, budget: gkit().budget }))).toEqual(retained);
   expect(errors, errors.join('\n')).toEqual([]);
 });
 

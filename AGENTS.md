@@ -102,3 +102,11 @@ Decisions: the big calorie number is **calories left** by default (`S.calBig`, s
 ## Focused interface (2026-11-07)
 
 The product owner requested a simpler lifting interface using supplied screenshots as directional references, not an exact copy. There is no sidebar. Four bottom destinations use the existing `S.bar` order; header controls expose quick adds, help and settings. Active workout rendering hides section tabs and bottom navigation; the down arrow minimizes to History, and Resume retains the active record. Numbered sets open options; extra steppers expand on demand (`ui.stepOpen`, transient). Calendar/totals and full history details expand separately. Keep all original storage, record and backup formats.
+
+## Approved next product iteration — 2026-11-07
+
+The owner accepted the recommendations in [the feature review plan](docs/product-review/2026-11-07/FEATURE_REVIEW_PLAN.md), with **Grocery and Freezer removed alongside Pantry** from the active product. Use Warm Mineral, Today/Train/Nutrition navigation, a shared exercise picker, safe session-only swaps, routine primary/secondary set coverage and a typed Nutrition Library with reduced tag clutter. Retire all three inventory/shopping surfaces **and their hidden effects**, preserving every stored collection/record/reference and backup compatibility. Meal planning, recipes, consumption logging and photos remain. This records the next iteration's direction; detailed implementation is pending and no application changes/deployment are part of the approval-record update.
+
+## Authorized implementation and publication — 2026-11-07
+
+The owner explicitly authorized implementing the approved feature-review plan, running checks and publishing. The Warm Mineral candidate now uses three projected roots while retaining all four legacy route IDs, named Train/Nutrition pages, shared exercise selection, durable swaps and routine set coverage. Pantry/Grocery/Freezer records remain in storage/backups; their actions are inert and rendered affordances removed. New optional snapshots and receipts use existing stores. See `docs/product-review/2026-11-07/IMPLEMENTATION_REPORT.md` for actual verification and release limits. The earlier planning-only notes describe the prior review, not a new approval requirement.

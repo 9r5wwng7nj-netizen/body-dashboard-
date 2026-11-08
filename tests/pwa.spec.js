@@ -31,7 +31,7 @@ test('hosted copy is installable and reopens offline', async ({ page }) => {
 
   await page.reload();
   await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
-  await expect(page.locator('#view-title')).toHaveText('Dashboard');
+  await expect(page.locator('#view-title')).toHaveText('Today');
   expect(await page.evaluate(() => Store.get('recipes').some(r => r.title === 'Saved before going offline'))).toBe(true);
   expect(await page.evaluate(() => fetch(XLSX_SCRIPT).then(r => r.ok))).toBe(true); // spreadsheet import still loads
   expect(errors, errors.join('\n')).toEqual([]);

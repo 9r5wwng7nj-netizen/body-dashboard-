@@ -1,4 +1,4 @@
-// Fewer tabs: merged tabs still open from old links, workout import/export lives in Settings, and
+// Named pages: legacy links still resolve, workout import/export lives in Settings, and
 // dashboard cards can be hidden.
 import { test, expect } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
@@ -14,33 +14,28 @@ async function open(page) {
   await page.evaluate(() => A.helpDismiss({ dataset: { what: 'tour' } }));
   return errors;
 }
-const tab = (page, key, id) => page.locator(`#view [data-action="setTab"][data-key="${key}"][data-val="${id}"]`);
 
-test('merged tabs show both parts, and links to the old tabs land in the right place', async ({ page }) => {
+test('legacy section links open named History, Body and Targets pages without tab rows', async ({ page }) => {
   const errors = await open(page);
   const view = page.locator('#view');
-
-  // Workouts: History has the calendar on top; Import / Export is gone from the tabs.
   await page.evaluate(() => {
     const s = new Date(); s.setHours(7, 0, 0, 0);
     Store.set('workouts', [{ id: 'w1', name: 'Push', start: s.toISOString(), end: new Date(s.getTime() + 36e5).toISOString(), exercises: [{ name: 'Bench Press', sets: [{ type: 'normal', weight: 60, reps: 8 }] }] }]);
     ui.fitTab = 'stats'; go('fitness');
   });
-  await expect(tab(page, 'fitTab', 'history')).toHaveAttribute('aria-pressed', 'true');
-  await expect(tab(page, 'fitTab', 'stats')).toHaveCount(0);
-  await expect(tab(page, 'fitTab', 'data')).toHaveCount(0);
+  await expect(page.locator('#view-title')).toHaveText('Workout history');
+  await expect(view.locator('.tabs-row')).toHaveCount(0);
   await expect(view.locator('[data-action="statMonth"]').first()).toBeVisible();
   await expect(view).toContainText('Push');
+  await expect(view.locator('[data-action="pageHome"][data-view="fitness"]')).toBeVisible();
 
-  // Nutrition: Body & weight holds measurements; Plan holds habits.
-  await page.evaluate(() => { ui.nutTab = 'body'; go('nutrition'); });
-  await expect(tab(page, 'nutTab', 'trend')).toHaveText(/Body & weight/);
+  await page.evaluate(() => { ui.nutTab = 'body'; ui.nutPage = null; go('nutrition'); });
+  await expect(page.locator('#view-title')).toHaveText('Weight & measurements');
   await expect(view).toContainText('Log measurements');
-  await page.evaluate(() => { ui.nutTab = 'history'; render(); });
-  await expect(tab(page, 'nutTab', 'plan')).toHaveAttribute('aria-pressed', 'true');
+  await page.evaluate(() => { ui.nutTab = 'history'; ui.nutPage = null; render(); });
+  await expect(page.locator('#view-title')).toHaveText('Targets & check-ins');
   await expect(view).toContainText('Habits & adherence');
-  for (const id of ['body', 'history']) await expect(tab(page, 'nutTab', id)).toHaveCount(0);
-
+  await expect(view.locator('.tabs-row')).toHaveCount(0);
   expect(errors, errors.join('\n')).toEqual([]);
 });
 

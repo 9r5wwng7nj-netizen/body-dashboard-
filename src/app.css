@@ -21,18 +21,39 @@ label:has(input:focus-visible) { outline: 2px solid #0f766e; outline-offset: 3px
 }
 
 @theme {
-  --color-brand-50: #f0fdfa;
-  --color-brand-100: #ccfbf1;
-  --color-brand-200: #99f6e4;
-  --color-brand-300: #5eead4;
-  --color-brand-400: #2dd4bf;
-  --color-brand-500: #14b8a6;
-  --color-brand-600: #0d9488;
-  --color-brand-700: #0f766e;
-  --color-brand-800: #115e59;
-  --color-brand-900: #134e4a;
-  --color-brand-950: #042f2e;
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --color-brand-50: #edf3ec;
+  --color-brand-100: #e0ece1;
+  --color-brand-200: #c9decd;
+  --color-brand-300: #a7c9b0;
+  --color-brand-400: #86ae92;
+  --color-brand-500: #628f72;
+  --color-brand-600: #47735a;
+  --color-brand-700: #315c4b;
+  --color-brand-800: #274b3d;
+  --color-brand-900: #1f3b30;
+  --color-brand-950: #142a20;
+  --color-slate-50: #f5f3ee;
+  --color-slate-100: #e9ece4;
+  --color-slate-200: #d9dfd8;
+  --color-slate-300: #7d8c80;
+  --color-slate-400: #7d8c80;
+  --color-slate-500: #53635b;
+  --color-slate-600: #53635b;
+  --color-slate-700: #3d4e43;
+  --color-slate-800: #29382f;
+  --color-slate-900: #1d2822;
+  --color-slate-950: #141c18;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+:root {
+  --wm-canvas: #f5f3ee; --wm-surface: #fff; --wm-soft: #e9ece4;
+  --wm-ink: #222c28; --wm-muted: #53635b; --wm-accent: #315c4b;
+  --wm-on-accent: #fff; --wm-control: #7d8c80; --wm-line: #d9dfd8;
+}
+.dark {
+  --wm-canvas: #141c18; --wm-surface: #1d2822; --wm-soft: #29382f;
+  --wm-ink: #f2f4ee; --wm-muted: #afbdb1; --wm-accent: #a7c9b0;
+  --wm-on-accent: #17251c; --wm-control: #778b7c; --wm-line: #3d4e43;
 }
 
 @layer components {
@@ -76,13 +97,13 @@ label:has(input:focus-visible) { outline: 2px solid #0f766e; outline-offset: 3px
 
 /* Existing small utility text must remain readable on tinted cards in both themes. */
 @layer utilities {
-  .text-slate-400, .text-slate-500 { color: #475569; }
-  .text-brand-600 { color: #0f766e; }
+  .text-slate-400, .text-slate-500 { color: var(--wm-muted); }
+  .text-brand-600 { color: var(--wm-accent); }
   .text-rose-600 { color: #be123c; }
-  .dark .text-slate-400, .dark .text-slate-500 { color: #94a3b8; }
-  .dark .text-brand-600 { color: #5eead4; }
+  .dark .text-slate-400, .dark .text-slate-500 { color: var(--wm-muted); }
+  .dark .text-brand-600 { color: var(--wm-accent); }
   .dark .text-rose-600 { color: #fda4af; }
-  .bg-brand-600.text-white { background-color: #0f766e; }
+  .bg-brand-600.text-white { background-color: #315c4b; }
 }
 
 /* Phones: dialogs rise from the bottom as sheets, within thumb reach; drag the handle or title down to close. */
@@ -188,7 +209,7 @@ body:has([data-input="awSet"]:focus) #timer { position: static; margin: .5rem 1r
 .workout-focus .workout-exercise-head > div:first-child { flex-basis: 100%; min-width: 0; }
 .workout-focus .workout-exercise-head [data-action="libEdit"] { font-size: 1.125rem; }
 .workout-focus .exercise-context { margin-top: 4px; }
-.workout-focus .workout-exercise-head > label { padding: 0 8px; border-radius: 8px; background: #e2e8f0; }
+.workout-focus .workout-exercise-head > label { padding: 0 8px; border-radius: 8px; background: var(--wm-soft); }
 .workout-focus .workout-exercise-head > button { margin-left: auto; }
 .workout-focus [data-action="awNoteOpen"][data-i] { margin-bottom: 4px; }
 .workout-focus .workout-matrix caption { margin-bottom: 12px; }
@@ -200,9 +221,9 @@ body:has([data-input="awSet"]:focus) #timer { position: static; margin: .5rem 1r
 .dark .set-adjustments > summary { color: #5eead4; }
 .workout-focus #timer { bottom: calc(.75rem + env(safe-area-inset-bottom)); }
 .workout-focus #toasts { bottom: calc(5rem + env(safe-area-inset-bottom)); }
-.dark .workout-focus { background: #0b1117; }
-.dark .workout-focus .workout-summary, .dark .workout-focus .workout-exercise { border-color: #2b3540; }
-.dark .workout-focus .workout-exercise-head > label { background: #1e2934; }
+.dark .workout-focus { background: var(--wm-canvas); }
+.dark .workout-focus .workout-summary, .dark .workout-focus .workout-exercise { border-color: var(--wm-line); }
+.dark .workout-focus .workout-exercise-head > label { background: var(--wm-soft); }
 .workout-feed.card { border-radius: 0; border-width: 0 0 1px; box-shadow: none; background: transparent; }
 .workout-feed .feed-preview { display: grid; gap: 8px; margin-top: 16px; font-size: .875rem; }
 .workout-feed .feed-preview > span { display: flex; align-items: center; gap: 10px; }
@@ -214,8 +235,8 @@ body:has([data-input="awSet"]:focus) #timer { position: static; margin: .5rem 1r
 .workout-focus #bottom-bar { display: none; }
 .workout-focus .workout-exercise-head > div:first-child { flex-basis: auto; }
 .workout-focus .exercise-tools { margin: 6px 0 12px; }
-.workout-focus .exercise-tools > label { padding-left: 8px; border-radius: 8px; background: #e2e8f0; }
-.dark .workout-focus .exercise-tools > label { background: #1e2934; }
+.workout-focus .exercise-tools > label { padding-left: 8px; border-radius: 8px; background: var(--wm-soft); }
+.dark .workout-focus .exercise-tools > label { background: var(--wm-soft); }
 .enlarged-text.workout-focus .workout-exercise-head > div:first-child { flex-basis: 100%; }
 .workout-focus .workout-summary { padding-bottom: 12px; }
 .workout-stats { margin-top: 8px; }
@@ -223,3 +244,62 @@ body:has([data-input="awSet"]:focus) #timer { position: static; margin: .5rem 1r
 body:not(.workout-focus):has(#resume-workout:not(.hidden)) #timer { position: static; width: auto; margin: 8px 12px; }
 body:not(.workout-focus):has(#resume-workout:not(.hidden)) #timer > .card { width: 100%; max-width: 680px; margin: auto; }
 .exercise-tools { flex-wrap: wrap; }
+
+/* Warm Mineral: one semantic system shared by existing and new screens. */
+body { background: var(--wm-canvas); color: var(--wm-ink); }
+#app-shell header, #bottom-bar { background: var(--wm-surface); border-color: var(--wm-line); }
+#view-title { font-size: 1.5rem; letter-spacing: -.025em; line-height: 1.2; }
+.workout-focus #view-title { font-size: 1.25rem; }
+.card { background: var(--wm-surface); color: var(--wm-ink); border-color: var(--wm-line); box-shadow: none; }
+.stat { background: var(--wm-soft); }
+.muted, .label { color: var(--wm-muted); }
+.label { text-transform: none; letter-spacing: 0; font-size: .8125rem; }
+.btn { min-height: 44px; color: var(--wm-ink); background: var(--wm-soft); border-color: transparent; }
+.btn:hover { background: var(--wm-soft); filter: brightness(.97); }
+.btn-primary, .btn-primary:hover { background: var(--wm-accent); color: var(--wm-on-accent); border-color: var(--wm-accent); }
+.btn-ghost, .btn-ghost:hover { background: transparent; }
+.btn-danger { color: #be123c; }
+.dark .btn-danger { color: #fda4af; }
+.input { color: var(--wm-ink); background: var(--wm-surface); border-color: var(--wm-control); min-height: 44px; }
+.input::placeholder { color: var(--wm-muted); opacity: 1; }
+.input:focus-visible, :focus-visible { outline-color: var(--wm-accent); }
+.chip { color: var(--wm-muted); background: var(--wm-soft); }
+button.chip, label.chip { min-height: 44px; }
+.chip-on { color: var(--wm-on-accent); background: var(--wm-accent); }
+#bottom-bar { padding: 6px 12px calc(6px + env(safe-area-inset-bottom)); gap: 6px; }
+#bottom-bar .bar-item { max-width: 220px; min-height: 56px; border-radius: 12px; color: var(--wm-muted); font-size: .8125rem; }
+#bottom-bar .bar-on { color: var(--wm-accent); background: var(--wm-soft); }
+#bottom-bar .bar-on::before { display: none; }
+.bar-badge { background: #315c4b; color: #fff; }
+.resume-session, .dark .resume-session { background: var(--wm-soft); color: var(--wm-accent); border-color: var(--wm-line); }
+.set-adjustments > summary, .dark .set-adjustments > summary { color: var(--wm-accent); }
+.workout-focus .workout-exercise-head [data-action="libEdit"] { color: var(--wm-accent); }
+.workout-focus .workout-matrix input { background: var(--wm-canvas); }
+.workout-matrix [data-action="awSetDone"] { color: var(--wm-muted); background: var(--wm-soft); }
+.workout-matrix [data-set-state="committed"] [data-action="awSetDone"] { color: var(--wm-on-accent); background: var(--wm-accent); }
+[data-weight-trend] { stroke: var(--wm-accent); }
+.section-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.page-back { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 12px; color: var(--wm-accent); }
+.enlarged-text input.input, .enlarged-text select.input { height: auto; min-height: 60px; }
+.enlarged-text .btn { white-space: normal; }
+.enlarged-text #bottom-bar { grid-template-columns: minmax(0,1fr); }
+.tab { color: var(--wm-muted); }
+.tab-active { color: var(--wm-accent); background: var(--wm-surface); }
+label:has(input:focus-visible), .dark label:has(input:focus-visible) { outline-color: var(--wm-accent); }
+.skip-link { background: #315c4b; }
+.btn, button.chip { min-width: 44px; }
+.grid-cols-7:has([data-action="calDay"]) { grid-template-columns: repeat(7,minmax(44px,1fr)); gap: 0; overflow-x: auto; }
+[data-action="calDay"] { min-height: 44px; }
+.flex:has(> [data-action="statMonth"]) { flex-wrap: wrap; }
+.flex:has(> [data-action="statMonth"]) h3 { min-width: 0; overflow-wrap: anywhere; }
+.enlarged-text #view [class*="min-w-["] { min-width: 0; max-width: 100%; flex-basis: 100%; }
+select.input { max-width: 100%; }
+.enlarged-text #view .grid-cols-2 { grid-template-columns: minmax(0,1fr); }
+.enlarged-text #view .card { overflow-wrap: anywhere; }
+.enlarged-text #view .flex:has(> label [data-change="nutDate"]) { flex-wrap: wrap; }
+.enlarged-text #view label:has([data-change="nutDate"]) { flex-basis: 100%; order: -1; }
+.enlarged-text #view label:has([data-change="nutDate"]) .truncate { white-space: normal; overflow: visible; }
+/* Explicit shell colors keep inherited text current when changing theme after a sheet closes. */
+#app-shell, #app-shell > div, #view, #modal { color: var(--wm-ink); }
+:root { color-scheme: light; }
+.dark { color-scheme: dark; }

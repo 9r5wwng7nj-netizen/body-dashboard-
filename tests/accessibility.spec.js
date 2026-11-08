@@ -3,6 +3,31 @@ import axe from 'axe-core';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
+// Explicit inventory: disappearing section-tab buttons must not silently shrink coverage.
+const NAMED_PAGES = [
+  { label: 'Today', home: 'dashboard' },
+  { label: 'Train', home: 'fitness' },
+  { label: 'Workout history', train: 'history' },
+  { label: 'Routines', train: 'routines' },
+  { label: 'Exercise library', train: 'library' },
+  { label: 'Training progress', train: 'progress' },
+  { label: 'Nutrition log', home: 'nutrition', title: 'Nutrition' },
+  { label: 'Nutrition library', nutrition: 'library', title: 'Library' },
+  { label: 'Meal plan', nutrition: 'mealplan' },
+  { label: 'Weight & measurements', nutrition: 'body' },
+  { label: 'Targets & check-ins', nutrition: 'targets' }
+];
+async function openNamedPage(page, route) {
+  await page.evaluate(route => {
+    Modal.close(); ui.editW = null;
+    if (route.train) A.trainPage({ dataset: { page: route.train } });
+    else if (route.nutrition) A.nutPage({ dataset: { page: route.nutrition } });
+    else A.pageHome({ dataset: { view: route.home } });
+  }, route);
+  await expect(page.locator('#view-title')).toHaveText(route.title || route.label);
+}
+
+
 async function prepare(page, theme) {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   if (theme) await page.addInitScript(theme => localStorage.setItem('bd.settings', JSON.stringify({ theme })), theme);
@@ -14,27 +39,27 @@ async function prepare(page, theme) {
 async function violations(page) {
   // Scan a painted frame rather than the transient frame during a theme switch.
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  return page.evaluate(async () => (await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })).violations.map(v => ({ rule: v.id, nodes: v.nodes.map(n => n.html) })));
+  return page.evaluate(async () => (await axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa'] } })).violations.map(v => ({ rule: v.id, impact: v.impact, nodes: v.nodes.map(n => ({ target: n.target, html: n.html, summary: n.failureSummary })) })));
 }
 
-for (const theme of ['light', 'dark']) test('accessible names and contrast across views and tabs — ' + theme, async ({ page }) => {
+for (const theme of ['light', 'dark']) test('accessible names and contrast across all named pages — ' + theme, async ({ page }) => {
   await prepare(page, theme);
+  await page.evaluate(async () => {
+    const start = new Date(); start.setHours(8, 0, 0, 0);
+    Store.set('workouts', [{ id: 'synthetic-axe-history', name: 'Synthetic training', start: start.toISOString(), end: new Date(+start + 1800000).toISOString(), exercises: [{ name: 'Bench Press (Barbell)', sets: [{ type: 'normal', weight: 40, reps: 8 }] }] }]);
+    Store.set('nutrition', { [ymd()]: { weight: 80, entries: [{ id: 'synthetic-axe-entry', name: 'Synthetic breakfast', qty: 1, unit: 'serving', cal: 450, p: 25, c: 50, f: 15, meal: 'breakfast' }] } });
+    Store.set('recipes', [{ id: 'synthetic-axe-recipe', title: 'Synthetic stew', servings: 4, ingredients: '1 cup rice', steps: 'Synthetic preparation.', cal: 450, p: 25, c: 50, f: 15 }]);
+    await Store.flushDirty();
+  });
   const failures = [];
-  const views = await page.evaluate(() => VIEWS.filter(v => v.id).map(v => v.id));
-  for (const view of views) {
-    await page.evaluate(view => go(view), view);
-    const scan = async location => { const found = await violations(page); if (found.length) failures.push({ location, found }); };
-    await scan(view);
-    const tabs = await page.locator('#view [data-action="setTab"]').evaluateAll(els => [...new Map(els.map(e => [e.dataset.key + '=' + e.dataset.val, [e.dataset.key, e.dataset.val]])).values()]);
-    for (const [key, value] of tabs) {
-      await page.evaluate(([key, value]) => { ui[key] = value; render(); }, [key, value]);
-      await scan(view + '/' + value);
-    }
+  for (const route of NAMED_PAGES) {
+    await openNamedPage(page, route);
+    const found = await violations(page);
+    if (found.length) failures.push({ location: route.label, found });
   }
   await page.evaluate(() => openSettings());
-  const settings = await violations(page); if (settings.length) failures.push({ location: 'settings', found: settings });
-  const unique = [...new Set(failures.flatMap(f => f.found.flatMap(v => v.nodes.map(html => v.rule + ': ' + html))))];
-  expect(unique.join('\n')).toBe('');
+  const settings = await violations(page); if (settings.length) failures.push({ location: 'Settings', found: settings });
+  expect(failures, JSON.stringify(failures, null, 2)).toEqual([]);
 });
 
 test('dialog focus wraps, background is inert, Escape returns to opener', async ({ page }) => {
@@ -81,14 +106,19 @@ test('bottom navigation and settings are reachable without a drawer', async ({ p
   await expect(page.locator('#view-title')).toBeFocused();
 });
 
-test('view sections retain keyboard focus and notices are announced', async ({ page }) => {
+test('named pages support keyboard entry/back focus and notices are announced', async ({ page }) => {
   await prepare(page);
-  await page.getByRole('button', { name: 'Workouts', exact: true }).click();
+  await page.locator('#bottom-bar [data-view="fitness"]').click();
   await expect(page.locator('#view-title')).toBeFocused();
-  const button = page.locator('#view [data-action="setTab"][data-val="history"]');
-  await button.focus(); await page.keyboard.press('Enter');
-  await expect(button).toBeFocused();
-  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  const history = page.locator('#view [data-action="trainPage"][data-page="history"]');
+  await history.focus(); await page.keyboard.press('Enter');
+  await expect(page.locator('#view-title')).toBeFocused();
+  await expect(page.locator('#view-title')).toHaveText('Workout history');
+  const back = page.locator('#view [data-action="pageHome"][data-view="fitness"]');
+  await expect(back).toBeVisible(); await back.focus(); await page.keyboard.press('Enter');
+  await expect(page.locator('#view-title')).toBeFocused();
+  await expect(page.locator('#view-title')).toHaveText('Train');
+  await expect(page.locator('#view [data-action="trainPage"][data-page="history"]')).toBeVisible();
   await page.evaluate(() => { toast('Saved successfully'); toast('Could not save', 'error'); });
   await expect(page.locator('#status-announcement')).toHaveText('Saved successfully');
   await expect(page.getByRole('alert')).toHaveText('Could not save');
@@ -102,7 +132,7 @@ test('custom actions and hidden file pickers can be used by keyboard', async ({ 
   });
   await page.getByRole('button', { name: 'Open Recipes', exact: true }).focus();
   await page.keyboard.press('Space');
-  await expect(page.locator('#view-title')).toHaveText('Recipes & Meals');
+  await expect(page.locator('#view-title')).toHaveText('Library');
   const chooser = page.waitForEvent('filechooser'); // listen well before Enter: turning on file-chooser capture is not instant
   await page.evaluate(() => Modal.open(modalShell('Photo upload', '<label class="btn">Choose photo<input type="file" class="hidden"></label>')));
   const picker = page.getByRole('button', { name: 'Choose photo', exact: true });

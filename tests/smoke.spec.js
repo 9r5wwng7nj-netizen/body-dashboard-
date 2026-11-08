@@ -1,10 +1,35 @@
-// Smoke tests: open index.html from disk, visit every view and tab, and make sure nothing throws.
+// Smoke tests: open index.html from disk, visit every named page, and make sure nothing throws.
 // Runtime dependencies are local. Network is blocked so tests stay deterministic.
 import { test, expect } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 
 const APP = pathToFileURL(path.resolve('index.html')).href;
+
+// Explicit inventory: disappearing section-tab buttons must not silently shrink coverage.
+const NAMED_PAGES = [
+  { label: 'Today', home: 'dashboard' },
+  { label: 'Train', home: 'fitness' },
+  { label: 'Workout history', train: 'history' },
+  { label: 'Routines', train: 'routines' },
+  { label: 'Exercise library', train: 'library' },
+  { label: 'Training progress', train: 'progress' },
+  { label: 'Nutrition log', home: 'nutrition', title: 'Nutrition' },
+  { label: 'Nutrition library', nutrition: 'library', title: 'Library' },
+  { label: 'Meal plan', nutrition: 'mealplan' },
+  { label: 'Weight & measurements', nutrition: 'body' },
+  { label: 'Targets & check-ins', nutrition: 'targets' }
+];
+async function openNamedPage(page, route) {
+  await page.evaluate(route => {
+    Modal.close(); ui.editW = null;
+    if (route.train) A.trainPage({ dataset: { page: route.train } });
+    else if (route.nutrition) A.nutPage({ dataset: { page: route.nutrition } });
+    else A.pageHome({ dataset: { view: route.home } });
+  }, route);
+  await expect(page.locator('#view-title')).toHaveText(route.title || route.label);
+}
+
 
 async function prepare(page) {
   const errors = [];
@@ -21,24 +46,18 @@ async function prepare(page) {
   return errors;
 }
 
-async function visitEverything(page, perTab) {
-  const views = await page.evaluate(() => VIEWS.filter(v => v.id).map(v => v.id));
-  for (const id of views) {
-    await page.evaluate(v => go(v), id);
-    if (perTab) await perTab(`${id}`);
-    const tabs = await page.$$eval('#view [data-action="setTab"]', els => [...new Map(els.map(e => [`${e.dataset.key}=${e.dataset.val}`, [e.dataset.key, e.dataset.val]])).values()]);
-    for (const [key, val] of tabs) {
-      await page.evaluate(([k, v]) => { ui[k] = v; render(); }, [key, val]);
-      if (perTab) await perTab(`${id} › ${key}=${val}`);
-    }
+async function visitEverything(page, perPage) {
+  for (const route of NAMED_PAGES) {
+    await openNamedPage(page, route);
+    if (perPage) await perPage(route.label);
   }
-  return views;
+  return NAMED_PAGES.map(route => route.label);
 }
 
-test('every view and tab renders without errors', async ({ page }) => {
+test('every named landing and detail page renders without errors', async ({ page }) => {
   const errors = await prepare(page);
   const views = await visitEverything(page, async () => { await expect(page.locator('#view')).not.toBeEmpty(); });
-  expect(views).toEqual(['dashboard', 'fitness', 'nutrition', 'recipes']);
+  expect(views).toEqual(['Today', 'Train', 'Workout history', 'Routines', 'Exercise library', 'Training progress', 'Nutrition log', 'Nutrition library', 'Meal plan', 'Weight & measurements', 'Targets & check-ins']);
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
