@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-07 — Secondary muscles and reusable exercise cues
+
+- Shared custom-exercise metadata fields, visible 44px secondary selections and primary exclusion.
+- Reusable Exercise cues appear while logging; Session notes remain dated records, with explicit copy-to-cue.
+- Coordinated metadata/rename saving, retained pending edits, restart/backup recovery and stale-edit protection. Cue-only metadata stays partial so it cannot freeze inferred muscle mappings. No collection/key/DB changes.
+
 ## 2026-11-07 — Cobalt Air
 
 Cobalt Air light/dark colors, neutral workout surfaces, blue actions, matching focus and browser chrome, and a cobalt app icon. Existing records, storage, offline logging and import/backup behavior are unchanged.

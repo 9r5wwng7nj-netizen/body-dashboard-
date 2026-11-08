@@ -1,0 +1,3042 @@
+{
+  "schemaVersion": 1,
+  "packet": "release-2-priority-catalog-candidates",
+  "status": "curated_proposal_for_root_and_product_review_not_trainer_approval",
+  "preparedAtLocalDate": "2026-11-07",
+  "baselineBuiltInCount": 56,
+  "candidateAdditions": 60,
+  "potentialTotalBeforeRootReview": 116,
+  "eventualReviewedTotalTarget": [
+    200,
+    250
+  ],
+  "targetIsNotQuota": true,
+  "noRuntimeImages": true,
+  "licenseNotice": "Upstream metadata reference is declared public domain/Unlicense by free-exercise-db. Retain its notice/provenance. No instructions or image bytes are included. This curation is not an independent warranty of physiology, safety, or upstream rights.",
+  "sourceIndexUrl": "https://raw.githubusercontent.com/yuhonas/free-exercise-db/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/dist/exercises.json",
+  "entries": [
+    {
+      "id": "bd-catalog-2026q4-001",
+      "name": "Bench Press (Dumbbell)",
+      "type": "weight_reps",
+      "primary": "Chest",
+      "secondary": [
+        "Shoulders",
+        "Triceps"
+      ],
+      "equipment": "Dumbbell",
+      "aliases": [
+        "Flat Dumbbell Bench Press",
+        "Dumbbell Bench Press"
+      ],
+      "description": "Flat-bench dumbbell press.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Dumbbell_Bench_Press",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Dumbbell_Bench_Press.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Dumbbell Bench Press",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders",
+          "triceps"
+        ],
+        "equipment": "dumbbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-002",
+      "name": "Incline Bench Press (Barbell)",
+      "type": "weight_reps",
+      "primary": "Chest",
+      "secondary": [
+        "Shoulders",
+        "Triceps"
+      ],
+      "equipment": "Barbell",
+      "aliases": [
+        "Incline Barbell Press",
+        "Barbell Incline Bench Press - Medium Grip"
+      ],
+      "description": "Incline-bench barbell press.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Barbell_Incline_Bench_Press_-_Medium_Grip",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Barbell_Incline_Bench_Press_-_Medium_Grip.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Barbell Incline Bench Press - Medium Grip",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders",
+          "triceps"
+        ],
+        "equipment": "barbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-003",
+      "name": "Chest Press (Machine)",
+      "type": "weight_reps",
+      "primary": "Chest",
+      "secondary": [
+        "Shoulders",
+        "Triceps"
+      ],
+      "equipment": "Machine",
+      "aliases": [
+        "Machine Bench Press"
+      ],
+      "description": "Seated chest-press machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Machine_Bench_Press",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Machine_Bench_Press.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Machine Bench Press",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders",
+          "triceps"
+        ],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-004",
+      "name": "Incline Chest Press (Machine)",
+      "type": "weight_reps",
+      "primary": "Chest",
+      "secondary": [
+        "Shoulders",
+        "Triceps"
+      ],
+      "equipment": "Machine",
+      "aliases": [
+        "Incline Machine Press",
+        "Leverage Incline Chest Press"
+      ],
+      "description": "Incline plate-loaded chest press.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Leverage_Incline_Chest_Press",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Leverage_Incline_Chest_Press.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Leverage Incline Chest Press",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders",
+          "triceps"
+        ],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-005",
+      "name": "Chest Press (Cable)",
+      "type": "weight_reps",
+      "primary": "Chest",
+      "secondary": [
+        "Shoulders",
+        "Triceps"
+      ],
+      "equipment": "Cable",
+      "aliases": [
+        "Cable Chest Press"
+      ],
+      "description": "Chest press using cable resistance.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Cable_Chest_Press",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Cable_Chest_Press.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Cable Chest Press",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders",
+          "triceps"
+        ],
+        "equipment": "cable",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-006",
+      "name": "Chest Fly (Dumbbell)",
+      "type": "weight_reps",
+      "primary": "Chest",
+      "secondary": [],
+      "equipment": "Dumbbell",
+      "aliases": [
+        "Dumbbell Flyes"
+      ],
+      "description": "Flat-bench dumbbell fly.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Dumbbell_Flyes",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Dumbbell_Flyes.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Dumbbell Flyes",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "dumbbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-007",
+      "name": "Incline Chest Fly (Dumbbell)",
+      "type": "weight_reps",
+      "primary": "Chest",
+      "secondary": [
+        "Shoulders"
+      ],
+      "equipment": "Dumbbell",
+      "aliases": [
+        "Incline Dumbbell Flyes"
+      ],
+      "description": "Incline-bench dumbbell fly.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Incline_Dumbbell_Flyes",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Incline_Dumbbell_Flyes.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Incline Dumbbell Flyes",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "shoulders"
+        ],
+        "equipment": "dumbbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-008",
+      "name": "Close-Grip Bench Press (Barbell)",
+      "type": "weight_reps",
+      "primary": "Triceps",
+      "secondary": [
+        "Chest",
+        "Shoulders"
+      ],
+      "equipment": "Barbell",
+      "aliases": [
+        "Close Grip Barbell Press",
+        "Close-Grip Barbell Bench Press"
+      ],
+      "description": "Barbell bench press with the close-grip variant kept distinct.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Close-Grip_Barbell_Bench_Press",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Close-Grip_Barbell_Bench_Press.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Close-Grip Barbell Bench Press",
+        "primaryMuscles": [
+          "triceps"
+        ],
+        "secondaryMuscles": [
+          "chest",
+          "shoulders"
+        ],
+        "equipment": "barbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-009",
+      "name": "Chest-Supported T-Bar Row (Machine)",
+      "type": "weight_reps",
+      "primary": "Upper Back",
+      "secondary": [
+        "Biceps",
+        "Lats"
+      ],
+      "equipment": "Machine",
+      "aliases": [
+        "Chest Supported Row Machine",
+        "Lying T-Bar Row"
+      ],
+      "description": "T-bar row using a chest-support pad.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Lying_T-Bar_Row",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Lying_T-Bar_Row.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Lying T-Bar Row",
+        "primaryMuscles": [
+          "middle back"
+        ],
+        "secondaryMuscles": [
+          "biceps",
+          "lats"
+        ],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-010",
+      "name": "Chest-Supported Row (Dumbbell)",
+      "type": "weight_reps",
+      "primary": "Upper Back",
+      "secondary": [
+        "Biceps",
+        "Forearms",
+        "Lats",
+        "Shoulders"
+      ],
+      "equipment": "Dumbbell",
+      "aliases": [
+        "Incline Dumbbell Row",
+        "Dumbbell Incline Row"
+      ],
+      "description": "Dumbbell row supported by an incline bench.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Dumbbell_Incline_Row",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Dumbbell_Incline_Row.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Dumbbell Incline Row",
+        "primaryMuscles": [
+          "middle back"
+        ],
+        "secondaryMuscles": [
+          "biceps",
+          "forearms",
+          "lats",
+          "shoulders"
+        ],
+        "equipment": "dumbbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-011",
+      "name": "Single-Arm Seated Row (Cable)",
+      "type": "weight_reps",
+      "primary": "Upper Back",
+      "secondary": [
+        "Biceps",
+        "Lats"
+      ],
+      "equipment": "Cable",
+      "aliases": [
+        "One Arm Cable Row",
+        "Seated One-arm Cable Pulley Rows"
+      ],
+      "description": "Seated cable-row variant performed one arm at a time.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Seated_One-arm_Cable_Pulley_Rows",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Seated_One-arm_Cable_Pulley_Rows.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Seated One-arm Cable Pulley Rows",
+        "primaryMuscles": [
+          "middle back"
+        ],
+        "secondaryMuscles": [
+          "biceps",
+          "lats",
+          "traps"
+        ],
+        "equipment": "cable",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-012",
+      "name": "Straight-Arm Pulldown (Cable)",
+      "type": "weight_reps",
+      "primary": "Lats",
+      "secondary": [],
+      "equipment": "Cable",
+      "aliases": [
+        "Cable Pullover",
+        "Straight-Arm Pulldown"
+      ],
+      "description": "Pulldown variant with the elbows kept comparatively straight.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Straight-Arm_Pulldown",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Straight-Arm_Pulldown.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Straight-Arm Pulldown",
+        "primaryMuscles": [
+          "lats"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "cable",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-013",
+      "name": "Neutral-Grip Pulldown (Cable)",
+      "type": "weight_reps",
+      "primary": "Lats",
+      "secondary": [
+        "Biceps",
+        "Upper Back",
+        "Shoulders"
+      ],
+      "equipment": "Cable",
+      "aliases": [
+        "V Bar Pulldown",
+        "V-Bar Pulldown"
+      ],
+      "description": "Pulldown using a close neutral-grip attachment.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "V-Bar_Pulldown",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/V-Bar_Pulldown.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "V-Bar Pulldown",
+        "primaryMuscles": [
+          "lats"
+        ],
+        "secondaryMuscles": [
+          "biceps",
+          "middle back",
+          "shoulders"
+        ],
+        "equipment": "cable",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-014",
+      "name": "Back Extension (Bodyweight)",
+      "type": "bodyweight",
+      "primary": "Lower Back",
+      "secondary": [
+        "Glutes",
+        "Hamstrings"
+      ],
+      "equipment": "Bodyweight",
+      "aliases": [
+        "Hyperextension",
+        "Hyperextensions (Back Extensions)"
+      ],
+      "description": "Unloaded back-extension-bench variant; added-load work is a separate variant.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "bodyweight_repetitions",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Hyperextensions_Back_Extensions",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Hyperextensions_Back_Extensions.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Hyperextensions (Back Extensions)",
+        "primaryMuscles": [
+          "lower back"
+        ],
+        "secondaryMuscles": [
+          "glutes",
+          "hamstrings"
+        ],
+        "equipment": "other",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Equipment normalized from upstream other to Bodyweight using the named apparatus/variant."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-015",
+      "name": "High Row (Machine)",
+      "type": "weight_reps",
+      "primary": "Upper Back",
+      "secondary": [
+        "Lats"
+      ],
+      "equipment": "Machine",
+      "aliases": [
+        "Leverage High Row"
+      ],
+      "description": "Plate-loaded high-row machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Leverage_High_Row",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Leverage_High_Row.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Leverage High Row",
+        "primaryMuscles": [
+          "middle back"
+        ],
+        "secondaryMuscles": [
+          "lats"
+        ],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-016",
+      "name": "Rear Delt Fly (Machine)",
+      "type": "weight_reps",
+      "primary": "Shoulders",
+      "secondary": [],
+      "equipment": "Machine",
+      "aliases": [
+        "Reverse Pec Deck",
+        "Reverse Machine Flyes"
+      ],
+      "description": "Reverse-fly machine variant; distinct from a chest fly.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Reverse_Machine_Flyes",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Reverse_Machine_Flyes.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Reverse Machine Flyes",
+        "primaryMuscles": [
+          "shoulders"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-017",
+      "name": "Rear Delt Fly (Cable)",
+      "type": "weight_reps",
+      "primary": "Shoulders",
+      "secondary": [],
+      "equipment": "Cable",
+      "aliases": [
+        "Reverse Cable Fly",
+        "Cable Rear Delt Fly"
+      ],
+      "description": "Rear-delt cable-fly variant.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Cable_Rear_Delt_Fly",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Cable_Rear_Delt_Fly.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Cable Rear Delt Fly",
+        "primaryMuscles": [
+          "shoulders"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "cable",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-018",
+      "name": "Seated Lateral Raise (Cable)",
+      "type": "weight_reps",
+      "primary": "Shoulders",
+      "secondary": [
+        "Upper Back"
+      ],
+      "equipment": "Cable",
+      "aliases": [
+        "Cable Side Lateral Raise",
+        "Cable Seated Lateral Raise"
+      ],
+      "description": "Seated lateral-raise variant using low cables.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Cable_Seated_Lateral_Raise",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Cable_Seated_Lateral_Raise.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Cable Seated Lateral Raise",
+        "primaryMuscles": [
+          "shoulders"
+        ],
+        "secondaryMuscles": [
+          "middle back",
+          "traps"
+        ],
+        "equipment": "cable",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-019",
+      "name": "Front Raise (Dumbbell)",
+      "type": "weight_reps",
+      "primary": "Shoulders",
+      "secondary": [],
+      "equipment": "Dumbbell",
+      "aliases": [
+        "Dumbbell Front Raise",
+        "Front Dumbbell Raise"
+      ],
+      "description": "Dumbbell front-raise variant.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Front_Dumbbell_Raise",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Front_Dumbbell_Raise.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Front Dumbbell Raise",
+        "primaryMuscles": [
+          "shoulders"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "dumbbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-020",
+      "name": "Shoulder Press (Machine)",
+      "type": "weight_reps",
+      "primary": "Shoulders",
+      "secondary": [
+        "Triceps"
+      ],
+      "equipment": "Machine",
+      "aliases": [
+        "Machine Military Press",
+        "Machine Shoulder (Military) Press"
+      ],
+      "description": "Seated shoulder-press machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Machine_Shoulder_Military_Press",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Machine_Shoulder_Military_Press.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Machine Shoulder (Military) Press",
+        "primaryMuscles": [
+          "shoulders"
+        ],
+        "secondaryMuscles": [
+          "triceps"
+        ],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-021",
+      "name": "Arnold Press (Dumbbell)",
+      "type": "weight_reps",
+      "primary": "Shoulders",
+      "secondary": [
+        "Triceps"
+      ],
+      "equipment": "Dumbbell",
+      "aliases": [
+        "Arnold Dumbbell Press"
+      ],
+      "description": "Rotating-grip dumbbell shoulder-press variant.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Arnold_Dumbbell_Press",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Arnold_Dumbbell_Press.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Arnold Dumbbell Press",
+        "primaryMuscles": [
+          "shoulders"
+        ],
+        "secondaryMuscles": [
+          "triceps"
+        ],
+        "equipment": "dumbbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-022",
+      "name": "Bicep Curl (Barbell)",
+      "type": "weight_reps",
+      "primary": "Biceps",
+      "secondary": [
+        "Forearms"
+      ],
+      "equipment": "Barbell",
+      "aliases": [
+        "Barbell Curl"
+      ],
+      "description": "Standing barbell curl.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Barbell_Curl",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Barbell_Curl.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Barbell Curl",
+        "primaryMuscles": [
+          "biceps"
+        ],
+        "secondaryMuscles": [
+          "forearms"
+        ],
+        "equipment": "barbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-023",
+      "name": "Bicep Curl (EZ Bar)",
+      "type": "weight_reps",
+      "primary": "Biceps",
+      "secondary": [],
+      "equipment": "Barbell",
+      "aliases": [
+        "EZ Bar Curl",
+        "EZ-Bar Curl"
+      ],
+      "description": "Curl using an EZ bar; bar type is a subtype of Barbell.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "EZ-Bar_Curl",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/EZ-Bar_Curl.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "EZ-Bar Curl",
+        "primaryMuscles": [
+          "biceps"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "e-z curl bar",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": [],
+      "equipmentSubtype": "EZ Bar"
+    },
+    {
+      "id": "bd-catalog-2026q4-024",
+      "name": "Bicep Curl (Cable)",
+      "type": "weight_reps",
+      "primary": "Biceps",
+      "secondary": [],
+      "equipment": "Cable",
+      "aliases": [
+        "Standing Cable Curl",
+        "Standing Biceps Cable Curl"
+      ],
+      "description": "Standing cable curl.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Standing_Biceps_Cable_Curl",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Standing_Biceps_Cable_Curl.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Standing Biceps Cable Curl",
+        "primaryMuscles": [
+          "biceps"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "cable",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-025",
+      "name": "Incline Curl (Dumbbell)",
+      "type": "weight_reps",
+      "primary": "Biceps",
+      "secondary": [],
+      "equipment": "Dumbbell",
+      "aliases": [
+        "Incline Dumbbell Curl"
+      ],
+      "description": "Dumbbell curl using an incline bench.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Incline_Dumbbell_Curl",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Incline_Dumbbell_Curl.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Incline Dumbbell Curl",
+        "primaryMuscles": [
+          "biceps"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "dumbbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-026",
+      "name": "Concentration Curl (Dumbbell)",
+      "type": "weight_reps",
+      "primary": "Biceps",
+      "secondary": [
+        "Forearms"
+      ],
+      "equipment": "Dumbbell",
+      "aliases": [
+        "Concentration Curls"
+      ],
+      "description": "Supported single-arm dumbbell-curl variant.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Concentration_Curls",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Concentration_Curls.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Concentration Curls",
+        "primaryMuscles": [
+          "biceps"
+        ],
+        "secondaryMuscles": [
+          "forearms"
+        ],
+        "equipment": "dumbbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-027",
+      "name": "Overhead Triceps Extension (Cable)",
+      "type": "weight_reps",
+      "primary": "Triceps",
+      "secondary": [],
+      "equipment": "Cable",
+      "aliases": [
+        "Rope Overhead Triceps Extension",
+        "Cable Rope Overhead Triceps Extension"
+      ],
+      "description": "Overhead cable-rope triceps extension.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Cable_Rope_Overhead_Triceps_Extension",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Cable_Rope_Overhead_Triceps_Extension.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Cable Rope Overhead Triceps Extension",
+        "primaryMuscles": [
+          "triceps"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "cable",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-028",
+      "name": "Triceps Extension (Machine)",
+      "type": "weight_reps",
+      "primary": "Triceps",
+      "secondary": [],
+      "equipment": "Machine",
+      "aliases": [
+        "Machine Triceps Extension"
+      ],
+      "description": "Triceps-extension machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Machine_Triceps_Extension",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Machine_Triceps_Extension.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Machine Triceps Extension",
+        "primaryMuscles": [
+          "triceps"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-029",
+      "name": "Triceps Kickback (Dumbbell)",
+      "type": "weight_reps",
+      "primary": "Triceps",
+      "secondary": [],
+      "equipment": "Dumbbell",
+      "aliases": [
+        "Dumbbell Kickback",
+        "Tricep Dumbbell Kickback"
+      ],
+      "description": "Single-arm dumbbell triceps-kickback variant.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Tricep_Dumbbell_Kickback",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Tricep_Dumbbell_Kickback.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Tricep Dumbbell Kickback",
+        "primaryMuscles": [
+          "triceps"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "dumbbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-030",
+      "name": "Hack Squat (Machine)",
+      "type": "weight_reps",
+      "primary": "Quads",
+      "secondary": [
+        "Calves",
+        "Glutes",
+        "Hamstrings"
+      ],
+      "equipment": "Machine",
+      "aliases": [
+        "Hack Squat"
+      ],
+      "description": "Hack-squat machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Hack_Squat",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Hack_Squat.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Hack Squat",
+        "primaryMuscles": [
+          "quadriceps"
+        ],
+        "secondaryMuscles": [
+          "calves",
+          "glutes",
+          "hamstrings"
+        ],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-031",
+      "name": "Squat (Smith Machine)",
+      "type": "weight_reps",
+      "primary": "Quads",
+      "secondary": [
+        "Calves",
+        "Glutes",
+        "Hamstrings",
+        "Lower Back"
+      ],
+      "equipment": "Machine",
+      "aliases": [
+        "Smith Squat",
+        "Smith Machine Squat"
+      ],
+      "description": "Smith-machine squat; equipment category remains Machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Smith_Machine_Squat",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Smith_Machine_Squat.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Smith Machine Squat",
+        "primaryMuscles": [
+          "quadriceps"
+        ],
+        "secondaryMuscles": [
+          "calves",
+          "glutes",
+          "hamstrings",
+          "lower back"
+        ],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": [],
+      "equipmentSubtype": "Smith Machine"
+    },
+    {
+      "id": "bd-catalog-2026q4-032",
+      "name": "Seated Leg Curl (Machine)",
+      "type": "weight_reps",
+      "primary": "Hamstrings",
+      "secondary": [],
+      "equipment": "Machine",
+      "aliases": [
+        "Seated Hamstring Curl",
+        "Seated Leg Curl"
+      ],
+      "description": "Seated knee-flexion machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Seated_Leg_Curl",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Seated_Leg_Curl.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Seated Leg Curl",
+        "primaryMuscles": [
+          "hamstrings"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-033",
+      "name": "Standing Leg Curl (Machine)",
+      "type": "weight_reps",
+      "primary": "Hamstrings",
+      "secondary": [],
+      "equipment": "Machine",
+      "aliases": [
+        "Standing Hamstring Curl",
+        "Standing Leg Curl"
+      ],
+      "description": "Standing single-leg curl machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Standing_Leg_Curl",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Standing_Leg_Curl.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Standing Leg Curl",
+        "primaryMuscles": [
+          "hamstrings"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-034",
+      "name": "Reverse Lunge (Dumbbell)",
+      "type": "weight_reps",
+      "primary": "Quads",
+      "secondary": [
+        "Calves",
+        "Glutes",
+        "Hamstrings"
+      ],
+      "equipment": "Dumbbell",
+      "aliases": [
+        "Dumbbell Rear Lunge"
+      ],
+      "description": "Backward-stepping dumbbell lunge.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Dumbbell_Rear_Lunge",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Dumbbell_Rear_Lunge.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Dumbbell Rear Lunge",
+        "primaryMuscles": [
+          "quadriceps"
+        ],
+        "secondaryMuscles": [
+          "calves",
+          "glutes",
+          "hamstrings"
+        ],
+        "equipment": "dumbbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-035",
+      "name": "Step Up (Dumbbell)",
+      "type": "weight_reps",
+      "primary": "Quads",
+      "secondary": [
+        "Calves",
+        "Glutes",
+        "Hamstrings"
+      ],
+      "equipment": "Dumbbell",
+      "aliases": [
+        "Dumbbell Step Up",
+        "Dumbbell Step Ups"
+      ],
+      "description": "Dumbbell step-up variant.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Dumbbell_Step_Ups",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Dumbbell_Step_Ups.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Dumbbell Step Ups",
+        "primaryMuscles": [
+          "quadriceps"
+        ],
+        "secondaryMuscles": [
+          "calves",
+          "glutes",
+          "hamstrings"
+        ],
+        "equipment": "dumbbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source primary/secondary mapped into existing broad groups; Middle Back/Traps collapse to Upper Back with duplicate roles removed."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-036",
+      "name": "Stiff-Legged Deadlift (Dumbbell)",
+      "type": "weight_reps",
+      "primary": "Hamstrings",
+      "secondary": [
+        "Glutes",
+        "Lower Back"
+      ],
+      "equipment": "Dumbbell",
+      "aliases": [
+        "Dumbbell Stiff Leg Deadlift",
+        "Stiff-Legged Dumbbell Deadlift"
+      ],
+      "description": "Dumbbell stiff-legged deadlift; not automatically merged with Romanian deadlifts.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Stiff-Legged_Dumbbell_Deadlift",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Stiff-Legged_Dumbbell_Deadlift.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Stiff-Legged Dumbbell Deadlift",
+        "primaryMuscles": [
+          "hamstrings"
+        ],
+        "secondaryMuscles": [
+          "glutes",
+          "lower back"
+        ],
+        "equipment": "dumbbell",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Kept explicitly stiff-legged; Romanian-deadlift naming is not a safe alias/merge."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-037",
+      "name": "Hip Adduction (Machine)",
+      "type": "weight_reps",
+      "primary": "Adductors",
+      "secondary": [
+        "Glutes",
+        "Hamstrings"
+      ],
+      "equipment": "Machine",
+      "aliases": [
+        "Thigh Adductor"
+      ],
+      "description": "Seated hip-adduction machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Thigh_Adductor",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Thigh_Adductor.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Thigh Adductor",
+        "primaryMuscles": [
+          "adductors"
+        ],
+        "secondaryMuscles": [
+          "glutes",
+          "hamstrings"
+        ],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Requires additive Adductors/Abductors vocabulary before the default is exposed in forms/filters/reports."
+        ],
+        "date": "2026-11-07",
+        "rootTechnicalDecisionHipVocabulary": "Root selected additive Adductors/Abductors vocabulary consistently across forms, filters and reports; no forced Other fallback."
+      },
+      "images": [],
+      "requiresVocabulary": [
+        "Adductors"
+      ]
+    },
+    {
+      "id": "bd-catalog-2026q4-038",
+      "name": "Hip Abduction (Machine)",
+      "type": "weight_reps",
+      "primary": "Abductors",
+      "secondary": [
+        "Glutes"
+      ],
+      "equipment": "Machine",
+      "aliases": [
+        "Thigh Abductor"
+      ],
+      "description": "Seated hip-abduction machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Thigh_Abductor",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Thigh_Abductor.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Thigh Abductor",
+        "primaryMuscles": [
+          "abductors"
+        ],
+        "secondaryMuscles": [
+          "glutes"
+        ],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Requires additive Adductors/Abductors vocabulary before the default is exposed in forms/filters/reports."
+        ],
+        "date": "2026-11-07",
+        "rootTechnicalDecisionHipVocabulary": "Root selected additive Adductors/Abductors vocabulary consistently across forms, filters and reports; no forced Other fallback."
+      },
+      "images": [],
+      "requiresVocabulary": [
+        "Abductors"
+      ]
+    },
+    {
+      "id": "bd-catalog-2026q4-039",
+      "name": "Seated Calf Raise (Machine)",
+      "type": "weight_reps",
+      "primary": "Calves",
+      "secondary": [],
+      "equipment": "Machine",
+      "aliases": [
+        "Seated Calf Raise"
+      ],
+      "description": "Seated calf-raise machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Seated_Calf_Raise",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Seated_Calf_Raise.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Seated Calf Raise",
+        "primaryMuscles": [
+          "calves"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-040",
+      "name": "Calf Press (Leg Press Machine)",
+      "type": "weight_reps",
+      "primary": "Calves",
+      "secondary": [],
+      "equipment": "Machine",
+      "aliases": [
+        "Leg Press Calf Raise",
+        "Calf Press On The Leg Press Machine"
+      ],
+      "description": "Calf-press variant using a leg-press machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Calf_Press_On_The_Leg_Press_Machine",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Calf_Press_On_The_Leg_Press_Machine.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Calf Press On The Leg Press Machine",
+        "primaryMuscles": [
+          "calves"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-041",
+      "name": "Single-Leg Leg Extension (Machine)",
+      "type": "weight_reps",
+      "primary": "Quads",
+      "secondary": [],
+      "equipment": "Machine",
+      "aliases": [
+        "One Leg Extension",
+        "Single-Leg Leg Extension"
+      ],
+      "description": "Single-leg knee-extension machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Single-Leg_Leg_Extension",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Single-Leg_Leg_Extension.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Single-Leg Leg Extension",
+        "primaryMuscles": [
+          "quadriceps"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-042",
+      "name": "Crunch (Machine)",
+      "type": "weight_reps",
+      "primary": "Abs",
+      "secondary": [],
+      "equipment": "Machine",
+      "aliases": [
+        "Ab Crunch Machine"
+      ],
+      "description": "Seated abdominal-crunch machine.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Ab_Crunch_Machine",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Ab_Crunch_Machine.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Ab Crunch Machine",
+        "primaryMuscles": [
+          "abdominals"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "machine",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-043",
+      "name": "Pallof Press (Cable)",
+      "type": "weight_reps",
+      "primary": "Abs",
+      "secondary": [],
+      "equipment": "Cable",
+      "aliases": [
+        "Cable Anti Rotation Press",
+        "Pallof Press"
+      ],
+      "description": "Cable anti-rotation press, logged as repetitions; a timed hold is a different prescription.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Pallof_Press",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Pallof_Press.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Pallof Press",
+        "primaryMuscles": [
+          "abdominals"
+        ],
+        "secondaryMuscles": [
+          "chest",
+          "shoulders",
+          "triceps"
+        ],
+        "equipment": "cable",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source lists chest/shoulders/triceps as supporting involvement. Omitted from proposed secondary count to avoid presenting stabilization as equivalent working-set contribution; product review required."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-044",
+      "name": "Dead Bug",
+      "type": "bodyweight",
+      "primary": "Abs",
+      "secondary": [],
+      "equipment": "Bodyweight",
+      "aliases": [
+        "Deadbug",
+        "Dead Bug"
+      ],
+      "description": "Unloaded floor-based alternating-limb trunk exercise, logged as repetitions.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "bodyweight_repetitions",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Dead_Bug",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Dead_Bug.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Dead Bug",
+        "primaryMuscles": [
+          "abdominals"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "body only",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Upstream secondary list is empty; that is not proof of no secondary involvement."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-045",
+      "name": "Side Plank",
+      "type": "duration",
+      "primary": "Abs",
+      "secondary": [
+        "Shoulders"
+      ],
+      "equipment": "Bodyweight",
+      "aliases": [
+        "Side Bridge"
+      ],
+      "description": "Side-support hold, logged by duration; sides are not automatically doubled.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "duration_only",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Side_Bridge",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Side_Bridge.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Side Bridge",
+        "primaryMuscles": [
+          "abdominals"
+        ],
+        "secondaryMuscles": [
+          "shoulders"
+        ],
+        "equipment": "body only",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Source instructions are empty; name and muscle fields support identification only. Duration hold is an editorial tracking choice, not copied instruction."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-046",
+      "name": "Assisted Dip",
+      "type": "assisted_bw",
+      "primary": "Triceps",
+      "secondary": [
+        "Chest",
+        "Shoulders"
+      ],
+      "equipment": "Machine",
+      "aliases": [
+        "Machine Assisted Dip",
+        "Dips - Triceps Version"
+      ],
+      "description": "Assistance-machine variant of the dip movement family.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "assistance_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Dips_-_Triceps_Version",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Dips_-_Triceps_Version.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Dips - Triceps Version",
+        "primaryMuscles": [
+          "triceps"
+        ],
+        "secondaryMuscles": [
+          "chest",
+          "shoulders"
+        ],
+        "equipment": "body only",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Equipment normalized from upstream body only to Machine using the named apparatus/variant.",
+          "Editorial assistance/added-load variant derived from source movement family, not an exact upstream apparatus record. Do not merge its history or load basis with unassisted bodyweight work."
+        ],
+        "date": "2026-11-07",
+        "exactUpstreamVariant": false
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-047",
+      "name": "Weighted Dip",
+      "type": "weighted_bw",
+      "primary": "Triceps",
+      "secondary": [
+        "Chest",
+        "Shoulders"
+      ],
+      "equipment": "Plate",
+      "aliases": [
+        "Dip Added Weight",
+        "Dips - Triceps Version"
+      ],
+      "description": "Dip variant recorded with added load, not total body mass.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "added_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Dips_-_Triceps_Version",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Dips_-_Triceps_Version.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Dips - Triceps Version",
+        "primaryMuscles": [
+          "triceps"
+        ],
+        "secondaryMuscles": [
+          "chest",
+          "shoulders"
+        ],
+        "equipment": "body only",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Equipment normalized from upstream body only to Plate using the named apparatus/variant.",
+          "Editorial assistance/added-load variant derived from source movement family, not an exact upstream apparatus record. Do not merge its history or load basis with unassisted bodyweight work."
+        ],
+        "date": "2026-11-07",
+        "exactUpstreamVariant": false
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-048",
+      "name": "Assisted Chin Up",
+      "type": "assisted_bw",
+      "primary": "Lats",
+      "secondary": [
+        "Biceps",
+        "Forearms",
+        "Upper Back"
+      ],
+      "equipment": "Machine",
+      "aliases": [
+        "Assisted Chinup",
+        "Chin-Up"
+      ],
+      "description": "Assistance-machine chin-up variant.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "assistance_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Chin-Up",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Chin-Up.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Chin-Up",
+        "primaryMuscles": [
+          "lats"
+        ],
+        "secondaryMuscles": [
+          "biceps",
+          "forearms",
+          "middle back"
+        ],
+        "equipment": "body only",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Equipment normalized from upstream body only to Machine using the named apparatus/variant.",
+          "Editorial assistance/added-load variant derived from source movement family, not an exact upstream apparatus record. Do not merge its history or load basis with unassisted bodyweight work."
+        ],
+        "date": "2026-11-07",
+        "exactUpstreamVariant": false
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-049",
+      "name": "Weighted Chin Up",
+      "type": "weighted_bw",
+      "primary": "Lats",
+      "secondary": [
+        "Biceps",
+        "Forearms",
+        "Upper Back"
+      ],
+      "equipment": "Plate",
+      "aliases": [
+        "Weighted Chinup",
+        "Chin-Up"
+      ],
+      "description": "Chin-up variant recorded with added load, not total body mass.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "added_load",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Chin-Up",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Chin-Up.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Chin-Up",
+        "primaryMuscles": [
+          "lats"
+        ],
+        "secondaryMuscles": [
+          "biceps",
+          "forearms",
+          "middle back"
+        ],
+        "equipment": "body only",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Equipment normalized from upstream body only to Plate using the named apparatus/variant.",
+          "Editorial assistance/added-load variant derived from source movement family, not an exact upstream apparatus record. Do not merge its history or load basis with unassisted bodyweight work."
+        ],
+        "date": "2026-11-07",
+        "exactUpstreamVariant": false
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-050",
+      "name": "Pull Apart (Band)",
+      "type": "bodyweight",
+      "primary": "Shoulders",
+      "secondary": [
+        "Upper Back"
+      ],
+      "equipment": "Band",
+      "aliases": [
+        "Band Pull Apart"
+      ],
+      "description": "Band-resisted horizontal pull-apart; resistance entry remains user-defined.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "unquantified_resistance",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Repetitions only. No kg value, band-color conversion, added bodyweight, external-load E1RM or automatic resistance equivalence.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Band_Pull_Apart",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Band_Pull_Apart.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Band Pull Apart",
+        "primaryMuscles": [
+          "shoulders"
+        ],
+        "secondaryMuscles": [
+          "middle back",
+          "traps"
+        ],
+        "equipment": "bands",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Band load is not a calibrated free-weight equivalent; no automatic band-color-to-kg or E1RM conversion.",
+          "Root selected canonical bodyweight as reps-only tracking, with countBW false and unquantified_resistance basis. No load is required or compared."
+        ],
+        "date": "2026-11-07",
+        "requiresTrackingDecision": false,
+        "rootTechnicalDecision": "Existing canonical bodyweight type is the rep-only storage shape; UI label becomes Reps only. This is a technical tracking decision, not trainer approval."
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-051",
+      "name": "Shoulder Press (Band)",
+      "type": "bodyweight",
+      "primary": "Shoulders",
+      "secondary": [
+        "Triceps"
+      ],
+      "equipment": "Band",
+      "aliases": [
+        "Band Overhead Press",
+        "Shoulder Press - With Bands"
+      ],
+      "description": "Band-resisted shoulder press.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "unquantified_resistance",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Repetitions only. No kg value, band-color conversion, added bodyweight, external-load E1RM or automatic resistance equivalence.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Shoulder_Press_-_With_Bands",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Shoulder_Press_-_With_Bands.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Shoulder Press - With Bands",
+        "primaryMuscles": [
+          "shoulders"
+        ],
+        "secondaryMuscles": [
+          "triceps"
+        ],
+        "equipment": "bands",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Band load is not a calibrated free-weight equivalent; no automatic band-color-to-kg or E1RM conversion.",
+          "Root selected canonical bodyweight as reps-only tracking, with countBW false and unquantified_resistance basis. No load is required or compared."
+        ],
+        "date": "2026-11-07",
+        "requiresTrackingDecision": false,
+        "rootTechnicalDecision": "Existing canonical bodyweight type is the rep-only storage shape; UI label becomes Reps only. This is a technical tracking decision, not trainer approval."
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-052",
+      "name": "Seated Leg Curl (Band)",
+      "type": "bodyweight",
+      "primary": "Hamstrings",
+      "secondary": [],
+      "equipment": "Band",
+      "aliases": [
+        "Band Hamstring Curl",
+        "Seated Band Hamstring Curl"
+      ],
+      "description": "Seated knee-flexion variant using a resistance band.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "unquantified_resistance",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Repetitions only. No kg value, band-color conversion, added bodyweight, external-load E1RM or automatic resistance equivalence.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Seated_Band_Hamstring_Curl",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Seated_Band_Hamstring_Curl.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Seated Band Hamstring Curl",
+        "primaryMuscles": [
+          "hamstrings"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "other",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Equipment normalized from upstream other to Band using the named apparatus/variant.",
+          "Band load is not a calibrated free-weight equivalent; no automatic band-color-to-kg or E1RM conversion.",
+          "Upstream secondary list is empty; that is not proof of no secondary involvement.",
+          "Root selected canonical bodyweight as reps-only tracking, with countBW false and unquantified_resistance basis. No load is required or compared."
+        ],
+        "date": "2026-11-07",
+        "requiresTrackingDecision": false,
+        "rootTechnicalDecision": "Existing canonical bodyweight type is the rep-only storage shape; UI label becomes Reps only. This is a technical tracking decision, not trainer approval."
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-053",
+      "name": "Chest Fly (Band)",
+      "type": "bodyweight",
+      "primary": "Chest",
+      "secondary": [
+        "Biceps",
+        "Shoulders"
+      ],
+      "equipment": "Band",
+      "aliases": [
+        "Band Crossover",
+        "Cross Over - With Bands"
+      ],
+      "description": "Band-resisted chest-fly variant.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "unquantified_resistance",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Repetitions only. No kg value, band-color conversion, added bodyweight, external-load E1RM or automatic resistance equivalence.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Cross_Over_-_With_Bands",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Cross_Over_-_With_Bands.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Cross Over - With Bands",
+        "primaryMuscles": [
+          "chest"
+        ],
+        "secondaryMuscles": [
+          "biceps",
+          "shoulders"
+        ],
+        "equipment": "bands",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Band load is not a calibrated free-weight equivalent; no automatic band-color-to-kg or E1RM conversion.",
+          "Root selected canonical bodyweight as reps-only tracking, with countBW false and unquantified_resistance basis. No load is required or compared."
+        ],
+        "date": "2026-11-07",
+        "requiresTrackingDecision": false,
+        "rootTechnicalDecision": "Existing canonical bodyweight type is the rep-only storage shape; UI label becomes Reps only. This is a technical tracking decision, not trainer approval."
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-054",
+      "name": "Overhead Triceps Extension (Band)",
+      "type": "bodyweight",
+      "primary": "Triceps",
+      "secondary": [],
+      "equipment": "Band",
+      "aliases": [
+        "Band Triceps Extension",
+        "Speed Band Overhead Triceps"
+      ],
+      "description": "Band-resisted overhead triceps extension; speed is not inferred or scored.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "unquantified_resistance",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Repetitions only. No kg value, band-color conversion, added bodyweight, external-load E1RM or automatic resistance equivalence.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Speed_Band_Overhead_Triceps",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Speed_Band_Overhead_Triceps.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Speed Band Overhead Triceps",
+        "primaryMuscles": [
+          "triceps"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "bands",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Band load is not a calibrated free-weight equivalent; no automatic band-color-to-kg or E1RM conversion.",
+          "Upstream secondary list is empty; that is not proof of no secondary involvement.",
+          "Root selected canonical bodyweight as reps-only tracking, with countBW false and unquantified_resistance basis. No load is required or compared."
+        ],
+        "date": "2026-11-07",
+        "requiresTrackingDecision": false,
+        "rootTechnicalDecision": "Existing canonical bodyweight type is the rep-only storage shape; UI label becomes Reps only. This is a technical tracking decision, not trainer approval."
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-055",
+      "name": "Hip Adduction (Band)",
+      "type": "bodyweight",
+      "primary": "Adductors",
+      "secondary": [],
+      "equipment": "Band",
+      "aliases": [
+        "Band Hip Adduction",
+        "Band Hip Adductions"
+      ],
+      "description": "Standing band-resisted hip-adduction variant.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "unquantified_resistance",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Repetitions only. No kg value, band-color conversion, added bodyweight, external-load E1RM or automatic resistance equivalence.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Band_Hip_Adductions",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Band_Hip_Adductions.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Band Hip Adductions",
+        "primaryMuscles": [
+          "adductors"
+        ],
+        "secondaryMuscles": [],
+        "equipment": "bands",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Band load is not a calibrated free-weight equivalent; no automatic band-color-to-kg or E1RM conversion.",
+          "Requires additive Adductors/Abductors vocabulary before the default is exposed in forms/filters/reports.",
+          "Upstream secondary list is empty; that is not proof of no secondary involvement.",
+          "Root selected canonical bodyweight as reps-only tracking, with countBW false and unquantified_resistance basis. No load is required or compared."
+        ],
+        "date": "2026-11-07",
+        "requiresTrackingDecision": false,
+        "rootTechnicalDecision": "Existing canonical bodyweight type is the rep-only storage shape; UI label becomes Reps only. This is a technical tracking decision, not trainer approval.",
+        "rootTechnicalDecisionHipVocabulary": "Root selected additive Adductors/Abductors vocabulary consistently across forms, filters and reports; no forced Other fallback."
+      },
+      "images": [],
+      "requiresVocabulary": [
+        "Adductors"
+      ]
+    },
+    {
+      "id": "bd-catalog-2026q4-056",
+      "name": "Row (Suspension)",
+      "type": "bodyweight",
+      "primary": "Upper Back",
+      "secondary": [
+        "Biceps",
+        "Lats"
+      ],
+      "equipment": "Suspension",
+      "aliases": [
+        "Suspended Row"
+      ],
+      "description": "Bodyweight row using suspension straps.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "bodyweight_repetitions",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Suspended_Row",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Suspended_Row.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Suspended Row",
+        "primaryMuscles": [
+          "middle back"
+        ],
+        "secondaryMuscles": [
+          "biceps",
+          "lats"
+        ],
+        "equipment": "other",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Equipment normalized from upstream other to Suspension using the named apparatus/variant."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-057",
+      "name": "Split Squat (Suspension)",
+      "type": "bodyweight",
+      "primary": "Quads",
+      "secondary": [
+        "Abductors",
+        "Adductors",
+        "Calves",
+        "Glutes",
+        "Hamstrings"
+      ],
+      "equipment": "Suspension",
+      "aliases": [
+        "Suspended Split Squat"
+      ],
+      "description": "Split-squat variant with the rear foot supported by a suspension strap.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "bodyweight_repetitions",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Suspended_Split_Squat",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Suspended_Split_Squat.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Suspended Split Squat",
+        "primaryMuscles": [
+          "quadriceps"
+        ],
+        "secondaryMuscles": [
+          "abductors",
+          "adductors",
+          "calves",
+          "glutes",
+          "hamstrings"
+        ],
+        "equipment": "other",
+        "category": "strength"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Equipment normalized from upstream other to Suspension using the named apparatus/variant.",
+          "Requires additive Adductors/Abductors vocabulary before the default is exposed in forms/filters/reports."
+        ],
+        "date": "2026-11-07",
+        "rootTechnicalDecisionHipVocabulary": "Root selected additive Adductors/Abductors vocabulary consistently across forms, filters and reports; no forced Other fallback."
+      },
+      "images": [],
+      "requiresVocabulary": [
+        "Adductors",
+        "Abductors"
+      ]
+    },
+    {
+      "id": "bd-catalog-2026q4-058",
+      "name": "Elliptical Trainer",
+      "type": "distance_duration",
+      "primary": "Cardio",
+      "secondary": [],
+      "equipment": "Machine",
+      "aliases": [
+        "Cross Trainer",
+        "Elliptical Trainer"
+      ],
+      "description": "Elliptical conditioning activity, logged by time and machine-reported distance.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "distance_and_duration",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Elliptical_Trainer",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Elliptical_Trainer.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Elliptical Trainer",
+        "primaryMuscles": [
+          "quadriceps"
+        ],
+        "secondaryMuscles": [
+          "calves",
+          "glutes",
+          "hamstrings"
+        ],
+        "equipment": "machine",
+        "category": "cardio"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Conditioning role is Cardio rather than upstream leg muscles; this does not count as planned/performed strength sets by default."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-059",
+      "name": "Stair Climber",
+      "type": "duration",
+      "primary": "Cardio",
+      "secondary": [],
+      "equipment": "Machine",
+      "aliases": [
+        "Stairmaster"
+      ],
+      "description": "Stair-climbing conditioning activity, logged by elapsed time; floors or steps are not converted to distance.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "duration_only",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Stairmaster",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Stairmaster.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Stairmaster",
+        "primaryMuscles": [
+          "quadriceps"
+        ],
+        "secondaryMuscles": [
+          "calves",
+          "glutes",
+          "hamstrings"
+        ],
+        "equipment": "machine",
+        "category": "cardio"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Conditioning role is Cardio rather than upstream leg muscles; this does not count as planned/performed strength sets by default.",
+          "Source activity adapted to duration-only logging so floors/steps are never invented as kilometers."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    },
+    {
+      "id": "bd-catalog-2026q4-060",
+      "name": "Farmer's Carry (Kettlebell)",
+      "type": "weight_duration",
+      "primary": "Forearms",
+      "secondary": [
+        "Abs",
+        "Glutes",
+        "Hamstrings",
+        "Lower Back",
+        "Quads",
+        "Upper Back"
+      ],
+      "equipment": "Kettlebell",
+      "aliases": [
+        "Kettlebell Farmer Carry",
+        "Farmer's Walk"
+      ],
+      "description": "Kettlebell carry variant, logged with external load and elapsed time; distance is not invented.",
+      "countBW": false,
+      "bwPct": 100,
+      "loadBasis": "external_load_duration",
+      "rowConvention": "Preserve the user current logged-row convention; no automatic side or implement doubling.",
+      "loadConvention": "Unspecified; preserve entered canonical kg and existing comparison basis. Do not infer per-implement versus combined load.",
+      "source": {
+        "provider": "free-exercise-db",
+        "recordId": "Farmers_Walk",
+        "revision": "f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5",
+        "url": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/exercises/Farmers_Walk.json",
+        "license": "Unlicense (upstream declaration)",
+        "licenseUrl": "https://github.com/yuhonas/free-exercise-db/blob/f00c92c7dcf1216a928a52c3706c7ce8e2f71ed5/LICENSE.md"
+      },
+      "upstreamMetadata": {
+        "name": "Farmer's Walk",
+        "primaryMuscles": [
+          "forearms"
+        ],
+        "secondaryMuscles": [
+          "abdominals",
+          "glutes",
+          "hamstrings",
+          "lower back",
+          "quadriceps",
+          "traps"
+        ],
+        "equipment": "other",
+        "category": "strongman"
+      },
+      "review": {
+        "status": "curated_proposal_awaiting_product_review",
+        "reviewedByHumanTrainer": false,
+        "focusStatus": "proposed_source_derived_focus_not_stimulus_measurement",
+        "decisions": [
+          "Equipment normalized from upstream other to Kettlebell using the named apparatus/variant.",
+          "Source permits multiple carry implements; Kettlebell is an editorial variant. Weight-duration tracking deliberately excludes distance until supported explicitly."
+        ],
+        "date": "2026-11-07"
+      },
+      "images": []
+    }
+  ],
+  "integrationDecisions": [
+    {
+      "id": "band-tracking",
+      "entries": 6,
+      "blockingForTheseEntries": false,
+      "decision": "Resolved by root: existing bodyweight type, Reps only display label, countBW false, unquantified_resistance basis; no load requirement or E1RM."
+    },
+    {
+      "id": "hip-vocabulary",
+      "entries": 4,
+      "blockingForTheseEntries": false,
+      "decision": "Resolved by root: add Adductors/Abductors vocabulary throughout metadata, filters and Muscle sets grouping before exposing entries."
+    },
+    {
+      "id": "source-focus-roles",
+      "entries": 60,
+      "blockingForTheseEntries": true,
+      "decision": "Root/product review must approve the proposed broad primary/secondary roles and visible provenance before treating these as shipped catalog defaults. No trainer approval is asserted."
+    }
+  ],
+  "validation": {
+    "sourceRecordsPresentAtPinnedTree": true,
+    "uniqueNewNames": 60,
+    "duplicateExistingNames": 0,
+    "uniqueUpstreamRecords": 58,
+    "imagesIncluded": 0,
+    "instructionsCopied": 0,
+    "trackingTypes": {
+      "weight_reps": 42,
+      "bodyweight": 10,
+      "duration": 2,
+      "assisted_bw": 2,
+      "weighted_bw": 2,
+      "distance_duration": 1,
+      "weight_duration": 1
+    },
+    "equipment": {
+      "Dumbbell": 12,
+      "Barbell": 4,
+      "Machine": 21,
+      "Cable": 9,
+      "Bodyweight": 3,
+      "Plate": 2,
+      "Band": 6,
+      "Suspension": 2,
+      "Kettlebell": 1
+    }
+  }
+}

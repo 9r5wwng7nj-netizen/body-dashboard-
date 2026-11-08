@@ -64,3 +64,11 @@ An active workout may carry `swapToken`. Swap receipts in the existing private `
 `S.navOrder` is an optional three-root display order; legacy `S.bar`, hidden tabs/cards and card order are preserved. Optional food/saved-meal `fav`/use metadata is additive. Logged nutrient values remain snapshots; absent values stay null/unknown, and known zero stays zero.
 
 `pantry`, `grocery`, `freezer`, `gkit` and legacy `freezerId` references are still loaded and included in full backups. Their product controls and active mutations are retired. Restoring these records does not reactivate inventory or shopping behavior. No database/version/store/collection rename or destructive migration occurred.
+
+## Optional exercise-definition recovery and reusable cues
+
+`exMeta[lowercasedName].notes` remains the reusable cue field; it may be a notes-only override. `exInfo` projects base catalog/inferred metadata plus optional user fields without persisting that projection. Notes-only overrides do not claim a user-reviewed muscle mapping. Workout `exercise.notes` remains that occurrence's session note. Copying a session note to cues does not delete or change it.
+
+The existing web recovery extension also accepts `save-exercise-metadata` intents/receipts. Optional `exerciseToken` and bounded `exerciseEdit` include the raw reviewed form and, for picker creation, its parent draft/context. Canonical records and DB v1 stores are unchanged. Definitions/explicit global renames coordinate touched collections through the existing writer; recorded classifications and record IDs are retained. A narrowly scoped missing-collection/default equivalence permits metadata/custom intents to recover after a full backup materializes an unchanged empty default, but does not permit replay over nonempty/newer records. Old recovery entries without these optional fields remain valid.
+
+If a precondition or all storage writes fail before an intent is checkpointed, the newest form is still transient: keep the tab open until saving or exporting the exercise draft succeeds. Exercise-draft JSON is a readable recovery export, not a completed-workout import file.

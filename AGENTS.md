@@ -114,3 +114,7 @@ The owner explicitly authorized implementing the approved feature-review plan, r
 ## Cobalt Air selected and authorized — 2026-11-07
 
 The owner selected Cobalt Air from the five paired proposals and explicitly authorized implementation in both light/dark modes, checks and publication. Cobalt Air supersedes Warm Mineral as the production visual direction; the earlier product/navigation decisions remain. Use the selected semantic palette in `docs/product-review/2026-11-07/visual-exploration/palettes.json` without adding multiple brand themes or changing stored records. This is a presentation update, not a persistence or logging redesign.
+
+## Ordered next-iteration implementation authorized — 2026-11-07
+
+The owner explicitly authorized implementing `docs/product-review/2026-11-07/NEXT_ITERATION_PLAN.md` in order, starting with secondary muscles and persistent exercise cues, running checks and publishing each ready update. Sequence: (1) shared reliable exercise metadata forms and visible reusable cues, (2) curated offline catalog/search/mapping corrections, (3) linked Plan/Performed muscle-set analysis, (4) ChatGPT handoff preparation and reviewed drafts. Keep Cobalt Air and every storage/record/photo/import guarantee. Built-in model requests, paid services and server credentials remain deferred to a separate decision; the agreed first AI route is manual ChatGPT handoff. Do not treat the earlier investigation-only status as a new approval requirement for these authorized stages.

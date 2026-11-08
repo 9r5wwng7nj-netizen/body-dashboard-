@@ -310,3 +310,15 @@ select.input { max-width: 100%; }
 #app-shell, #app-shell > div, #view, #modal { color: var(--ui-ink); }
 :root { color-scheme: light; }
 .dark { color-scheme: dark; }
+
+/* Native secondary selections remain visible despite component/utility layer precedence. */
+.exercise-muscle-choice { max-width: 100%; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--ui-control); border-radius: 10px; background: var(--ui-surface); color: var(--ui-ink); cursor: pointer; font-size: .875rem; }
+.exercise-muscle-choice input { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--ui-accent); }
+.exercise-muscle-choice:has(input:checked) { color: var(--ui-on-accent); background: var(--ui-accent); border-color: var(--ui-accent); }
+.exercise-muscle-choice:has(input:checked) .muted { color: inherit; }
+.exercise-muscle-choice:has(input:disabled) { cursor: default; background: var(--ui-soft); }
+.exercise-cues { padding: 0 12px 10px; border-left: 3px solid var(--ui-accent); border-radius: 0 10px 10px 0; background: var(--ui-soft); }
+.exercise-cues p { overflow-wrap: anywhere; }
+.exercise-cue-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.exercise-muscle-choice > span:first-of-type { min-width: 0; overflow-wrap: anywhere; }
