@@ -1618,7 +1618,7 @@ function cpTargetCheck(t,lifts) {
   for(const k of ['repsMin','repsMax'])if(t[k]!=null&&(!Number.isInteger(t[k])||t[k]<1||t[k]>1000))throw new Error('Target reps must be positive whole numbers.');
   if(t.repsMax!=null&&(t.repsMin==null||t.repsMax<t.repsMin))throw new Error('Review target rep range.');
   for(const [key,max] of [['durationSec',86400],['distanceKm',1000],['rpeTarget',10],['percentTM',1.5]])if(t[key]!=null&&(!Number.isFinite(t[key])||t[key]<=0||t[key]>max))throw new Error(`Invalid ${key} target.`);
-  if(t.percentTM!=null&&(!lifts.has(t.liftKey)||t.repsMin==null))throw new Error('Percentage targets need a known lift and rep target.');
+  if(t.percentTM!=null&&(!lifts.has(t.liftKey)||(t.repsMin==null&&!t.amrap)))throw new Error('Percentage targets need a known lift and a rep target or AMRAP.');
   if(t.liftKey!=null&&!lifts.has(t.liftKey))throw new Error('Unknown training-max lift.');
   if(t.amrap!=null&&typeof t.amrap!=='boolean')throw new Error('Invalid AMRAP target.');
   if(t.kind!=null&&!['normal','warmup'].includes(t.kind))throw new Error('Invalid planned set kind.');

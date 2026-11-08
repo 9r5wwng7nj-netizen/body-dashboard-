@@ -35,7 +35,7 @@ Top-level keys: `app: "body-dashboard"`, `type: "training-cycle"`, `version: 1`,
 - Day: unique `id`, `name`, `offset` (0–6 relative to start weekday, informational), optional `note`, `exercises`.
 - Exercise: unique day-local `key`, `name`, `classification`, optional `note`, integer rest seconds `rest`, boolean `ss` linking to next exercise, `targets` (one set-array per week). Empty arrays omit the exercise in that week.
 - Classification: version 1, recognized tracking `type`, canonical `primary`, `secondary` list, recognized `equipment`; optional `loadBasis` and `distanceUnit` (`m`, `yd`, `km`, `mi`). These snapshots are local to the imported routines/workouts.
-- Target: optional `repsMin`, `repsMax`, `amrap`, `percentTM`, `liftKey`, `durationSec`, `distanceKm`, `rpeTarget`, `kind: "normal" | "warmup"`, `note`. Percentage targets require a known lift and rep minimum. Physical values remain kg/km/seconds; no automatic unilateral doubling.
+- Target: optional `repsMin`, `repsMax`, `amrap`, `percentTM`, `liftKey`, `durationSec`, `distanceKm`, `rpeTarget`, `kind: "normal" | "warmup"`, `note`. Percentage targets require a known lift and either a rep minimum or AMRAP with actual rep entry. Physical values remain kg/km/seconds; no automatic unilateral doubling.
 
 ## Loaded distance
 
