@@ -72,3 +72,9 @@ An active workout may carry `swapToken`. Swap receipts in the existing private `
 The existing web recovery extension also accepts `save-exercise-metadata` intents/receipts. Optional `exerciseToken` and bounded `exerciseEdit` include the raw reviewed form and, for picker creation, its parent draft/context. Canonical records and DB v1 stores are unchanged. Definitions/explicit global renames coordinate touched collections through the existing writer; recorded classifications and record IDs are retained. A narrowly scoped missing-collection/default equivalence permits metadata/custom intents to recover after a full backup materializes an unchanged empty default, but does not permit replay over nonempty/newer records. Old recovery entries without these optional fields remain valid.
 
 If a precondition or all storage writes fail before an intent is checkpointed, the newest form is still transient: keep the tab open until saving or exporting the exercise draft succeeds. Exercise-draft JSON is a readable recovery export, not a completed-workout import file.
+
+## Optional catalog metadata — Release 2
+
+The 144 new built-in definitions are a runtime-only union with the original stored library. No catalog upgrade writes are performed at startup. `exMeta[lowercasedName].catalogHidden` optionally marks an explicitly removed/renamed virtual entry; user fields and actual history/routine/session names are retained. Explicit full save or selected active add/swap can clear that marker through coordinated commands. A cue-only edit does not clear it.
+
+New accepted classification snapshots may include optional `catalog` (source ID/revision/URL/license/editorial status), `loadBasis` and `equipmentSubtype`. Old snapshots, current user overrides, original names and the seven canonical tracking types remain compatible. Reps only is a display label for the existing `bodyweight` type; unquantified bands do not acquire a canonical load conversion.

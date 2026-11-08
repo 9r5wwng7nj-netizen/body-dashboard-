@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-07 — Expanded offline exercise catalog
+
+- Added 144 curated definitions for 200 fresh-catalog choices, with shared aliases/muscle/equipment search and corrected inference traps.
+- Added Adductors/Abductors and a clearer Reps only label for existing bodyweight tracking; unquantified band work receives no invented load or E1RM.
+- New names are a read-only union with the original stored library. Explicit hide/rename retains metadata and recorded identities, while new snapshots can retain pinned source context. No startup record migration, image service or account connection.
+
 ## 2026-11-07 — Secondary muscles and reusable exercise cues
 
 - Shared custom-exercise metadata fields, visible 44px secondary selections and primary exclusion.
