@@ -1,0 +1,7 @@
+name = "body-dashboard-auth"
+main = "worker.js"
+compatibility_date = "2026-11-08"
+workers_dev = true
+# Public identifier only. GOOGLE_CLIENT_SECRET stays in Cloudflare's encrypted secret binding.
+[vars]
+GOOGLE_CLIENT_ID = "58449826957-8r9b5297qv0n5cce9hindlmepd124okf.apps.googleusercontent.com"

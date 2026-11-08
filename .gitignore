@@ -25,3 +25,7 @@ __pycache__/
 *.pem
 *.key
 *.cer
+
+# Local OAuth Worker secrets and generated Cloudflare state
+.dev.vars*
+auth/.wrangler/

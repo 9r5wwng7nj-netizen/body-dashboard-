@@ -4975,6 +4975,11 @@ const A_SHARE = {
 // would notice; each device shows the newest one once, as a card on the dashboard. A slide can show
 // a picture from assets/whatsnew/ (give it alt text) and a `go` shortcut: [view, ui key, tab, label].
 const RELEASES = [
+  {id:'2026-11-08-optional-drive-sync',title:'Connect your devices with Google Drive',slides:[
+    {title:'Choose when to connect',body:'<p>Settings &amp; Sync offers an optional Google Drive connection. Connect each device to the same Google account. Logging stays on the device and works offline; sync resumes when online. Workouts, cycles, training maxes, nutrition and photos travel together.</p>'},
+    {title:'Body stays separate',body:'<p>Body Dashboard uses its own Google sign-in, hidden app folder, record files, photos and dated copies. Life Dashboard’s sign-in and records stay separate. API keys and Google credentials are excluded from backups. The sync folder does not grant ChatGPT automatic access.</p>'},
+    {title:'Keep active sessions safe',body:'<p>Sync now before switching devices and log an active workout on one device at a time. Concurrent writes retry against the latest Drive copy. Conflicting active sessions and unexpectedly missing records pause for review. Keep a private full backup, including photos, before the first connection.</p>'}
+  ]},
   { id:'2026-11-08-training-cycles',title:'Follow a training cycle',slides:[
     {title:'Import a private training plan',body:'<p>Train → Import cycle previews a multi-week plan before adding new routines. Existing history, nutrition, exercise definitions and photos stay intact. Re-importing the same package opens the saved cycle.</p>'},
     {title:'Targets for each set and week',body:'<p>Choose a week, review targets and set training maxes privately. Percentage loads are estimates, rounded to your chosen increment. Check a set to accept it or enter your actual result. AMRAP and RPE need actual entry. Past and active sessions keep their original targets.</p>'},
@@ -5109,7 +5114,7 @@ const A_HELP = {
 // edits and deletions from either device survive. Photos travel as their own files in the same folder
 // (Sync.photos); API keys and downloaded libraries stay on the device. Sign-in is a plain redirect, so no
 // Google script is loaded.
-const DRIVE = { clientId: '', scope: 'https://www.googleapis.com/auth/drive.appdata', file: 'body-dashboard-sync.json', api: 'https://www.googleapis.com', auth: 'https://accounts.google.com/o/oauth2/v2/auth' };
+const DRIVE = { clientId: '58449826957-8r9b5297qv0n5cce9hindlmepd124okf.apps.googleusercontent.com', authApi: 'https://body-dashboard-auth.lifedashboard-9r5w.workers.dev', scope: 'https://www.googleapis.com/auth/drive.appdata', file: 'body-dashboard-sync.json', api: 'https://www.googleapis.com', auth: 'https://accounts.google.com/o/oauth2/v2/auth' };
 const SYNC_SETTINGS = ['name', 'hiddenTabs', 'tabsV', 'hiddenCards', 'cardOrder', 'bar', 'unit', 'restSeconds', 'timerSound', 'targets', 'bwFallback', 'rpe', 'calBig', 'navOrder'];
 const SYNC_SKIP = []; // photoMeta used to stay on each device; photos sync since 2026-10 (Sync.photos)
 const SYNC_BASE = 'sync.base';
@@ -5189,14 +5194,14 @@ function syncLosses(before, after) {
 }
 const syncLossText = losses => Object.entries(losses).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k, n]) => `${n} from ${k}`).join(', ');
 
-// Google sign-in that lasts. When the link reader Worker holds the app's Google client secret, sign-in
+// Google sign-in that lasts. The dedicated Body broker holds the app's Google client secret; sign-in
 // uses a one-time code (with PKCE) that the Worker trades for tokens, and this device keeps a refresh
 // token (`refresh` in ld.sync / ld.youtube, never in backups) to get a fresh one-hour token when needed.
-// Without the Worker's secret, sign-in falls back to the one-hour token in the address, as before.
+// Sign-in requires the dedicated broker; unavailable setup leaves local records untouched.
 let _gauthReady = null;
 async function gauthReady() {
-  if (_gauthReady !== null) return _gauthReady;
-  try { const r = await fetch(READER.url + '/google/ready', { credentials: 'omit' }); _gauthReady = r.ok && (await r.json()).ready === true; } catch (e) { _gauthReady = false; }
+  // Recheck on an explicit sign-in so a repaired configuration can be retried.
+  try { const r = await fetch(DRIVE.authApi + '/google/ready', { credentials: 'omit' }); const d=await r.json();_gauthReady = r.ok && d.ready===true && d.clientId===DRIVE.clientId; } catch (e) { _gauthReady = false; }
   return _gauthReady;
 }
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -5207,7 +5212,7 @@ async function pkcePair() {
 async function gauthPost(path, body) {
   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 20000);
   let r, d;
-  try { r = await fetch(`${READER.url}/google/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), credentials: 'omit', signal: controller.signal }); d = await r.json().catch(() => ({})); }
+  try { r = await fetch(`${DRIVE.authApi}/google/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), credentials: 'omit', signal: controller.signal }); d = await r.json().catch(() => ({})); }
   catch (e) { throw new Error('Google could not be reached. Try again in a moment.'); }
   finally { clearTimeout(timer); }
   if (!r.ok) throw Object.assign(new Error(d.error === 'invalid_grant' ? 'Google asked to sign in again.' : 'Google sign-in could not be completed.'), { grant: d.error === 'invalid_grant' });
@@ -5216,7 +5221,7 @@ async function gauthPost(path, body) {
 // The address to send the person to Google with, and the PKCE verifier to keep until they come back.
 async function gauthStart(scope, state, prompt) {
   const p = { client_id: DRIVE.clientId, redirect_uri: new URL('./index.html', location.href).href, scope, state };
-  if (!(await gauthReady())) return { url: DRIVE.auth + '?' + new URLSearchParams({ ...p, response_type: 'token', ...(prompt ? { prompt } : {}) }), verifier: '' };
+  if (!(await gauthReady())) throw new Error('Body Dashboard’s Google sign-in is not ready. Your local records are unchanged.');
   const { verifier, challenge } = await pkcePair();
   // access_type offline + consent: Google gives a refresh token every time, even to someone who signed in before.
   return { url: DRIVE.auth + '?' + new URLSearchParams({ ...p, response_type: 'code', access_type: 'offline', prompt: [prompt, 'consent'].filter(Boolean).join(' '), code_challenge: challenge, code_challenge_method: 'S256' }), verifier };
@@ -5248,9 +5253,9 @@ async function gauthRenew(meta, set) {
 const gauthRevoke = token => { if (token) gauthPost('revoke', { token }).catch(() => { }); };
 async function syncSignIn() {
   const state = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
-  const { url, verifier } = await gauthStart(DRIVE.scope, state);
-  setSyncMeta({ on: true, state, verifier });
-  await Store.flushDirty(); // the page is about to leave for Google: save the last change first
+  const { url, verifier } = await gauthStart(DRIVE.scope, state, 'select_account');
+  await Store.flushDirty();
+  setSyncMeta({ on: true, state, verifier,writeSafetyClient:'' }); // the page is about to leave for Google: save the last change first
   location.assign(url);
 }
 // Google returns here with the access token in the address fragment; take it and clean the address.
@@ -5273,12 +5278,12 @@ async function driveFetch(path, options = {}, retried = false) {
     if (!retried && await gauthRenew(syncMeta(), setSyncMeta)) return driveFetch(path, options, true);
     setSyncMeta({ token: '', exp: 0 }); throw new Error('Sign in to Google again to keep syncing.');
   }
-  if (!res.ok) throw new Error('Google Drive answered with error ' + res.status + '.');
+  if (!res.ok) throw Object.assign(new Error('Google Drive answered with error ' + res.status + '.'),{status:res.status});
   return res;
 }
 async function driveFind() {
   const q = new URLSearchParams({ spaces: 'appDataFolder', q: `name='${DRIVE.file}' and trashed=false`, orderBy: 'createdTime', fields: 'files(id,version)' });
-  return (await (await driveFetch('/drive/v3/files?' + q)).json()).files?.[0] || null;
+  const files=(await (await driveFetch('/drive/v3/files?' + q)).json()).files||[];if(files.length>1)throw new Error('More than one Body Dashboard sync copy exists. Sync paused; keep both device backups before resolving the copies.');return files[0]||null;
 }
 // Every file in the app folder (the sync file, dated copies and photos), following Drive's pages.
 async function driveList() {
@@ -5295,11 +5300,11 @@ async function driveCopies() {
   return files.map(f => ({ id: String(f.id), date: copyDate(f.name), size: +f.size || 0, created: f.createdTime || '' })).filter(c => c.date)
     .sort((a, b) => b.date.localeCompare(a.date) || b.created.localeCompare(a.created));
 }
-// --- Photo sync. Each photo is its own file in the same private folder, named photo-<id>. After the
+// --- Photo sync. Each photo is its own file in the same private folder, named body-dashboard-photo-<id>. After the
 // records sync, photos that records use are uploaded when Drive lacks them and downloaded when this
 // device lacks them, PHOTO_BATCH each way per sync so a sync never runs long (the rest follow on the
 // next ones). Nothing is deleted from Drive: a restored record can always find its photo again.
-const PHOTO_FILE = 'photo-', PHOTO_BATCH = 12;
+const PHOTO_FILE = 'body-dashboard-photo-', PHOTO_BATCH = 12;
 // Photo ids the records point at: `photo` and `photos` fields anywhere, and progress photos (photoMeta).
 function photoRefs(data) {
   const ids = new Set();
@@ -5320,27 +5325,35 @@ function photoKeys() {
   return new Promise((res, rej) => { const q = Photos.tx('readonly').getAllKeys(); q.onsuccess = () => res(q.result.map(String)); q.onerror = () => rej(q.error); });
 }
 async function driveUploadBlob(name, blob) {
-  const mark = 'ld' + uid(), meta = JSON.stringify({ name, parents: ['appDataFolder'] });
+  const mark = 'bd' + uid(), meta = JSON.stringify({ name, parents: ['appDataFolder'] });
   const body = new Blob([`--${mark}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${mark}\r\nContent-Type: ${blob.type || 'application/octet-stream'}\r\n\r\n`, blob, `\r\n--${mark}--`]);
-  return (await driveFetch('/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + mark }, body })).json();
+  return (await driveFetch('/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + mark }, body: await body.arrayBuffer() })).json();
 }
 async function driveLoad(id) {
   const res = await driveFetch(`/drive/v3/files/${encodeURIComponent(id)}?alt=media`);
-  let d; try { d = validateBackup(await res.json()); }
+  let d; try { d = validateBackup(await res.json());if(d.app!=='body-dashboard')throw new Error('Expected a Body Dashboard sync copy.'); }
   catch (e) { throw new Error('The copy in Google Drive could not be read, so nothing was changed. (' + e.message + ')'); }
   return { data: d.data, settings: Object.fromEntries(SYNC_SETTINGS.filter(k => d.settings?.[k] != null).map(k => [k, d.settings[k]])), exportedAt: typeof d.exportedAt === 'string' ? d.exportedAt : '' };
 }
-async function driveSave(id, snap, name = DRIVE.file) {
+async function driveSave(id, snap, name = DRIVE.file, etag = null) {
   const body = JSON.stringify({ app: 'body-dashboard', version: 1, sync: 1, exportedAt: new Date().toISOString(), data: snap.data, settings: snap.settings });
-  if (id) return (await driveFetch(`/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media&fields=id,version`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body })).json();
-  const mark = 'ld' + uid(), meta = JSON.stringify({ name, parents: ['appDataFolder'] });
+  if (id) {if(!etag)throw new Error('Drive did not provide a safe update marker. Nothing was overwritten.');return (await driveFetch(`/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media&fields=id,version`, { method: 'PATCH', headers: { 'Content-Type': 'application/json','If-Match':etag }, body })).json();}
+  const mark = 'bd' + uid(), meta = JSON.stringify({ name, parents: ['appDataFolder'] });
   return (await driveFetch('/upload/drive/v3/files?uploadType=multipart&fields=id,version', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + mark },
     body: `--${mark}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${mark}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${mark}--` })).json();
 }
 
+async function driveMarker(id){const r=await driveFetch(`/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,version`),m=await r.json();return{...m,etag:r.headers.get('ETag')};}
 const Sync = {
   busy: false, timer: null, first: '', allowLoss: false,
   connected() { return !!syncMeta().on; },
+  async checkWrites(){
+    if(syncMeta().writeSafetyClient===DRIVE.clientId)return;
+    const name='body-dashboard-probe-'+uid()+'.json',empty={data:{workouts:[]},settings:{}},made=await driveSave(null,empty,name);let checked=false;
+    try{const marker=await driveMarker(made.id);if(marker.name!==name||!marker.etag)throw new Error('Drive could not verify safe concurrent updates. No personal records were uploaded.');await driveSave(made.id,empty,name,marker.etag);let staleRejected=false;try{await driveSave(made.id,empty,name,marker.etag);}catch(e){if(e.status===412)staleRejected=true;else throw e;}if(!staleRejected)throw new Error('Drive did not reject an outdated update. No personal records were uploaded.');checked=true;}
+    finally{try{await driveFetch(`/drive/v3/files/${encodeURIComponent(made.id)}`,{method:'DELETE'});}catch(e){if(checked)throw e;}}
+    setSyncMeta({writeSafetyClient:DRIVE.clientId});
+  },
   signedIn() { const m = syncMeta(); return !!m.token && m.exp > Date.now(); },
   canSync() { return this.signedIn() || !!syncMeta().refresh; }, // a refresh token renews the hour on its own
   // This device's records in the same plain-JSON form the Drive copy and the base use.
@@ -5369,11 +5382,12 @@ const Sync = {
   },
   async run({ signIn = false, announce = false } = {}) {
     if (!syncAvailable() || !this.connected() || this.busy) return;
-    if (!this.signedIn() && !(await gauthRenew(syncMeta(), setSyncMeta))) { if (signIn) syncSignIn(); else this.draw(); return; }
+    if (!this.signedIn() && !(await gauthRenew(syncMeta(), setSyncMeta))) { if (signIn) {try{await syncSignIn();}catch(e){setSyncMeta({error:e.message});toast(e.message,'error');this.draw();}} else this.draw(); return; }
     if (navigator.onLine === false) { if (announce) toast('You are offline. Sync will run when you reconnect.', 'error'); return; }
     this.busy = true; this.draw();
     let paused = '', photosChanged = false;
     try {
+      await this.checkWrites();
       const changed = await this.exchange();
       setSyncMeta({ last: new Date().toISOString(), error: '' });
       try { await this.keepCopy(); } catch (e) { setSyncMeta({ copyError: e.message }); } // a missed copy never stops the sync
@@ -5402,11 +5416,14 @@ const Sync = {
       const file = await driveFind(), saved = await LocalDb.get(SYNC_BASE);
       if (!file) { const mine = this.local(), made = await driveSave(null, mine); await LocalDb.put(SYNC_BASE, mine); setSyncMeta({ ver: made.version || '' }); return changed; }
       if (!saved && !this.first) throw new Error('first');
+      const marker=await driveMarker(file.id),etag=marker.etag;if(marker.name!==DRIVE.file)throw new Error('The Drive sync file changed identity. Nothing was replaced.');if(marker.version!==file.version)continue;
       const theirs = saved && file.version === syncMeta().ver ? saved : await driveLoad(file.id);
       const mine = this.local(), base = saved || (this.first === 'theirs' ? mine : undefined);
+      const localActive=mine.data.activeWorkout,remoteActive=theirs.data.activeWorkout;if(localActive&&remoteActive&&localActive.id!==remoteActive.id&&!sameJson(base?.data.activeWorkout,localActive)&&!sameJson(base?.data.activeWorkout,remoteActive))throw new Error('Different workouts are active on these devices. Keep a backup and finish or discard one before combining; neither active workout was replaced.');
       const preferMine = (syncMeta().changed || '') > (theirs.exportedAt || '');
       const merged = { data: {}, settings: syncMerge(base?.settings, mine.settings, theirs.settings, preferMine) };
       for (const k of Object.keys(mine.data)) merged.data[k] = Object.hasOwn(theirs.data, k) ? syncMerge(base?.data[k], mine.data[k], theirs.data[k], preferMine) : mine.data[k];
+      if(merged.data.activeWorkout&&merged.data.workouts.some(w=>w.id===merged.data.activeWorkout.id))throw new Error('This workout was finished on another device while this draft changed. Your local draft is retained; export a backup before resolving it.');
       validateBackup({ app: 'body-dashboard', version: 1, data: merged.data, settings: merged.settings });
       if (!this.allowLoss) {
         const hereBy = syncLosses(mine.data, merged.data), awayBy = syncLosses(Object.fromEntries(Object.keys(merged.data).map(k => [k, theirs.data[k]])), merged.data), here = sum(Object.values(hereBy)), away = sum(Object.values(awayBy));
@@ -5422,7 +5439,7 @@ const Sync = {
       let ver = file.version;
       if (!sameJson(agreed.data, theirs.data) || !sameJson(agreed.settings, theirs.settings)) {
         if ((await (await driveFetch(`/drive/v3/files/${encodeURIComponent(file.id)}?fields=version`)).json()).version !== file.version) continue; // another device saved meanwhile: merge again
-        ver = (await driveSave(file.id, agreed)).version || '';
+        try{ver=(await driveSave(file.id,agreed,DRIVE.file,etag)).version||'';}catch(e){if(e.status===412)continue;throw e;}
       }
       await LocalDb.put(SYNC_BASE, agreed);
       setSyncMeta({ ver }); this.first = '';
@@ -5480,12 +5497,12 @@ const Sync = {
 function syncBox() {
   if (!syncAvailable()) return `<p class="text-xs muted">${DRIVE.clientId ? 'Syncing between devices works in the hosted copy of the app (its web address), not in a copy opened as a file.' : 'Syncing between devices is not set up yet.'}</p>`;
   if (!Sync.connected()) return `<p class="text-sm">Keep this device and your others in step through a private app folder in your Google Drive.</p>
-    <p class="text-xs muted">Records, photos and basic settings sync. API keys and downloaded libraries stay on each device.</p>
+    <p class="text-xs muted">Workouts, cycles, training maxes, nutrition, photos and basic settings sync. API keys stay on each device. Log an active workout on one device at a time; use Sync now before changing devices. This personal beta may ask you to sign in again weekly.</p>
     <button type="button" class="btn btn-sm" data-action="syncConnect">${icon('cloud', 'w-3.5 h-3.5')} Connect Google Drive</button>`;
   const m = syncMeta();
   return `<p class="text-sm" role="status">${icon('cloud', 'w-4 h-4 inline')} Google Drive sync is on · ${esc(Sync.status())}</p>
     <p class="text-xs muted">Records, photos and basic settings sync. API keys and downloaded libraries stay on each device.${m.photosLeft ? ` ${m.photosLeft} photo${m.photosLeft === 1 ? '' : 's'} still to sync; they follow over the next few syncs.` : ''}${m.photoError ? ` Photos stopped: ${esc(m.photoError)}` : ''}</p>
-    ${m.refresh ? '<p class="text-xs muted">This device stays signed in to Google; Stop syncing signs it out.</p>' : ''}
+    ${m.refresh ? '<p class="text-xs muted">This personal beta may ask you to sign in again weekly. Stop syncing signs this device out.</p>' : ''}
     <p class="text-xs muted">${m.copied ? `A dated copy of your records is kept in Drive each day (latest: ${fmtDate(m.copied)}).` : 'Each day, the first sync also keeps a dated copy of your records in Drive.'} Copies cover the last 7 days, then one a week for 8 weeks.${m.copyError ? ` The last copy could not be made: ${esc(m.copyError)}` : ''}</p>
     <div class="flex flex-wrap gap-2"><button type="button" class="btn btn-sm" data-action="syncNow" ${Sync.busy ? 'disabled' : ''}>${icon('refresh-cw', 'w-3.5 h-3.5')} Sync now</button><button type="button" class="btn btn-sm" data-action="syncCopies">${icon('history', 'w-3.5 h-3.5')} Restore from a copy…</button><button type="button" class="btn btn-sm" data-action="syncDisconnect">${icon('cloud-off', 'w-3.5 h-3.5')} Stop syncing this device</button></div>
 `;

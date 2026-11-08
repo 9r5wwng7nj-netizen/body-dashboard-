@@ -64,7 +64,7 @@ The `<head>` holds the theme pre-paint script, compiled `assets/app.css`, and th
 | `HOME — … recipes` | Recipes & Meals: recipe box, ingredient nutrition (`ING_DB`), cook mode, meal plan with a Tonight card, `RECIPE_LIBRARY` and Plan my week (`mpw*`), grocery list and sections, pantry and freezer. Action tables `A_MEALS` (basics), `A_RECIPES`, `A_MPW`; `runShortcut()` sends groceries to Apple Reminders |
 | Share sheet → `READER`, `readLink()` | Save a recipe from a link (recipe only). The link reader is Life Dashboard's deployed Cloudflare Worker; it answers by origin, and this app is on the same origin. It also serves the food search (`/food/search`) |
 | `HELP: start-here tour and what's new` | `RELEASES`, `TOUR`, `dashNotices()`, the `deck*` slides, `openHelp()`, `A_HELP` |
-| `DEVICE SYNC (Google Drive app folder)` | Built but **off**: `DRIVE.clientId` is empty until the user chooses a Google account. `syncMerge()` three-way merge, Google sign-in, Drive calls, `Sync`, photo sync, daily copies, `A_SYNC` |
+| `DEVICE SYNC (Google Drive app folder)` | Optional and **off on each device until Connect**: dedicated Body OAuth public client/broker, `syncMerge()` three-way merge, Drive calls, conditional-write preflight, `Sync`, photo sync, daily copies, `A_SYNC`. See `docs/DRIVE_SYNC.md`. |
 | `ACTIONS (event-delegated)` | the core `A` table and `Object.assign(A, A_FIT, A_NUT, A_MF, A_MEALS, A_RECIPES, A_MPW, A_SYNC, A_HELP, A_SHARE)` |
 | `EVENT WIRING & INIT` | global click/input/change/submit listeners and `init()` |
 
@@ -129,3 +129,7 @@ Secondary selections/cues, the read-only 200-definition catalog and Plan/Perform
 - `trainingCycles: []` is optional. Keep imported cycle definitions, targets and actual logged values separate. Preserve active/history snapshots after setup changes. Do not seed personal plans or commit them to this public repository.
 - `weight_distance` adds loaded carries with canonical kg/km and optional yards/metres display. Preserve legacy tracking and draft-unit meanings. Warm-ups and loaded carries stay outside rep-based muscle-set totals.
 - Progression and contradictory source instructions require user review. Do not silently change TMs, infer effort or prohibit recording actual activity. Sync remains off.
+
+## Optional device sync authorized — 2026-11-08
+
+The owner requested enabling Google Drive desktop/iPhone sync using the same Google account as Life Dashboard, with Body data kept separate. This supersedes the earlier no-production-sync scope for this optional feature only. Keep local logging primary and sync off until the user explicitly connects each device. Use a separate Body OAuth project/client and `auth/worker.js` broker; do not change Life credentials, Worker or data. Body photo filenames now also require the `body-dashboard-` prefix. See `docs/DRIVE_SYNC.md` for setup, concurrency/recovery limits and the required owner-assisted live sign-in pilot. Never claim mock tests verify real Google authorization. Legal agreements/credential entry remain with the owner.

@@ -4,10 +4,12 @@ import { test, expect } from '@playwright/test';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
+import fs from 'node:fs/promises';import os from 'node:os';
 import { serveRepo, stopServer } from './serve.js';
 
 const TOKEN = 'test-token';
-let server, base;
+let server, base;const ownedProfiles=[];
+test.afterEach(async()=>{for(const {context,dir} of ownedProfiles.splice(0)){await context.close().catch(()=>{});await fs.rm(dir,{recursive:true,force:true});}});
 test.beforeAll(async () => { server = await serveRepo(); base = `http://localhost:${server.address().port}`; });
 test.afterAll(() => stopServer(server));
 
@@ -15,44 +17,45 @@ test.afterAll(() => stopServer(server));
 // dated daily copies (`copies`, newest last), which can be listed, downloaded and deleted.
 function fakeDrive() {
   const drive = { file: null, saves: 0, copies: [], made: 0, gauth: { ready: false, refuse: false, calls: [] } };
-  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' };
-  const json = (route, body, status = 200) => route.fulfill({ status, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  drive.copy = (name, body = '{}') => { const c = { id: 'copy-' + (++drive.made), name, body, size: String(body.length), createdTime: new Date().toISOString() }; drive.copies.push(c); return c; };
-  // The link reader Worker's Google step (lasting sign-in): off unless a test turns `gauth.ready` on.
-  const reader = context => context.route('https://life-dashboard-reader.lifedashboard-9r5w.workers.dev/**', route => {
+  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*','Access-Control-Expose-Headers':'ETag' };
+  const json = (route, body, status = 200, extra={}) => route.fulfill({ status, headers: { ...cors, 'Content-Type': 'application/json',...extra }, body: JSON.stringify(body) });
+  drive.copy = (name, body = '{}') => { const c = { id: 'copy-' + (++drive.made), name, body,version:'1', size: String(body.length), createdTime: new Date().toISOString() }; drive.copies.push(c); return c; };
+  // The dedicated Body broker: off unless a test turns `gauth.ready` on.
+  const reader = context => context.route('https://body-dashboard-auth.lifedashboard-9r5w.workers.dev/**', route => {
     const req = route.request(), url = new URL(req.url());
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
-    if (url.pathname === '/google/ready') return json(route, { ready: drive.gauth.ready });
+    if (url.pathname === '/google/ready') return json(route, { ready: drive.gauth.ready, clientId:'test-client' });
     const body = JSON.parse(req.postData() || '{}'); drive.gauth.calls.push({ path: url.pathname, body });
     if (url.pathname === '/google/token') return json(route, { access_token: TOKEN, expires_in: 3599, refresh_token: 'refresh-1' });
     if (url.pathname === '/google/refresh') return drive.gauth.refuse ? json(route, { error: 'invalid_grant' }, 400) : json(route, { access_token: TOKEN, expires_in: 3599, refresh_token: null });
     if (url.pathname === '/google/revoke') return json(route, { revoked: true });
     return json(route, { error: 'not found' }, 404);
   });
-  drive.attach = context => reader(context).then(() => context.route('https://www.googleapis.com/**', route => {
+  drive.attach = context => reader(context).then(() => context.route('https://www.googleapis.com/**', async route => {
     const req = route.request(), url = new URL(req.url()), method = req.method();
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
     if (req.headers().authorization !== `Bearer ${TOKEN}`) return json(route, { error: 'unauthorized' }, 401);
     const save = text => { drive.saves++; drive.file = { id: 'file-1', version: String(+(drive.file?.version || 0) + 1), body: text }; return json(route, { id: drive.file.id, version: drive.file.version }); };
     if (url.pathname === '/drive/v3/files') {
       const sync = drive.file ? [{ id: drive.file.id, name: 'body-dashboard-sync.json', version: drive.file.version }] : [];
-      return json(route, { files: (url.searchParams.get('q') || '').includes("name='") ? sync : [...sync, ...drive.copies.map(({ id, name, size, createdTime }) => ({ id, name, size, createdTime }))] });
+      return json(route, { files: (url.searchParams.get('q') || '').includes("name='") ? [...sync,...(drive.duplicates||[])] : [...sync, ...drive.copies.map(({ id, name, size, createdTime }) => ({ id, name, size, createdTime }))] });
     }
     if (url.pathname === '/upload/drive/v3/files' && method === 'POST') {
       const buf = req.postDataBuffer(), text = buf.toString('latin1'), first = text.indexOf('\r\n\r\n') + 4, second = text.indexOf('\r\n\r\n', first) + 4;
       const meta = JSON.parse(text.slice(first, text.indexOf('\r\n--', first))), bytes = buf.subarray(second, text.lastIndexOf('\r\n--'));
-      if (meta.name.startsWith('photo-')) { const c = drive.copy(meta.name, bytes); return json(route, { id: c.id }); }
+      if (meta.name.startsWith('body-dashboard-photo-')) { const c = drive.copy(meta.name, bytes); return json(route, { id: c.id }); }
       const body = bytes.toString('utf8');
       if (meta.name !== 'body-dashboard-sync.json') { const c = drive.copy(meta.name, body); return json(route, { id: c.id, version: '1' }); }
       return save(body);
     }
     const updated = drive.copies.find(c => url.pathname === '/upload/drive/v3/files/' + c.id);
-    if (updated && method === 'PATCH') { updated.body = req.postData(); updated.updates = (updated.updates || 0) + 1; return json(route, { id: updated.id }); }
+    if (updated && method === 'PATCH') {if(updated.name.startsWith('body-dashboard-probe-')&&!drive.ignoreIfMatch&&req.headers()['if-match']!==`\"bd-${updated.version}\"`)return json(route,{error:'conditionNotMet'},412);updated.version=String(+updated.version+1); updated.body = req.postData(); updated.updates = (updated.updates || 0) + 1; return json(route, { id: updated.id }); }
     const copy = drive.copies.find(c => url.pathname === '/drive/v3/files/' + c.id);
     if (copy && method === 'DELETE') { drive.copies = drive.copies.filter(c => c !== copy); return route.fulfill({ status: 204, headers: cors }); }
-    if (copy) return route.fulfill({ status: 200, headers: { ...cors, 'Content-Type': copy.name.startsWith('photo-') ? 'image/png' : 'application/json' }, body: copy.body });
-    if (url.pathname === '/upload/drive/v3/files/file-1' && method === 'PATCH') return save(req.postData());
-    if (url.pathname === '/drive/v3/files/file-1') return url.searchParams.get('alt') === 'media' ? route.fulfill({ status: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: drive.file.body }) : json(route, { version: drive.file.version });
+    if(copy&&url.searchParams.get('alt')!=='media')return json(route,{id:copy.id,name:copy.name,version:copy.version},200,drive.omitEtag?{}:{ETag:`\"bd-${copy.version}\"`});
+    if (copy) return route.fulfill({ status: 200, headers: { ...cors, 'Content-Type': copy.name.startsWith('body-dashboard-photo-') ? 'image/png' : 'application/json' }, body: copy.body });
+    if (url.pathname === '/upload/drive/v3/files/file-1' && method === 'PATCH') {if(drive.beforePatch)await drive.beforePatch();if(req.headers()['if-match']!==`"bd-${drive.file.version}"`)return json(route,{error:'conditionNotMet'},412);return save(req.postData());}
+    if (url.pathname === '/drive/v3/files/file-1') return url.searchParams.get('alt') === 'media' ? route.fulfill({ status: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: drive.file.body }) : json(route, { id:drive.file.id,name:'body-dashboard-sync.json',version: drive.file.version },200,drive.omitEtag?{}:{ETag:`"bd-${drive.file.version}"`});
     return json(route, { error: 'not found' }, 404);
   }));
   return drive;
@@ -74,12 +77,12 @@ const quickRecords = () => {
   window.addRecipe = title => { const r = { id: uid(), title, ingredients: '', steps: '', created: new Date().toISOString() }; Store.get('recipes').push(r); Store.save('recipes'); return r; };
 };
 async function device(browser, drive, options) {
-  const context = await browser.newContext();
+  let context;if(browser.browserType().name()==='webkit'){const dir=await fs.mkdtemp(path.join(os.tmpdir(),'bd-sync-synthetic-'));context=await browser.browserType().launchPersistentContext(dir,{headless:true,viewport:{width:390,height:844},isMobile:true,hasTouch:true});ownedProfiles.push({context,dir});}else context=await browser.newContext();
   await context.addInitScript(quickRecords);
-  // The app ships with no Google client ID until an account is chosen; these devices get a test one,
+  // Isolate the public production client configuration with a synthetic ID,
   // also after a sign-in redirect reloads the page.
   await context.route(url => url.pathname === '/index.html', async route => {
-    const res = await route.fetch(), body = (await res.text()).replace("const DRIVE = { clientId: ''", "const DRIVE = { clientId: 'test-client'");
+    const res = await route.fetch(), body = (await res.text()).replace(/const DRIVE = \{ clientId: '[^']*'/, "const DRIVE = { clientId: 'test-client'");
     return route.fulfill({ response: res, body });
   });
   await drive.attach(context);
@@ -118,6 +121,21 @@ test('three-way merge keeps edits, additions and deletions from both sides', asy
   expect(r.names).toEqual(['Squat', 'Press', 'Curl']); // Row was removed on their side
   expect(r.days).toEqual({ '2026-10-01': { weight: 80, entries: [{ id: 'e1' }] }, '2026-10-02': { weight: 81, entries: [] } });
   expect(r.noBase.map(x => x.id)).toEqual(['a', 'z']);
+});
+
+test('configured hosted app keeps sync opt-in while offline local edits survive reload', async ({page,context})=>{
+  const requests=[];
+  await context.route(/https:\/\/(?:[^/]*googleapis\.com|accounts\.google\.com|body-dashboard-auth\.lifedashboard-9r5w\.workers\.dev)\//,route=>{requests.push(route.request().url());return route.abort();});
+  await page.goto(`${base}/index.html`);
+  await page.waitForFunction(()=>typeof Store!=='undefined'&&Store.ready);
+  expect(await page.evaluate(()=>({configured:!!DRIVE.clientId,on:Sync.connected()}))).toEqual({configured:true,on:false});
+  await context.setOffline(true);
+  await page.evaluate(async()=>{Store.get('recipes').push({id:'synthetic-offline-opt-in',title:'Synthetic offline meal',ingredients:'',steps:''});await Store.save('recipes');await Store.flushDirty();await Sync.run({announce:true});});
+  await context.setOffline(false);
+  await page.reload();await page.waitForFunction(()=>typeof Store!=='undefined'&&Store.ready);
+  expect(await page.evaluate(()=>Store.get('recipes').some(r=>r.id==='synthetic-offline-opt-in'))).toBe(true);
+  expect(await page.evaluate(()=>Sync.connected())).toBe(false);
+  expect(requests).toEqual([]);
 });
 
 test('two devices converge, including deletions, and private items stay on the device', async ({ browser }) => {
@@ -214,30 +232,7 @@ test('an unreadable Drive copy changes nothing on the device', async ({ browser 
   await d.context.close();
 });
 
-test('Google sign-in round trip stores the token and rejects an unexpected reply', async ({ browser }) => {
-  const drive = fakeDrive(), d = await device(browser, drive, { connected: false });
-  let asked;
-  await d.context.route('https://accounts.google.com/**', route => {
-    asked = new URL(route.request().url()).searchParams;
-    const back = `${asked.get('redirect_uri')}#access_token=${TOKEN}&token_type=Bearer&expires_in=3599&state=${asked.get('state')}`;
-    return route.fulfill({ status: 200, contentType: 'text/html', body: `<script>location.replace(${JSON.stringify(back)})</script>` });
-  });
-  await d.page.evaluate(() => openSettings());
-  await d.page.click('[data-action="syncConnect"]');
-  await d.page.waitForFunction(() => typeof syncMeta === 'function' && !!syncMeta().token && !location.hash);
-  expect(asked.get('client_id')).toBe('test-client');
-  expect(asked.get('response_type')).toBe('token');
-  expect(asked.get('scope')).toBe('https://www.googleapis.com/auth/drive.appdata');
-  expect(asked.get('redirect_uri')).toBe(`${base}/index.html`);
-  expect(await d.page.evaluate(() => syncMeta().token)).toBe(TOKEN);
-
-  await d.page.evaluate(() => localStorage.setItem('bd.sync', JSON.stringify({ on: true, state: 'expected' })));
-  await d.page.goto('about:blank'); // a fresh load, as when arriving from a link
-  await d.page.goto(`${base}/index.html#access_token=forged&expires_in=3599&state=other`);
-  await d.page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.data && Array.isArray(Store.data.recipes));
-  expect(await d.page.evaluate(() => [syncMeta().token || '', location.hash])).toEqual(['', '']);
-  await d.context.close();
-});
+test('sign-in refuses unavailable setup without sending a token through the URL',async({browser})=>{const drive=fakeDrive(),d=await device(browser,drive,{connected:false});const urls=[];await d.context.route('https://accounts.google.com/**',r=>{urls.push(r.request().url());return r.abort();});await d.page.evaluate(()=>openSettings());await d.page.click('[data-action="syncConnect"]');await expect(d.page.locator('#toasts')).toContainText('Google sign-in is not ready');expect(urls).toEqual([]);await d.page.evaluate(()=>localStorage.setItem('bd.sync',JSON.stringify({on:true,state:'expected'})));await d.page.goto('about:blank');await d.page.goto(`${base}/index.html#access_token=forged&expires_in=3599&state=other`);await d.page.waitForFunction(()=>Store.ready);expect(await d.page.evaluate(()=>[syncMeta().token||'',location.hash])).toEqual(['','']);await d.context.close();});
 
 test('file copy offers no sync and makes no sync requests', async ({ page }) => {
   const requests = [];
@@ -329,7 +324,7 @@ test('with the Worker set up, sign-in lasts: the code is traded once, and an exp
   await d.page.evaluate(() => { addRecipe('Lasting'); openSettings(); });
   await d.page.click('[data-action="syncConnect"]');
   await d.page.waitForFunction(() => typeof syncMeta === 'function' && syncMeta().refresh === 'refresh-1' && !location.search);
-  expect([asked.get('response_type'), asked.get('access_type'), asked.get('prompt'), asked.get('code_challenge_method')]).toEqual(['code', 'offline', 'consent', 'S256']);
+  expect([asked.get('response_type'), asked.get('access_type'), asked.get('prompt'), asked.get('code_challenge_method')]).toEqual(['code', 'offline', 'select_account consent', 'S256']);
   const traded = drive.gauth.calls.find(c => c.path === '/google/token');
   expect([traded.body.code, traded.body.redirect_uri]).toEqual(['one-time-code', `${base}/index.html`]);
   expect(createHash('sha256').update(traded.body.verifier).digest('base64url')).toBe(asked.get('code_challenge')); // PKCE
@@ -369,13 +364,13 @@ test('photos travel with the records, a batch per sync, and progress photos come
     Store.set('photoMeta', [{ id: 'prog1', date: ymd(), pose: 'front' }]);
   });
   expect((await sync(laptop.page)).error).toBe('');
-  const photoFiles = () => drive.copies.filter(c => c.name.startsWith('photo-')).map(c => c.name).sort();
+  const photoFiles = () => drive.copies.filter(c => c.name.startsWith('body-dashboard-photo-')).map(c => c.name).sort();
   expect(photoFiles()).toHaveLength(12); // one batch per sync
   expect(await laptop.page.evaluate(() => syncMeta().photosLeft)).toBe(3);
   expect((await sync(laptop.page)).error).toBe('');
   expect(photoFiles()).toHaveLength(15);
   expect(await laptop.page.evaluate(() => syncMeta().photosLeft)).toBe(0);
-  expect(Array.from(drive.copies.find(c => c.name === 'photo-rp_photo3').body)).toEqual([137, 80, 78, 71, 3, 0, 255, 13, 10]); // bytes intact
+  expect(Array.from(drive.copies.find(c => c.name === 'body-dashboard-photo-rp_photo3').body)).toEqual([137, 80, 78, 71, 3, 0, 255, 13, 10]); // bytes intact
 
   // The phone takes the Drive copy, then the photos arrive over two syncs.
   await sync(phone.page);
@@ -407,3 +402,34 @@ test('photo references are found wherever records keep them', async ({ page }) =
   }).sort());
   expect(ids).toEqual(['fm_c', 'fm_d', 'jp_a', 'jp_b', 'plain1', 'rp_e', 'x_f']);
 });
+
+test('conditional Drive writes preserve additions when both devices save concurrently',async({browser})=>{
+ const drive=fakeDrive(),a=await device(browser,drive),b=await device(browser,drive);await a.page.evaluate(()=>addRecipe('Synthetic baseline'));await sync(a.page);await sync(b.page);await b.page.click('[data-action="syncFirst"][data-mode="theirs"]');await b.page.waitForFunction(()=>!Sync.busy&&syncMeta().last);await a.page.evaluate(()=>addRecipe('Synthetic desktop addition'));await b.page.evaluate(()=>addRecipe('Synthetic phone addition'));
+ let entered=0,release;const gate=new Promise(r=>release=r);drive.beforePatch=async()=>{if(++entered===2){drive.beforePatch=null;release();}await gate;};await Promise.all([sync(a.page),sync(b.page)]);await sync(a.page);await sync(b.page);const want=['Synthetic baseline','Synthetic desktop addition','Synthetic phone addition'];expect(await titles(a.page)).toEqual(want);expect(await titles(b.page)).toEqual(want);expect(JSON.parse(drive.file.body).data.recipes.map(x=>x.title).sort()).toEqual(want);await a.context.close();await b.context.close();
+});
+
+test('missing update markers and duplicate canonical copies stop sync without replacing saved records',async({browser})=>{
+ const drive=fakeDrive(),d=await device(browser,drive);await d.page.evaluate(()=>addRecipe('Synthetic original'));await sync(d.page);const remote=drive.file.body;await d.page.evaluate(()=>addRecipe('Synthetic pending local'));drive.omitEtag=true;expect((await sync(d.page)).error).toContain('safe update marker');expect(drive.file.body).toBe(remote);expect(await titles(d.page)).toContain('Synthetic pending local');drive.omitEtag=false;drive.duplicates=[{id:'synthetic-duplicate',name:'body-dashboard-sync.json',version:'1'}];expect((await sync(d.page)).error).toContain('More than one Body Dashboard sync copy');expect(drive.file.body).toBe(remote);await d.context.close();
+});
+
+test('Body photo and dated-copy writes do not read or change Life files with matching photo IDs',async({browser})=>{
+ const drive=fakeDrive(),life=drive.copy('photo-rp_shared',Buffer.from('synthetic Life image')),lifeCopy=drive.copy('life-dashboard-copy-2026-01-01.json','synthetic Life copy'),d=await device(browser,drive);await d.page.evaluate(async()=>{await Photos.put('rp_shared',new Blob(['synthetic Body image'],{type:'image/png'}));Store.set('recipes',[{id:'synthetic-body-photo',title:'Synthetic Body photo',photo:'rp_shared'}]);});await sync(d.page);expect(life.body.toString()).toBe('synthetic Life image');expect(lifeCopy.body).toBe('synthetic Life copy');expect(drive.copies.some(c=>c.id===life.id)).toBe(true);expect(drive.copies.find(c=>c.name==='body-dashboard-photo-rp_shared').body.toString()).toBe('synthetic Body image');await d.context.close();
+});
+
+test('cycles, calibrated training maxes and recoverable handoff drafts arrive on the other device',async({browser})=>{
+ const drive=fakeDrive(),a=await device(browser,drive),b=await device(browser,drive);await a.page.evaluate(async()=>{const p={app:'body-dashboard',type:'training-cycle',version:1,id:'synthetic-sync-cycle',name:'Synthetic sync cycle',startDate:ymd(),weeks:[{name:'Synthetic week',tmGroup:'base'}],lifts:[{key:'press',label:'Synthetic press'}],days:[{id:'one',name:'Synthetic day',offset:0,exercises:[{key:'press',name:'Synthetic press',classification:{version:1,type:'weight_reps',primary:'Shoulders',secondary:['Triceps'],equipment:'Barbell'},rest:60,ss:false,targets:[[{percentTM:.5,liftKey:'press',repsMin:5}]]}]}]};cpDefinitionCheck(p);const c={id:p.id,definition:p,signature:await webDigest(p),startDate:p.startDate,maxes:{press:{baseKg:60,roundKg:2.5}},routineIds:{one:'synthetic-cycle-routine'}};Store.set('trainingCycles',[c]);Store.get('routines').push(cpRoutine(c,p.days[0]));Store.save('routines');await Store.flushDirty();h1OpenDraft({dataset:{kind:'routine'}});ui.h1.raw=JSON.stringify({version:1,kind:'routine',routines:[{name:'Synthetic unsent draft',notes:'',exercises:[{exercise:'Bench Press (Barbell)',sets:2,target:'8',unit:'reps',restSeconds:60}]}],assumptions:[],questions:[]});await h1SaveRaw();Modal.close();});await sync(a.page);await sync(b.page);await b.page.click('[data-action="syncFirst"][data-mode="theirs"]');await b.page.waitForFunction(()=>!Sync.busy&&syncMeta().last);expect(await b.page.evaluate(()=>({tm:cpCycles()[0].maxes.press.baseKg,routine:Store.get('routines').find(r=>r.cycleId).id,draft:h1Drafts()[0].raw}))).toEqual(await a.page.evaluate(()=>({tm:cpCycles()[0].maxes.press.baseKg,routine:Store.get('routines').find(r=>r.cycleId).id,draft:h1Drafts()[0].raw})));await b.page.reload();await b.page.waitForFunction(()=>Store.ready);expect(await b.page.evaluate(()=>cpCycles()[0].maxes.press.baseKg)).toBe(60);await a.context.close();await b.context.close();
+});
+
+test('combining different active workouts keeps both drafts and pauses instead of choosing one',async({browser})=>{
+ const drive=fakeDrive(),a=await device(browser,drive),b=await device(browser,drive);for(const[d,id]of[[a,'synthetic-active-a'],[b,'synthetic-active-b']])await d.page.evaluate(id=>Store.set('activeWorkout',{id,name:id,start:new Date().toISOString(),notes:'Synthetic draft',exercises:[]}),id);await sync(a.page);await sync(b.page);await b.page.click('[data-action="syncFirst"][data-mode="merge"]');await b.page.waitForFunction(()=>!Sync.busy);expect((await b.page.evaluate(()=>syncMeta())).error).toContain('Different workouts are active');expect(await b.page.evaluate(()=>Store.get('activeWorkout').id)).toBe('synthetic-active-b');expect(JSON.parse(drive.file.body).data.activeWorkout.id).toBe('synthetic-active-a');await a.context.close();await b.context.close();
+});
+
+test('a remote finish cannot silently discard a concurrently edited active draft or reopen its session',async({browser})=>{
+ const drive=fakeDrive(),a=await device(browser,drive),b=await device(browser,drive);await a.page.evaluate(()=>Store.set('activeWorkout',{id:'synthetic-finish-race',name:'Synthetic session',start:new Date().toISOString(),notes:'',exercises:[]}));await sync(a.page);await sync(b.page);await b.page.click('[data-action="syncFirst"][data-mode="theirs"]');await b.page.waitForFunction(()=>!Sync.busy&&syncMeta().last);await a.page.evaluate(async()=>{const w={...Store.get('activeWorkout'),end:new Date().toISOString()};await WebWrites.command({activeWorkout:null,workouts:[w]},'finish-workout');});await sync(a.page);await b.page.evaluate(()=>{Store.get('activeWorkout').notes='Synthetic later unsent observation';Store.save('activeWorkout');setSyncMeta({changed:new Date(Date.now()+1000).toISOString()});});expect((await sync(b.page)).error).toContain('finished on another device');expect(await b.page.evaluate(()=>Store.get('activeWorkout').notes)).toBe('Synthetic later unsent observation');expect(JSON.parse(drive.file.body).data.activeWorkout).toBeNull();expect(JSON.parse(drive.file.body).data.workouts[0].id).toBe('synthetic-finish-race');await a.context.close();await b.context.close();
+});
+
+
+test('a Life Dashboard payload cannot be used as Body sync state',async({browser})=>{const drive=fakeDrive();drive.file={id:'file-1',version:'1',body:JSON.stringify({app:'life-dashboard',version:1,data:{workouts:[],routines:[]}})};const d=await device(browser,drive);await d.page.evaluate(()=>addRecipe('Synthetic local preserved'));await sync(d.page);await d.page.click('[data-action="syncFirst"][data-mode="merge"]');await d.page.waitForFunction(()=>!Sync.busy);expect((await d.page.evaluate(()=>syncMeta())).error).toContain('Expected a Body Dashboard');expect(await titles(d.page)).toEqual(['Synthetic local preserved']);expect(drive.saves).toBe(0);await d.context.close();});
+
+
+test('a provider that ignores conditional writes is rejected using an empty probe before records upload',async({browser})=>{const drive=fakeDrive();drive.ignoreIfMatch=true;const d=await device(browser,drive);await d.page.evaluate(()=>addRecipe('Synthetic must stay local'));expect((await sync(d.page)).error).toContain('No personal records were uploaded');expect(drive.file).toBeNull();expect(drive.saves).toBe(0);expect(await titles(d.page)).toEqual(['Synthetic must stay local']);expect(drive.copies.filter(x=>x.name.startsWith('body-dashboard-probe-'))).toEqual([]);drive.ignoreIfMatch=false;expect((await sync(d.page)).error).toBe('');expect(JSON.parse(drive.file.body).data.recipes[0].title).toBe('Synthetic must stay local');await d.context.close();});
