@@ -122,3 +122,10 @@ The owner explicitly authorized implementing `docs/product-review/2026-11-07/NEX
 ## Ordered iteration delivery — current runtime
 
 Secondary selections/cues, the read-only 200-definition catalog and Plan/Performed Muscle sets have shipped through individual checked Pages updates; see per-release records under `docs/product-review/2026-11-07/`. The fourth stage adds manual ChatGPT handoff/review with optional `handoffDrafts`, existing coordinated commands and strict snapshot validation. H2 built-in AI remains deferred. The old browser-API-key sketch in Refresh plan is superseded: do not add provider secrets to browser settings/client code; any later integration needs a separately chosen server credential boundary. Core logging stays offline and separate from manual external ChatGPT use. Preserve these scopes when extending the app.
+
+## Optional local training cycles — 2026-11-08
+
+- Train → Import cycle adds private multi-week prescriptions with per-set targets, optional base/ramp TMs and load rounding. See `docs/TRAINING_CYCLES.md` for the versioned contract and persistence boundaries.
+- `trainingCycles: []` is optional. Keep imported cycle definitions, targets and actual logged values separate. Preserve active/history snapshots after setup changes. Do not seed personal plans or commit them to this public repository.
+- `weight_distance` adds loaded carries with canonical kg/km and optional yards/metres display. Preserve legacy tracking and draft-unit meanings. Warm-ups and loaded carries stay outside rep-based muscle-set totals.
+- Progression and contradictory source instructions require user review. Do not silently change TMs, infer effort or prohibit recording actual activity. Sync remains off.
