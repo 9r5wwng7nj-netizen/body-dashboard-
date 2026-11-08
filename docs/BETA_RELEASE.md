@@ -2,21 +2,29 @@
 
 Updated November 8, 2026 (America/New_York).
 
-**Expanded exercise library beta — open on iPhone:** https://9r5wwng7nj-netizen.github.io/body-dashboard-/
+**Muscle sets personal beta — open on iPhone:** https://9r5wwng7nj-netizen.github.io/body-dashboard-/
 
 ## Release identity
 
-- Tested source: `3df2c5b932d3640bb810152fd3bc8ed8e5331e79`, branch `beta/personal-web`.
-- Deployment: `2ec7e53d8ffb3ed2edcc5dc2b0ac977aed6ac3d9`, branch `gh-pages`, root folder.
-- [Passing source checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42448950755).
-- [Successful Pages build/deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42449312563).
+- Tested source: `a0dea9ec557c6ecbd8b9299a3a4d31b149c19888`, branch `beta/personal-web`.
+- Deployment: `3b2619ca2ebb297c6292d5587a7d2e71d102f343`, branch `gh-pages`, root folder.
+- [Passing source checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42450431116).
+- [Successful Pages build/deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42450798281).
 - [Public release manifest](https://9r5wwng7nj-netizen.github.io/body-dashboard-/release.json) records source and SHA-256 asset hashes.
 
 The deployment contains 17 allowlisted package files: app HTML, service worker, manifest, CSS, icons, pinned libraries/licenses, `.nojekyll` and the release manifest. No backups, credentials, certificates, local preview tools, tests or planning documents are in the Pages artifact. The public source branch contains reviewed code/tests and synthetic planning fixtures. Main was retained; no force push was used.
 
 `node scripts/package-beta.mjs EMPTY_OUTPUT_DIRECTORY SOURCE_COMMIT` creates this package. It refuses a nonempty destination and rejects unexpected backup/key/JSON files. The packaged worker gets a cache generation derived from the tested source commit, so later deployments can install a new complete shell without forcing reload over active work. Keep Pages configured to `gh-pages` at `/`.
 
-## Expanded offline library — current update
+## Muscle sets — current update
+
+Train → Progress → Muscle sets links Plan and Performed. Primary sets and secondary involvement are separate; body areas deduplicate overlapping children. Local Monday-to-today history excludes future/active work. Timed/conditioning/warm-up work, partial/unknown/inferred mappings and unaccepted rows remain explicit. Routine shortcuts preserve unsaved edits. The optional current-role view changes the report, never stored classifications or tracking basis.
+
+- Exact-source Linux CI passed **214 Chromium / 107 WebKit**; staged and live report-specific checks passed in both engines, with counts reconciled against a synthetic routine/history fixture and original record values preserved through backup/reload.
+- Live common checks passed all 15 runtime hashes, both Cobalt themes, offline swap/resume/finish, duplicate-safe import and byte-identical photo restoration. Zero page errors/network writes; retired records and storage names unchanged.
+- Both-mode app screenshots and narrow/enlarged-text tests were reviewed. See [full release evidence and limits](product-review/2026-11-07/RELEASE_3_MUSCLE_SETS.md).
+
+## Previous update — expanded offline library
 
 The fresh catalog has 200 definitions, with 144 curated additions and shared name/alias/muscle/equipment search. New entries form a read-only union with the original stored library; opening the app does not migrate names or rewrite definitions. Personal overrides/cues and recorded classifications retain precedence. Adductors/Abductors, corrected current inference and explicit band tracking improve mapping without inventing load conversions.
 
@@ -69,7 +77,7 @@ See `docs/product-review/2026-11-07/IMPLEMENTATION_REPORT.md` for behavior, pres
 
 ## Earlier beta history
 
-The exercise-cue source `2834caca6e7c7cea387e4d9d389bfbe30476656d` was deployed as `26228a86fa5843602f7eefb6b6eb4aea10bca94e`. Cobalt Air source `f4ea8bb87dc92d577aca7752d0aee8e1e3691b93` was deployed as `6734dd6d7a3528ed75a509d24456aa3bbf05000c`. The previous Warm Mineral source was `25d1c96bf8e10003323dc34c66720d2f7a46df0b`, deployed as `35d2c922fe396cdb46b1d4b807ff86c979e26340` (170 Chromium / 63 WebKit, plus staged/live offline and backup verification). The prior focused-interface source was `fa734b77e064cae7b3e3b64502a427802bec7c0d`, deployed as `1682a2ae40b73edbea609601ddd860d55ddf638f`. It removed the sidebar and introduced focused workout logging. The initial beta source was `98515a08138b7453b4c0a60e05282ff6575b11d9`, deployed as `65af0a3788f36cc3fc17dcbd7262deaa5b98b0f4`. Cobalt Air advances the existing Pages branch normally; no force push or browser-data reset was used. Main remains unchanged. Personal reference screenshots are excluded from source and artifacts.
+The catalog source `3df2c5b932d3640bb810152fd3bc8ed8e5331e79` was deployed as `2ec7e53d8ffb3ed2edcc5dc2b0ac977aed6ac3d9`. The exercise-cue source `2834caca6e7c7cea387e4d9d389bfbe30476656d` was deployed as `26228a86fa5843602f7eefb6b6eb4aea10bca94e`. Cobalt Air source `f4ea8bb87dc92d577aca7752d0aee8e1e3691b93` was deployed as `6734dd6d7a3528ed75a509d24456aa3bbf05000c`. The previous Warm Mineral source was `25d1c96bf8e10003323dc34c66720d2f7a46df0b`, deployed as `35d2c922fe396cdb46b1d4b807ff86c979e26340` (170 Chromium / 63 WebKit, plus staged/live offline and backup verification). The prior focused-interface source was `fa734b77e064cae7b3e3b64502a427802bec7c0d`, deployed as `1682a2ae40b73edbea609601ddd860d55ddf638f`. It removed the sidebar and introduced focused workout logging. The initial beta source was `98515a08138b7453b4c0a60e05282ff6575b11d9`, deployed as `65af0a3788f36cc3fc17dcbd7262deaa5b98b0f4`. Cobalt Air advances the existing Pages branch normally; no force push or browser-data reset was used. Main remains unchanged. Personal reference screenshots are excluded from source and artifacts.
 
 ## Records and updates
 

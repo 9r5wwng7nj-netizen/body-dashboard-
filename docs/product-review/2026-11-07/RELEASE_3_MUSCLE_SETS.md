@@ -29,3 +29,11 @@ Independent review found and corrected unallocated-secondary leakage, duplicate/
 - Large-history existing logger probes measured finish around 421ms Chromium / 566ms WebKit for the existing 100,000-set fixture, still above the proposed 150ms target. This is not a new full-report latency benchmark or physical-device measurement.
 
 Physical iPhone keyboard, Home Screen, safe areas and VoiceOver remain manual acceptance activities. No personal data was inspected.
+
+## Publication
+
+- Final tested source `a0dea9ec557c6ecbd8b9299a3a4d31b149c19888`; [exact-source CI](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42450431116): **214 Chromium (1.3m), 107 WebKit (2.5m)** passed. Earlier source `2d41aaf` passed CI too, but was refined for a clearer phone overview before publication.
+- Deployment `3b2619ca2ebb297c6292d5587a7d2e71d102f343`; [Pages run](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42450798281) succeeded.
+- Exact staged package and live HTTPS passed both engines: planned 10 versus performed 5 rep-based rows, Triceps 2 primary + 3 secondary, one timed segment, one future workout excluded, offline drilldown and full backup/reload with record IDs/values unchanged. Read-only navigation was compared against the post-initialization source; restoration was compared per ID because existing initialization/restore sorts history newest first. An initial test harness comparison incorrectly treated that established ordering as a report mutation; no runtime change was needed for it.
+- Both-mode actual-app screenshots were reviewed. All 15 non-marker runtime hashes match; common live offline swap/resume/finish, import twice and byte-identical photo backup/decode/reload passed in both engines, with zero page errors/network writes and retired collections unchanged.
+- Only 17 allowlisted runtime files were published. Main, storage namespaces, database v1, record identities and disabled sync remain intact.
