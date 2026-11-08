@@ -19,7 +19,7 @@ IndexedDB remains `body-dashboard` version 1 with `kv`, `photos` and `local`. Al
 
 ## Verification record
 
-Final local `npm test -- --workers=2`: **170 passed (43.6s)**, including CSS/static checks. Final local `npm run test:webkit`: **63 passed (44.9s)**. Exact source/CI/deployment and live verification are recorded after release gates finish; see `docs/BETA_RELEASE.md` for the final release identity. Independent specialist runs already checked training recovery and classification, nutrition/snapshot behavior, preserved retired records and all named-page accessibility. Those targeted checks do not substitute for the final complete suites.
+Final local `npm test -- --workers=2`: **170 passed (43.6s)**, including CSS/static checks. Final local `npm run test:webkit`: **63 passed (44.9s)**. Exact source `25d1c96bf8e10003323dc34c66720d2f7a46df0b` passed GitHub Linux CI (170 Chromium, 63 WebKit). Deployment `35d2c922fe396cdb46b1d4b807ff86c979e26340` completed successfully. Both engines passed the staged and live HTTPS offline swap/resume/finish, import-twice, byte-identical photo backup/restore and reload checks; all 15 live runtime hashes matched. Retired records stayed unchanged, with zero page errors/network writes. See `docs/BETA_RELEASE.md` for run links and update instructions. Independent specialist runs already checked training recovery and classification, nutrition/snapshot behavior, preserved retired records and all named-page accessibility. Those targeted checks do not substitute for the final complete suites.
 
 ## Intentional limits
 
@@ -29,4 +29,4 @@ Final local `npm test -- --workers=2`: **170 passed (43.6s)**, including CSS/sta
 - The library is the offline built-in/custom/imported catalog, not an exhaustive anatomical or licensed image database.
 - Unsaved routine editing remains transient until Save; an explicit custom definition can be saved independently. If all storage writes fail, the newest unacknowledged text requires keeping the tab open or exporting recovery data.
 - Physical iPhone Safari/Home Screen/VoiceOver, actual keyboard/safe-area behavior and gym comfort still require device testing. Engine automation is not physical-device acceptance.
-- The final WebKit probe finished a 100,000-set synthetic history in about 568ms; its sampled complete/amend p95 was 37ms. These are desktop engine probes, not physical iPhone timings; no 150ms finish guarantee is made.
+- The final WebKit probe finished a 100,000-set synthetic history in about 568ms; its sampled complete/amend p95 was 37ms. These are desktop engine probes, not physical iPhone timings; no 150ms finish guarantee is made. Exact-source Linux CI measured approximately 1.02s Chromium / 0.98s WebKit finish times for the same large synthetic history.
