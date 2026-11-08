@@ -16,8 +16,9 @@ test.afterAll(() => stopServer(server));
 // The hidden app folder: the sync file, with the version number Drive bumps on every save, and the
 // dated daily copies (`copies`, newest last), which can be listed, downloaded and deleted.
 function fakeDrive() {
-  const drive = { file: null, saves: 0, copies: [], made: 0, gauth: { ready: false, refuse: false, calls: [] } };
-  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*','Access-Control-Expose-Headers':'ETag' };
+  const drive = { file: null, saves: 0, copies: [], made: 0, writes:[], markers:[], gauth: { ready: false, refuse: false, calls: [] } };
+  // Google v3 need not provide a browser-readable ETag; v2 returns its documented JSON field.
+  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' };
   const json = (route, body, status = 200, extra={}) => route.fulfill({ status, headers: { ...cors, 'Content-Type': 'application/json',...extra }, body: JSON.stringify(body) });
   drive.copy = (name, body = '{}') => { const c = { id: 'copy-' + (++drive.made), name, body,version:'1', size: String(body.length), createdTime: new Date().toISOString() }; drive.copies.push(c); return c; };
   // The dedicated Body broker: off unless a test turns `gauth.ready` on.
@@ -48,14 +49,15 @@ function fakeDrive() {
       if (meta.name !== 'body-dashboard-sync.json') { const c = drive.copy(meta.name, body); return json(route, { id: c.id, version: '1' }); }
       return save(body);
     }
-    const updated = drive.copies.find(c => url.pathname === '/upload/drive/v3/files/' + c.id);
-    if (updated && method === 'PATCH') {if(updated.name.startsWith('body-dashboard-probe-')&&!drive.ignoreIfMatch&&req.headers()['if-match']!==`\"bd-${updated.version}\"`)return json(route,{error:'conditionNotMet'},412);updated.version=String(+updated.version+1); updated.body = req.postData(); updated.updates = (updated.updates || 0) + 1; return json(route, { id: updated.id }); }
+    if(url.pathname.startsWith('/drive/v2/files/')){const id=decodeURIComponent(url.pathname.split('/').pop()),f=id==='file-1'?drive.file:drive.copies.find(c=>c.id===id);drive.markers.push({id,fields:url.searchParams.get('fields')});if(!f)return json(route,{error:'notFound'},404);return json(route,{id:f.id,title:f.name||'body-dashboard-sync.json',version:f.version,...(drive.omitEtag?{}:{etag:drive.weakEtag?`W/\"bd-${f.version}\"`:`\"bd-${f.version}\"`})});}
+    const updated = drive.copies.find(c => url.pathname === '/upload/drive/v2/files/' + c.id);
+    if (updated && method === 'PUT') {drive.writes.push({id:updated.id,method,etag:req.headers()['if-match'],body:req.postData()});if(updated.name.startsWith('body-dashboard-probe-')&&!drive.ignoreIfMatch&&req.headers()['if-match']!==`\"bd-${updated.version}\"`)return json(route,{error:'conditionNotMet'},412);updated.version=String(+updated.version+1); updated.body = req.postData(); updated.updates = (updated.updates || 0) + 1; return json(route, { id: updated.id,version:updated.version }); }
     const copy = drive.copies.find(c => url.pathname === '/drive/v3/files/' + c.id);
     if (copy && method === 'DELETE') { drive.copies = drive.copies.filter(c => c !== copy); return route.fulfill({ status: 204, headers: cors }); }
-    if(copy&&url.searchParams.get('alt')!=='media')return json(route,{id:copy.id,name:copy.name,version:copy.version},200,drive.omitEtag?{}:{ETag:`\"bd-${copy.version}\"`});
+    if(copy&&url.searchParams.get('alt')!=='media')return json(route,{id:copy.id,name:copy.name,version:copy.version});
     if (copy) return route.fulfill({ status: 200, headers: { ...cors, 'Content-Type': copy.name.startsWith('body-dashboard-photo-') ? 'image/png' : 'application/json' }, body: copy.body });
-    if (url.pathname === '/upload/drive/v3/files/file-1' && method === 'PATCH') {if(drive.beforePatch)await drive.beforePatch();if(req.headers()['if-match']!==`"bd-${drive.file.version}"`)return json(route,{error:'conditionNotMet'},412);return save(req.postData());}
-    if (url.pathname === '/drive/v3/files/file-1') return url.searchParams.get('alt') === 'media' ? route.fulfill({ status: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: drive.file.body }) : json(route, { id:drive.file.id,name:'body-dashboard-sync.json',version: drive.file.version },200,drive.omitEtag?{}:{ETag:`"bd-${drive.file.version}"`});
+    if (url.pathname === '/upload/drive/v2/files/file-1' && method === 'PUT') {drive.writes.push({id:'file-1',method,etag:req.headers()['if-match'],body:req.postData()});if(drive.beforePatch)await drive.beforePatch();if(req.headers()['if-match']!==`"bd-${drive.file.version}"`)return json(route,{error:'conditionNotMet'},412);return save(req.postData());}
+    if (url.pathname === '/drive/v3/files/file-1') return url.searchParams.get('alt') === 'media' ? route.fulfill({ status: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: drive.file.body }) : json(route, { id:drive.file.id,name:'body-dashboard-sync.json',version: drive.file.version });
     return json(route, { error: 'not found' }, 404);
   }));
   return drive;
@@ -433,3 +435,22 @@ test('a Life Dashboard payload cannot be used as Body sync state',async({browser
 
 
 test('a provider that ignores conditional writes is rejected using an empty probe before records upload',async({browser})=>{const drive=fakeDrive();drive.ignoreIfMatch=true;const d=await device(browser,drive);await d.page.evaluate(()=>addRecipe('Synthetic must stay local'));expect((await sync(d.page)).error).toContain('No personal records were uploaded');expect(drive.file).toBeNull();expect(drive.saves).toBe(0);expect(await titles(d.page)).toEqual(['Synthetic must stay local']);expect(drive.copies.filter(x=>x.name.startsWith('body-dashboard-probe-'))).toEqual([]);drive.ignoreIfMatch=false;expect((await sync(d.page)).error).toBe('');expect(JSON.parse(drive.file.body).data.recipes[0].title).toBe('Synthetic must stay local');await d.context.close();});
+
+test('JSON ETags work without exposed headers and an older safety stamp cannot skip the new protocol probe',async({browser})=>{
+ const drive=fakeDrive(),d=await device(browser,drive);
+ await d.page.evaluate(()=>{setSyncMeta({writeSafetyClient:DRIVE.clientId});addRecipe('Synthetic private local entry');});
+ expect((await sync(d.page)).error).toBe('');
+ expect(drive.markers.every(m=>m.fields==='id,title,version,etag')).toBe(true);
+ expect(drive.writes.filter(w=>w.id!=='file-1')).toHaveLength(2);
+ for(const w of drive.writes){expect(w.method).toBe('PUT');expect(w.etag).toBe('"bd-1"');expect(JSON.parse(w.body).data).toEqual({workouts:[]});expect(w.body).not.toContain('Synthetic private local entry');}
+ expect(await d.page.evaluate(()=>syncMeta().writeSafetyProtocol)).toBe('drive-v2-etag-1');
+ await d.page.evaluate(()=>addRecipe('Synthetic subsequent edit'));expect((await sync(d.page)).error).toBe('');
+ const canonical=drive.writes.filter(w=>w.id==='file-1');expect(canonical).toHaveLength(1);expect(canonical[0].method).toBe('PUT');expect(canonical[0].etag).toBe('"bd-1"');
+ expect(JSON.parse(drive.file.body).data.recipes).toHaveLength(2);expect(drive.copies.some(c=>c.name.startsWith('body-dashboard-probe-'))).toBe(false);await d.context.close();
+});
+
+for(const marker of ['missing','weak'])test(`${marker} JSON update marker pauses before personal uploads and can recover with a strong marker`,async({browser})=>{
+ const drive=fakeDrive();drive.omitEtag=marker==='missing';drive.weakEtag=marker==='weak';const d=await device(browser,drive);await d.page.evaluate(()=>addRecipe('Synthetic retained during marker failure'));
+ expect((await sync(d.page)).error).toContain('No personal records were uploaded');expect(drive.file).toBeNull();expect(drive.writes).toEqual([]);expect(await titles(d.page)).toEqual(['Synthetic retained during marker failure']);expect(await d.page.evaluate(()=>syncBox())).toContain('Google Drive sync is paused');
+ drive.omitEtag=false;drive.weakEtag=false;expect((await sync(d.page)).error).toBe('');expect(JSON.parse(drive.file.body).data.recipes[0].title).toBe('Synthetic retained during marker failure');await d.context.close();
+});

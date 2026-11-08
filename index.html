@@ -4975,6 +4975,9 @@ const A_SHARE = {
 // would notice; each device shows the newest one once, as a card on the dashboard. A slide can show
 // a picture from assets/whatsnew/ (give it alt text) and a `go` shortcut: [view, ui key, tab, label].
 const RELEASES = [
+  {id:'2026-11-08-drive-compatibility',title:'Google Drive connection compatibility',slides:[
+    {title:'Retry your first connection',body:'<p>Drive sync now reads Google’s documented file update marker. The safety check still uses only an empty temporary file and must reject a stale update before any personal records upload. If your first connection paused, save your work, reopen the updated app and choose Sync now. Your existing local records stay intact.</p>'}
+  ]},
   {id:'2026-11-08-optional-drive-sync',title:'Connect your devices with Google Drive',slides:[
     {title:'Choose when to connect',body:'<p>Settings &amp; Sync offers an optional Google Drive connection. Connect each device to the same Google account. Logging stays on the device and works offline; sync resumes when online. Workouts, cycles, training maxes, nutrition and photos travel together.</p>'},
     {title:'Body stays separate',body:'<p>Body Dashboard uses its own Google sign-in, hidden app folder, record files, photos and dated copies. Life Dashboard’s sign-in and records stay separate. API keys and Google credentials are excluded from backups. The sync folder does not grant ChatGPT automatic access.</p>'},
@@ -5114,7 +5117,7 @@ const A_HELP = {
 // edits and deletions from either device survive. Photos travel as their own files in the same folder
 // (Sync.photos); API keys and downloaded libraries stay on the device. Sign-in is a plain redirect, so no
 // Google script is loaded.
-const DRIVE = { clientId: '58449826957-8r9b5297qv0n5cce9hindlmepd124okf.apps.googleusercontent.com', authApi: 'https://body-dashboard-auth.lifedashboard-9r5w.workers.dev', scope: 'https://www.googleapis.com/auth/drive.appdata', file: 'body-dashboard-sync.json', api: 'https://www.googleapis.com', auth: 'https://accounts.google.com/o/oauth2/v2/auth' };
+const DRIVE = { clientId: '58449826957-8r9b5297qv0n5cce9hindlmepd124okf.apps.googleusercontent.com', authApi: 'https://body-dashboard-auth.lifedashboard-9r5w.workers.dev', writeProtocol:'drive-v2-etag-1', scope: 'https://www.googleapis.com/auth/drive.appdata', file: 'body-dashboard-sync.json', api: 'https://www.googleapis.com', auth: 'https://accounts.google.com/o/oauth2/v2/auth' };
 const SYNC_SETTINGS = ['name', 'hiddenTabs', 'tabsV', 'hiddenCards', 'cardOrder', 'bar', 'unit', 'restSeconds', 'timerSound', 'targets', 'bwFallback', 'rpe', 'calBig', 'navOrder'];
 const SYNC_SKIP = []; // photoMeta used to stay on each device; photos sync since 2026-10 (Sync.photos)
 const SYNC_BASE = 'sync.base';
@@ -5255,7 +5258,7 @@ async function syncSignIn() {
   const state = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
   const { url, verifier } = await gauthStart(DRIVE.scope, state, 'select_account');
   await Store.flushDirty();
-  setSyncMeta({ on: true, state, verifier,writeSafetyClient:'' }); // the page is about to leave for Google: save the last change first
+  setSyncMeta({ on: true, state, verifier,writeSafetyClient:'',writeSafetyProtocol:'' }); // the page is about to leave for Google: save the last change first
   location.assign(url);
 }
 // Google returns here with the access token in the address fragment; take it and clean the address.
@@ -5337,22 +5340,23 @@ async function driveLoad(id) {
 }
 async function driveSave(id, snap, name = DRIVE.file, etag = null) {
   const body = JSON.stringify({ app: 'body-dashboard', version: 1, sync: 1, exportedAt: new Date().toISOString(), data: snap.data, settings: snap.settings });
-  if (id) {if(!etag)throw new Error('Drive did not provide a safe update marker. Nothing was overwritten.');return (await driveFetch(`/upload/drive/v3/files/${encodeURIComponent(id)}?uploadType=media&fields=id,version`, { method: 'PATCH', headers: { 'Content-Type': 'application/json','If-Match':etag }, body })).json();}
+  if (id) {if(!etag)throw new Error('Drive did not provide a safe update marker. Nothing was overwritten.');return (await driveFetch(`/upload/drive/v2/files/${encodeURIComponent(id)}?uploadType=media&fields=id,version`, { method: 'PUT', headers: { 'Content-Type': 'application/json','If-Match':etag }, body })).json();}
   const mark = 'bd' + uid(), meta = JSON.stringify({ name, parents: ['appDataFolder'] });
   return (await driveFetch('/upload/drive/v3/files?uploadType=multipart&fields=id,version', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + mark },
     body: `--${mark}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${meta}\r\n--${mark}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${mark}--` })).json();
 }
 
-async function driveMarker(id){const r=await driveFetch(`/drive/v3/files/${encodeURIComponent(id)}?fields=id,name,version`),m=await r.json();return{...m,etag:r.headers.get('ETag')};}
+// Drive v2 documents etag in JSON; do not depend on v3 or CORS exposing an HTTP header.
+async function driveMarker(id){const m=await(await driveFetch(`/drive/v2/files/${encodeURIComponent(id)}?fields=id,title,version,etag`)).json();return{id:m.id,name:m.title,version:m.version,etag:typeof m.etag==='string'&&/^"[\x21\x23-\x7e]+"$/.test(m.etag)?m.etag:null};}
 const Sync = {
   busy: false, timer: null, first: '', allowLoss: false,
   connected() { return !!syncMeta().on; },
   async checkWrites(){
-    if(syncMeta().writeSafetyClient===DRIVE.clientId)return;
+    if(syncMeta().writeSafetyClient===DRIVE.clientId&&syncMeta().writeSafetyProtocol===DRIVE.writeProtocol)return;
     const name='body-dashboard-probe-'+uid()+'.json',empty={data:{workouts:[]},settings:{}},made=await driveSave(null,empty,name);let checked=false;
     try{const marker=await driveMarker(made.id);if(marker.name!==name||!marker.etag)throw new Error('Drive could not verify safe concurrent updates. No personal records were uploaded.');await driveSave(made.id,empty,name,marker.etag);let staleRejected=false;try{await driveSave(made.id,empty,name,marker.etag);}catch(e){if(e.status===412)staleRejected=true;else throw e;}if(!staleRejected)throw new Error('Drive did not reject an outdated update. No personal records were uploaded.');checked=true;}
     finally{try{await driveFetch(`/drive/v3/files/${encodeURIComponent(made.id)}`,{method:'DELETE'});}catch(e){if(checked)throw e;}}
-    setSyncMeta({writeSafetyClient:DRIVE.clientId});
+    setSyncMeta({writeSafetyClient:DRIVE.clientId,writeSafetyProtocol:DRIVE.writeProtocol});
   },
   signedIn() { const m = syncMeta(); return !!m.token && m.exp > Date.now(); },
   canSync() { return this.signedIn() || !!syncMeta().refresh; }, // a refresh token renews the hour on its own
@@ -5500,7 +5504,7 @@ function syncBox() {
     <p class="text-xs muted">Workouts, cycles, training maxes, nutrition, photos and basic settings sync. API keys stay on each device. Log an active workout on one device at a time; use Sync now before changing devices. This personal beta may ask you to sign in again weekly.</p>
     <button type="button" class="btn btn-sm" data-action="syncConnect">${icon('cloud', 'w-3.5 h-3.5')} Connect Google Drive</button>`;
   const m = syncMeta();
-  return `<p class="text-sm" role="status">${icon('cloud', 'w-4 h-4 inline')} Google Drive sync is on · ${esc(Sync.status())}</p>
+  return `<p class="text-sm" role="status">${icon('cloud', 'w-4 h-4 inline')} Google Drive sync is ${m.error?'paused':'on'} · ${esc(Sync.status())}</p>
     <p class="text-xs muted">Records, photos and basic settings sync. API keys and downloaded libraries stay on each device.${m.photosLeft ? ` ${m.photosLeft} photo${m.photosLeft === 1 ? '' : 's'} still to sync; they follow over the next few syncs.` : ''}${m.photoError ? ` Photos stopped: ${esc(m.photoError)}` : ''}</p>
     ${m.refresh ? '<p class="text-xs muted">This personal beta may ask you to sign in again weekly. Stop syncing signs this device out.</p>' : ''}
     <p class="text-xs muted">${m.copied ? `A dated copy of your records is kept in Drive each day (latest: ${fmtDate(m.copied)}).` : 'Each day, the first sync also keeps a dated copy of your records in Drive.'} Copies cover the last 7 days, then one a week for 8 weeks.${m.copyError ? ` The last copy could not be made: ${esc(m.copyError)}` : ''}</p>
