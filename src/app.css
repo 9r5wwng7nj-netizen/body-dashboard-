@@ -108,6 +108,10 @@ label:has(input:focus-visible) { outline: 2px solid #0f766e; outline-offset: 3px
 
 /* Phones: dialogs rise from the bottom as sheets, within thumb reach; drag the handle or title down to close. */
 .sheet-grab { display: none; }
+/* Native file controls have a platform-dependent intrinsic width. Keep photo selection inside its form. */
+input[type=file] { min-width: 0; max-width: 100%; width: 100%; }
+[data-submit="photoAdd"] > div { min-width: 0; max-width: 100%; }
+[data-submit="photoAdd"] > div:first-child { flex: 1 1 100%; }
 @media (max-width: 639.98px) {
   #modal > [role="dialog"] { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; width: 100%; max-height: calc(100dvh - 2.5rem - env(safe-area-inset-top)); border-radius: 1.25rem 1.25rem 0 0; border-bottom-width: 0; padding-bottom: env(safe-area-inset-bottom); }
   #modal > [role="dialog"].sheet-in { animation: sheet-up .22s ease-out; }
@@ -256,6 +260,8 @@ body { background: var(--wm-canvas); color: var(--wm-ink); }
 .label { text-transform: none; letter-spacing: 0; font-size: .8125rem; }
 .btn { min-height: 44px; color: var(--wm-ink); background: var(--wm-soft); border-color: transparent; }
 .btn:hover { background: var(--wm-soft); filter: brightness(.97); }
+/* Change theme foreground and background together; interpolating them can temporarily lose contrast. */
+.btn { transition-property: box-shadow, transform; }
 .btn-primary, .btn-primary:hover { background: var(--wm-accent); color: var(--wm-on-accent); border-color: var(--wm-accent); }
 .btn-ghost, .btn-ghost:hover { background: transparent; }
 .btn-danger { color: #be123c; }

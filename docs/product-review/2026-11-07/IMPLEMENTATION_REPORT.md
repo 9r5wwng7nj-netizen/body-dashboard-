@@ -11,7 +11,7 @@ November 7, 2026 · User authorized implementation, checks and publication.
 - Today / Train / Nutrition project legacy navigation without replacing `S.bar` or hidden/card preferences. Named pages replace scrolling subnav rows; old recipes/Body/Plan links resolve compatibly. Train leads with starting/routines; totals are expandable.
 - Nutrition Library unifies access to distinct foods, saved meals and recipes, including local photos, favorites, search/filter, definition editing and explicit portion logging. Editing old food-linked quantities scales their original snapshot rather than today's mutable food definition. Unknown nutrients stay unknown.
 - Pantry, Grocery and Freezer UI, delegated actions and automatic effects are retired. Cooking/meal-made/generator paths do not update inventory or generate shopping lists. Original collections, quantities, IDs, metadata and freezer-linked plan references round-trip through full backups. Recipes, ordinary leftovers, meal planning, explicit consumption and photos remain.
-- Warm Mineral semantic light/dark colors, native fonts, 44px controls, larger-text detail rows and reflow. A Safari inherited-color issue on live theme changes is covered by a dedicated regression; section markup refreshes after theme paint.
+- Warm Mineral semantic light/dark colors, native fonts, 44px controls, larger-text detail rows and reflow. A Safari inherited-color issue on live theme changes is covered by a dedicated regression; section markup refreshes after theme paint. Button foreground/background change together without a contrast dip during color interpolation. Native photo selection is bounded inside narrow forms, including Linux WebKit’s wider intrinsic file control.
 
 ## Storage and privacy
 
@@ -19,7 +19,7 @@ IndexedDB remains `body-dashboard` version 1 with `kv`, `photos` and `local`. Al
 
 ## Verification record
 
-Final local `npm test -- --workers=2`: **170 passed (37.6s)**, including CSS/static checks. Final local `npm run test:webkit`: **63 passed (55.4s)**. Exact source/CI/deployment and live verification are recorded after release gates finish; see `docs/BETA_RELEASE.md` for the final release identity. Independent specialist runs already checked training recovery and classification, nutrition/snapshot behavior, preserved retired records and all named-page accessibility. Those targeted checks do not substitute for the final complete suites.
+Final local `npm test -- --workers=2`: **170 passed (43.6s)**, including CSS/static checks. Final local `npm run test:webkit`: **63 passed (44.9s)**. Exact source/CI/deployment and live verification are recorded after release gates finish; see `docs/BETA_RELEASE.md` for the final release identity. Independent specialist runs already checked training recovery and classification, nutrition/snapshot behavior, preserved retired records and all named-page accessibility. Those targeted checks do not substitute for the final complete suites.
 
 ## Intentional limits
 
@@ -29,4 +29,4 @@ Final local `npm test -- --workers=2`: **170 passed (37.6s)**, including CSS/sta
 - The library is the offline built-in/custom/imported catalog, not an exhaustive anatomical or licensed image database.
 - Unsaved routine editing remains transient until Save; an explicit custom definition can be saved independently. If all storage writes fail, the newest unacknowledged text requires keeping the tab open or exporting recovery data.
 - Physical iPhone Safari/Home Screen/VoiceOver, actual keyboard/safe-area behavior and gym comfort still require device testing. Engine automation is not physical-device acceptance.
-- The final WebKit probe finished a 100,000-set synthetic history in about 602ms; its sampled complete/amend p95 was35ms. These are desktop engine probes, not physical iPhone timings; no150ms finish guarantee is made.
+- The final WebKit probe finished a 100,000-set synthetic history in about 568ms; its sampled complete/amend p95 was 37ms. These are desktop engine probes, not physical iPhone timings; no 150ms finish guarantee is made.
