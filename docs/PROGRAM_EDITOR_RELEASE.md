@@ -23,3 +23,12 @@ WebKit, staged package, GitHub checks and deployed-package results are recorded 
 ## Limits
 
 The editor retains the imported number of weeks, day IDs and training-max lift keys. Weekday offsets are informational. Create custom movements in the exercise library first; the program picker uses existing definitions. Unsaved drafts live in the current tab until saved; failed prepared saves use durable recovery. Update every device before restoring or syncing edited cycles, because earlier strict validators do not recognize the optional overlay. Keep known-good downloaded backups, especially while the separate sync incident is unresolved.
+
+## Published verification — 2026-11-08
+
+- Runtime source `d9fb1dd54686caace5a7a3b2ac1dff1873a9fc28`; Pages deployment `e82b8ec966b9e11330f5f4dfa6607a04ee5771b7`.
+- [Exact-source GitHub checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42535610782) passed: 279 Chromium, 185 iPhone-sized WebKit tests and four broker unit tests. Static syntax/action/keypad checks passed. The final WebKit dropdown and keyboard regressions pass after the platform-specific appearance fix.
+- [Pages deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42536171387) succeeded. Only 17 allowlisted public runtime files were packaged; the live source marker and 15 public asset hashes matched the package.
+- Staged and live HTTPS checks in fresh persistent Chromium/WebKit profiles at 390px passed offline cycle import/edit/save/reload, immutable source retention, light/dark themes, 32px text, keyboard containment and automated WCAG A/AA scans with no violations. These checks used synthetic cycles only and made zero network writes.
+- Broader staged/live checks in both engines passed offline workout reload/completion/swap/resume/finish, repeated history import, full backup restoration with identical photo bytes and readable restored photos. Retired records remained unchanged, Cobalt Air palette matched and no page errors occurred. Sync was off in each fresh profile; real Google sync and the reported incident remain outside these results.
+- Physical iPhone/VoiceOver behavior and user-record completeness need owner verification. No real user browser profile or backup was used for automated testing.
