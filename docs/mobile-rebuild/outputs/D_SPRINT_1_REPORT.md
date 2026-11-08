@@ -1,5 +1,7 @@
 # Agent D — web Sprint 1 implementation and validation
 
+**Later release:** the personal beta is now published. This report records the pre-publication sprint; see [the release record](../../BETA_RELEASE.md) for final checks, deployed commits and the live link.
+
 Date: 2026-11-07. Status: implemented locally for review; **unpublished**. This workout slice does not complete the broader diet/analytics MVP or physical iPhone acceptance.
 
 ## What works

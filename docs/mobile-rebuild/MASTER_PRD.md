@@ -10,7 +10,7 @@ Make daily training/diet logging quick, reliable and understandable while preser
 
 Develop the current vanilla JavaScript application in place. Preserve Dashboard, Workouts, Nutrition and Recipes & Meals, quick actions, hidden-card/tab preferences, calorie-left/eaten preference and ordering. The native Train/Diet/Progress/History concept informs task grouping; navigation replacement is outside Sprint 1.
 
-The public site serves code/assets; logs/photos stay in the local browser database. Imports are user-selected local files. No compulsory login, backend, cloud sync, App Store membership, paid domain, AI logging or new image service. The revised Agent D workout slice is now implemented locally; see [Sprint 1 results and remaining release gates](outputs/D_SPRINT_1_REPORT.md). Deployment remains unauthorized. This does not complete the broader diet/analytics MVP.
+The public site serves code/assets; logs/photos stay in the local browser database. Imports are user-selected local files. No compulsory login, backend, cloud sync, App Store membership, paid domain, AI logging or new image service. The revised Agent D workout slice is now implemented locally; see [Sprint 1 results and remaining release gates](outputs/D_SPRINT_1_REPORT.md). The product owner subsequently authorized publication as a personal beta; see [the release record](../BETA_RELEASE.md). This does not complete the broader diet/analytics MVP.
 
 ## Principles
 

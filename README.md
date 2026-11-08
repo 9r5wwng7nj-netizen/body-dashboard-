@@ -29,7 +29,7 @@ See [AGENTS.md](AGENTS.md) for how the code is organized and the rules for chang
 
 The active plan is an iPhone-first web app on GitHub Pages, extending this application with stronger offline recovery and workout-history import. Native/App Store work is deferred. See the [web-first plan](docs/mobile-rebuild/WEB_FIRST_PLAN.md), [current requirements](docs/mobile-rebuild/MASTER_PRD.md) and [Agent D web handoff](docs/mobile-rebuild/PROMPT_D_DEV_TEAM_SPRINT_1.md).
 
-The web Sprint 1 implementation is being released as a personal beta. Physical iPhone/VoiceOver validation remains open. See the [implementation and validation report](docs/mobile-rebuild/outputs/D_SPRINT_1_REPORT.md) for tested behavior and remaining physical iPhone checks. Source and static assets can be hosted publicly; your local health records and backups must stay out of the repository.
+The web Sprint 1 implementation is live as a [personal beta](https://9r5wwng7nj-netizen.github.io/body-dashboard-/). See the [release record and iPhone test steps](docs/BETA_RELEASE.md). Physical iPhone/VoiceOver validation remains open. See the [implementation and validation report](docs/mobile-rebuild/outputs/D_SPRINT_1_REPORT.md) for tested behavior and remaining physical iPhone checks. Source and static assets can be hosted publicly; your local health records and backups must stay out of the repository.
 
 ## Workout history and offline use
 
