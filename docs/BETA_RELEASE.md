@@ -1,22 +1,31 @@
 # Body Dashboard — personal beta release
 
-Updated November 8, 2026 (America/New_York).
+Updated November 9, 2026 (America/New_York).
 
 **Body Dashboard personal beta — open on iPhone:** https://9r5wwng7nj-netizen.github.io/body-dashboard-/
 
 ## Release identity
 
-- Tested source: `2634241e72c793f631f86b9fa2bef21e5ab8f796`, branch `beta/personal-web`.
-- Deployment: `aca52cdc2a1dd7ab7b341816a85aaa80228d15bd`, branch `gh-pages`, root folder.
-- [Passing source checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42451694950).
-- [Successful Pages build/deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42452109123).
+- Tested source: `ac7c6a3c4ad979e6c2070c61645346c8bb91a96a`, branch `beta/personal-web`.
+- Deployment: `932e141415f73aebc36539d2fda19e4b0b4791b6`, branch `gh-pages`, root folder.
+- [Passing exact-source checks](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42693625656): 303 Chromium and 209 WebKit, plus four broker tests.
+- [Successful Pages build/deployment](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42695129266).
 - [Public release manifest](https://9r5wwng7nj-netizen.github.io/body-dashboard-/release.json) records source and SHA-256 asset hashes.
 
 The deployment contains 17 allowlisted package files: app HTML, service worker, manifest, CSS, icons, pinned libraries/licenses, `.nojekyll` and the release manifest. No backups, credentials, certificates, local preview tools, tests or planning documents are in the Pages artifact. The public source branch contains reviewed code/tests and synthetic planning fixtures. Main was retained; no force push was used.
 
 `node scripts/package-beta.mjs EMPTY_OUTPUT_DIRECTORY SOURCE_COMMIT` creates this package. It refuses a nonempty destination and rejects unexpected backup/key/JSON files. The packaged worker gets a cache generation derived from the tested source commit, so later deployments can install a new complete shell without forcing reload over active work. Keep Pages configured to `gh-pages` at `/`.
 
-## ChatGPT handoff — current update
+## Current update — verified sync and recovery
+
+First-link inventories, complete conflict-value review and exact-proposal removal approvals protect adoption. Sync verifies full remote content between stable file markers before atomically adopting local records/base/receipt. Stale plans and final-commit input stay protected; settings recover from an IndexedDB checkpoint. A dated first pre-adoption record copy, or retained late input, can be downloaded without photos or API credentials. Record verification and missing/pending photo status are separate. No record identifier, unit, database/store/collection name or portable backup format changed.
+
+The exact 17-file package passed staged and live Chromium/WebKit verification: all 15 nonempty runtime hashes match; Cobalt light/dark/light, offline accept/swap/minimize/resume/finish/reopen, import twice, full backup restoration with identical photo bytes and offline decoding, unchanged retired records, Body database v1, zero page errors and zero network writes. Sync stayed off in those synthetic profiles. Real Google authorization/refresh and physical iPhone/Home Screen/VoiceOver acceptance remain the guided owner pilot; the earlier history disappearance remains unexplained.
+
+For this rollout: preserve separate full records-and-photos backups, identify the complete starting history, update participating clients without clearing browser data, verify a desktop↔phone synthetic round trip, and only then make the new Home Screen context the primary logger. Do not assume Chrome, Safari and the Home Screen app share local records. Follow the guided steps one at a time; no Use Drive/Combine/Replace choice is a substitute for verification. See [the full Milestone 1 report](product-review/2026-11-09/milestone-1/IMPLEMENTATION_REPORT.md) and [Drive pilot procedure](DRIVE_SYNC.md).
+
+## Previous update — ChatGPT handoff
+
 
 Train/Nutrition → ⋯ prepares selected programming, meal/photo and diet-log briefs with exact preview and manual Copy/Download. Review pasted routine/meal JSON, map local exercises/foods, edit prescriptions/portions and explicitly accept. Programs create new routines; meals use deterministic current food snapshots, keeping unknown nutrients unknown and photo portions estimated. History and targets remain. No automatic sharing, model requests, account connection or photo upload.
 
@@ -94,13 +103,13 @@ The Muscle sets source `a0dea9ec557c6ecbd8b9299a3a4d31b149c19888` was deployed a
 
 ## Records and updates
 
-IndexedDB is still `body-dashboard`, version 1, with `kv`, `photos`, `local`; all collection names and units/identities remain compatible. `bd.*` and project-scoped `bd-shell-*` names remain separate from Life Dashboard. Sync is off. No application data was uploaded to GitHub or migrated automatically.
+IndexedDB is still `body-dashboard`, version 1, with `kv`, `photos`, `local`; all collection names and units/identities remain compatible. `bd.*` and project-scoped `bd-shell-*` names remain separate from Life Dashboard. Sync is opt-in on each device; publication does not authorize a private-record test or connect a device. No application data was uploaded to GitHub or migrated automatically.
 
 A new URL/browser/Home Screen context can have separate local records. Data from the Mac or private Wi-Fi preview does not automatically appear at the public beta URL. Keep original exports and bring copies through the supported importer. Never clear browser storage as an update/retry step. Export a backup before discarding pending input or changing origins.
 
 Updates install in a waiting worker and activate after controlled Body tabs close. Save/export first, close old Body tabs, then reopen. Do not force-reload/clear site data to get an update over unsaved work. Deploying code does not restore or roll back browser records; recovery and backup restoration are separate user actions.
 
-## First iPhone test
+## Standalone offline/import checks — after protected setup
 
 1. Export/keep an untouched backup from whichever app currently holds your records.
 2. Open the beta link in ordinary Safari. Share → Add to Home Screen; enable Open as Web App if offered. Launch that Home Screen icon and wait for **Ready offline** there.

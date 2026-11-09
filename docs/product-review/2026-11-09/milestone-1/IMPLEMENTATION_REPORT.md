@@ -1,6 +1,6 @@
 # Milestone 1 — local implementation and review
 
-November 9, 2026. Status: local candidate; not published, no owner accounts or records accessed. The owner authorized investigation, team review and changes for sync safety before routine editing. This is not completion of the real-provider/iPhone acceptance milestone.
+November 9, 2026. Initial status: local candidate, with publication subsequently authorized and completed below; no owner accounts or records accessed. The owner authorized investigation, team review and changes for sync safety before routine editing. This is not completion of the real-provider/iPhone acceptance milestone.
 
 ## Result
 
@@ -44,7 +44,7 @@ Exact tested local runtime SHA-256 values (no commit or deployment created):
 - `assets/app.css`: `1e598b93e9ef34202a309facba1b7fd5d1b8dc2e610137bc1453d4e6543f06e8`
 - `sw.js`: `f221ebc8abe8411190af52cb987491fac826fd6f60b709f47be71e1ab4a6534f`
 
-Only documentation was finalized after these frozen-runtime runs. No package was published, live browser profile opened, remote account connected or private data included in artifacts.
+Only documentation was finalized after these frozen-runtime runs. At that local-verification stage no package had been published, live user profile opened, remote account connected or private data included in artifacts. Subsequent authorized publication is recorded below.
 
 ## Remaining acceptance limits
 
@@ -56,8 +56,18 @@ Only documentation was finalized after these frozen-runtime runs. No package was
 - Full snapshot reads/comparison/hash and conflict review increase sync work; no new physical-device latency or large-history performance claim is made. Browser eviction/device loss still requires independent full backups.
 - The first retained pre-adoption copy can be old; it is not a rolling latest backup. Record-only recovery downloads exclude photos. Latest unacknowledged input cannot be promised durable if its recovery checkpoint also fails; keep the tab open and export/retry.
 
-The next acceptance activity is a controlled owner-assisted desktop/iPhone pilot with known-good full backups and a synthetic routine/session. Routine-editor rebuilding and publication remain separate from this local delivery.
+The next acceptance activity is a controlled owner-assisted desktop/iPhone pilot with known-good full backups and a synthetic routine/session. Routine-editor rebuilding remains separate from this delivery. Publication was subsequently authorized; it does not close the actual-device/provider pilot gate.
 
 ## Provider references
 
 Official references accessed November 9, 2026: [Drive v2 file update](https://developers.google.com/workspace/drive/api/reference/rest/v2/files/update), [blob downloads with alt=media](https://developers.google.com/workspace/drive/api/guides/manage-downloads), [application-specific data folder and scope](https://developers.google.com/workspace/drive/api/guides/appdata). Documentation supports the API contract; it is not evidence of successful live authorization or real-device execution.
+
+## Authorized publication — November 9, 2026
+
+The owner explicitly requested publication followed by a one-step-at-a-time desktop/iPhone sync pilot and Home Screen installation. Runtime hashes remained identical to the frozen local candidate. Source commit `ac7c6a3c4ad979e6c2070c61645346c8bb91a96a` passed [exact-source GitHub CI](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42693625656): **303 Chromium (2.3m), 209 WebKit (5.4m), four broker tests**. A preceding source commit was followed by a whitespace-only test-file cleanup; no runtime change or history rewrite was required.
+
+The existing package builder produced exactly **17 allowlisted public files**. All packaged hashes matched; no backups, credentials, certificates, test profiles or planning documents entered Pages. The packaged worker generation is derived from the tested source commit. Staged Chromium/WebKit passed both themes, project-path offline reopen/log/edit/swap/resume/finish, duplicate-safe workout import and full photo backup restore with byte-identical photos/offline image decode, unchanged retired records/database v1, zero page errors and zero network writes.
+
+Deployment `932e141415f73aebc36539d2fda19e4b0b4791b6` advanced gh-pages normally from its previous head; main remained unchanged and no force push was used. [Pages build/deployment passed](https://github.com/9r5wwng7nj-netizen/body-dashboard-/actions/runs/42695129266). The live [release marker](https://9r5wwng7nj-netizen.github.io/body-dashboard-/release.json) matches the source. All **15 nonempty runtime asset hashes** matched live; fresh Chromium and WebKit repeated the staged offline/import/photo restoration/theme checks successfully with no page errors/network writes and sync off. Owned synthetic profiles were closed/removed. No live user browser or Google records were inspected.
+
+The guided owner pilot is starting with identifying complete records and downloading separate full backups; record completeness, real Google authorization/refresh, real desktop/iPhone conflict/reconnect behavior, physical Home Screen installation and VoiceOver remain unverified. Neither Drive nor either device is presumed authoritative. No live adoption, restoration or personal-program edit was performed by the release process.
