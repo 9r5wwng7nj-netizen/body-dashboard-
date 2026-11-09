@@ -308,7 +308,9 @@ test('the first sync of the day keeps a dated copy, and a deleted recipe can be 
   await d.page.click('[data-action="doImport"][data-mode="missing"]');
   await d.page.waitForFunction(() => Store.get('recipes').length === 2);
   expect(await titles(d.page)).toEqual(['Delete me by mistake', 'Keep me']);
-  expect((await sync(d.page)).error).toBe('');
+  expect((await sync(d.page)).error).toContain('backup was restored');
+  await d.page.click('[data-action="syncReview"][data-choice="mine"]');
+  await d.page.waitForFunction(()=>!Sync.busy&&!syncMeta().error);
   expect(JSON.parse(drive.file.body).data.recipes.map(t => t.title).sort()).toEqual(['Delete me by mistake', 'Keep me']);
   expect(d.errors).toEqual([]);
   await d.context.close();
@@ -431,7 +433,7 @@ test('a remote finish cannot silently discard a concurrently edited active draft
 });
 
 
-test('a Life Dashboard payload cannot be used as Body sync state',async({browser})=>{const drive=fakeDrive();drive.file={id:'file-1',version:'1',body:JSON.stringify({app:'life-dashboard',version:1,data:{workouts:[],routines:[]}})};const d=await device(browser,drive);await d.page.evaluate(()=>addRecipe('Synthetic local preserved'));await sync(d.page);await d.page.click('[data-action="syncFirst"][data-mode="merge"]');await d.page.waitForFunction(()=>!Sync.busy);expect((await d.page.evaluate(()=>syncMeta())).error).toContain('Expected a Body Dashboard');expect(await titles(d.page)).toEqual(['Synthetic local preserved']);expect(drive.saves).toBe(0);await d.context.close();});
+test('a Life Dashboard payload cannot be used as Body sync state',async({browser})=>{const drive=fakeDrive();drive.file={id:'file-1',version:'1',body:JSON.stringify({app:'life-dashboard',version:1,data:{workouts:[],routines:[]}})};const d=await device(browser,drive);await d.page.evaluate(()=>addRecipe('Synthetic local preserved'));await sync(d.page);await expect(d.page.locator('[data-action="syncFirst"]')).toHaveCount(0);expect((await d.page.evaluate(()=>syncMeta())).error).toContain('Expected a Body Dashboard');expect(await titles(d.page)).toEqual(['Synthetic local preserved']);expect(drive.saves).toBe(0);await d.context.close();});
 
 
 test('a provider that ignores conditional writes is rejected using an empty probe before records upload',async({browser})=>{const drive=fakeDrive();drive.ignoreIfMatch=true;const d=await device(browser,drive);await d.page.evaluate(()=>addRecipe('Synthetic must stay local'));expect((await sync(d.page)).error).toContain('No personal records were uploaded');expect(drive.file).toBeNull();expect(drive.saves).toBe(0);expect(await titles(d.page)).toEqual(['Synthetic must stay local']);expect(drive.copies.filter(x=>x.name.startsWith('body-dashboard-probe-'))).toEqual([]);drive.ignoreIfMatch=false;expect((await sync(d.page)).error).toBe('');expect(JSON.parse(drive.file.body).data.recipes[0].title).toBe('Synthetic must stay local');await d.context.close();});

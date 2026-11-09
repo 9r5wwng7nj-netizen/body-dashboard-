@@ -35,8 +35,9 @@ test('switching appearance updates inherited shell text as well as card surfaces
  for(const theme of ['light','dark','light']){
   await page.evaluate(theme=>{S.theme=theme;applyTheme();A.pageHome({dataset:{view:'fitness'}});},theme);
   await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
-  const colors=await page.locator('#view h3').first().evaluate(e=>({heading:getComputedStyle(e).color,main:getComputedStyle(document.querySelector('#view')).color}));
-  const expected=theme==='dark'?'rgb(244, 247, 253)':'rgb(23, 32, 51)';expect(colors).toEqual({heading:expected,main:expected});
+  // The theme rebuild is asynchronous; assert the rendered state rather than a fixed frame count.
+  const expected=theme==='dark'?'rgb(244, 247, 253)':'rgb(23, 32, 51)';
+  await expect.poll(()=>page.locator('#view h3').first().evaluate(e=>({heading:getComputedStyle(e).color,main:getComputedStyle(document.querySelector('#view')).color})),{timeout:1000,intervals:[16,32,64,100]}).toEqual({heading:expected,main:expected});
   expect(await page.locator('meta[name="theme-color"]').getAttribute('content')).toBe(theme==='dark'?'#10151f':'#f3f6fa');
  }
 });

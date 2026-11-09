@@ -16,7 +16,7 @@ export function serveRepo({ prefix = '/' } = {}) {
     try {
       if (server.failPaths?.some(part => urlPath.endsWith(part))) return res.writeHead(503).end();
       let body = await readFile(file);
-      if (file.endsWith('/sw.js') && server.revision) body = Buffer.from(body.toString().replace("GENERATION = 'v2'", "GENERATION = 'v" + server.revision + "'"));
+      if (file.endsWith('/sw.js') && server.revision) body = Buffer.from(body.toString().replace(/GENERATION = '[^']*'/, "GENERATION = 'test-v" + server.revision + "'"));
       res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' }).end(body);
     } catch { res.writeHead(404).end(); }
   });

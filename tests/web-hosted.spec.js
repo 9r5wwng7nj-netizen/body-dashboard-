@@ -159,6 +159,7 @@ test('metadata and byte-identical local photos survive full backup restoration a
 
 test('worker update waits through an active workout and failed shell installation keeps old shell', async ({ page, context }) => {
   await expect(page.locator('#offline-state')).toHaveText(/Ready offline/); await start(page);
+  const originalCaches=await page.evaluate(()=>caches.keys());
   server.revision = 3;
   await page.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
   await page.waitForFunction(async () => !!(await navigator.serviceWorker.getRegistration()).waiting);
@@ -166,7 +167,7 @@ test('worker update waits through an active workout and failed shell installatio
   expect(await page.evaluate(async () => (await navigator.serviceWorker.getRegistration()).active.state)).toBe('activated');
   await expect(page.locator('#offline-state')).toHaveText(/Update ready/);
   // The waiting update must not take over this controlled page.
-  expect(await page.evaluate(async () => { const c = await caches.keys(); return c.some(k => k.endsWith('-v2')); })).toBe(true);
+  expect(await page.evaluate(()=>caches.keys())).toEqual(expect.arrayContaining(originalCaches));
   await context.setOffline(true); await page.reload();
   await page.waitForFunction(() => typeof Store !== 'undefined' && Store.ready && Store.get('activeWorkout'));
   expect(await page.evaluate(() => Store.get('activeWorkout').id)).toBe('hosted-active');
