@@ -168,11 +168,15 @@ const SETTINGS_DEFAULT = {
   bar: ['dashboard', 'fitness', 'nutrition', 'recipes'] // the four sections in the bottom navigation
 };
 let S = loadSettings();
+let settingsSyncReady=false;
 function loadSettings() {
   try { const s = JSON.parse(localStorage.getItem('bd.settings') || '{}'); return { ...SETTINGS_DEFAULT, ...s, targets: { ...SETTINGS_DEFAULT.targets, ...(s.targets || {}) } }; }
   catch (e) { return structuredClone(SETTINGS_DEFAULT); }
 }
-function saveSettings() { localStorage.setItem('bd.settings', JSON.stringify(S)); }
+function saveSettings() {
+  const previous=loadSettings();localStorage.setItem('bd.settings', JSON.stringify(S));
+  if(settingsSyncReady&&SYNC_SETTINGS.some(k=>!sameJson(previous[k],S[k]))){try{syncTouch();}catch{Sync.bookkeepingError='Settings were saved locally, but sync scheduling failed. Retry sync.';}}
+}
 // Tabs that started out hidden in 2026-10 are hidden once for people who already had settings; after that the person's choice stands.
 if ((S.tabsV || 0) < 2) {
   const H = S.hiddenTabs = { ...(S.hiddenTabs || {}) };
@@ -210,6 +214,7 @@ const Store = {
       console.warn('IndexedDB unavailable — falling back to localStorage', e);
     }
     if (this.db) { try { localStorage.setItem('bd.storageMode', 'indexeddb'); } catch {} }
+    if(this.db)await syncRecoverSettings();
     const keys = Object.keys(COLLECTIONS), values = await this.readMany(keys);
     for (const [i, k] of keys.entries()) {
       const v = values[i];
@@ -310,6 +315,7 @@ const WebWrites = {
     }
   },
   async snapshot(values) {
+    if(this.blocked)throw new Error(this.blocked);
     if (!Store.db) {
       for (const [k, v] of Object.entries(values)) localStorage.setItem('bd.data.' + k, JSON.stringify(v));
       return;
@@ -321,6 +327,7 @@ const WebWrites = {
     });
   },
   async command(values, purpose, extra = {}, expected) {
+    if(this.blocked)throw new Error(this.blocked);
     if (!Store.db) throw new Error('This action needs IndexedDB. Export your data and reopen in a browser with storage available.');
     await Store.flushDirty();
     const bases = expected || Object.fromEntries(Object.keys(values).map(k => [k, structuredClone(this.bases[k])]));
@@ -383,9 +390,12 @@ const WebWrites = {
     });
     for (const [k, value] of Object.entries(intent.values)) this.bases[k] = structuredClone(value);
     for (const old of [...this.pending.values()]) if (old.id === intent.id || (old.purpose === 'snapshot' && Object.keys(old.values).every(k => keys.includes(k)))) this.pending.delete(old.id);
+    this.serial=(this.serial||0)+1;
+    try { syncTouch(); } catch { Sync.bookkeepingError='Local records were saved, but sync scheduling failed. Export a backup and retry sync.'; }
     return receipt;
   },
   async retry() {
+    if(this.blocked)throw new Error(this.blocked);
     await this.run(async () => {
       for (const intent of [...this.pending.values()]) {
         await LocalDb.put('bd.web.intent.' + intent.id, intent);
@@ -563,11 +573,11 @@ const Modal = {
     trapDialogTab(e, $('#modal [role="dialog"]'));
   }
 };
-function modalShell(title, body, footer = '', formAction = '') {
-  const inner = `<div class="sheet-head flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10 rounded-t-2xl">
+function modalShell(title, body, footer = '', formAction = '', options = {}) {
+  const inner = `<div class="sheet-head flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-slate-800 ${options.flow?'':'sticky top-0'} bg-white dark:bg-slate-900 z-10 rounded-t-2xl">
       <h3 class="font-semibold">${title}</h3><button type="button" class="btn btn-ghost btn-sm" data-action="closeModal" aria-label="Close">${icon('x')}</button></div>
     <div class="p-5 space-y-4">${body}</div>
-    ${footer ? `<div class="px-5 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap justify-end gap-2 sticky bottom-0 bg-white dark:bg-slate-900 rounded-b-2xl">${footer}</div>` : ''}`;
+    ${footer ? `<div class="px-5 py-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap justify-end gap-2 ${options.flow?'':'sticky bottom-0'} bg-white dark:bg-slate-900 rounded-b-2xl">${footer}</div>` : ''}`;
   return formAction ? `<form data-submit="${formAction}">${inner}</form>` : inner;
 }
 // Section tabs. Tabs the person hid (S.hiddenTabs) are left out, and the last button opens Edit tabs.
@@ -3962,16 +3972,20 @@ function planBackupImport(d, mode) {
     validateWebEntries(extension.entries);
     webEntries = structuredClone(extension.entries);
   }
-  return { data, photos, settings, mode, added, webEntries };
+  return { data, photos, settings, mode, added, webEntries, expected: { data: structuredClone(Store.data), settings: structuredClone(S), settingsRaw: localStorage.getItem('bd.settings') } };
 }
 async function commitBackupImport(plan) {
+  const expected = plan.expected || { data: structuredClone(Store.data), settings: structuredClone(S), settingsRaw: localStorage.getItem('bd.settings') };
+  const unchanged = () => sameJson(Store.data, expected.data) && sameJson(S, expected.settings) && localStorage.getItem('bd.settings') === expected.settingsRaw;
   await Store.flushDirty();
   if (WebWrites.pending.size) throw new Error('Recover or export and discard pending changes before restoring a backup.');
   return WebWrites.run(async () => {
+    if (!unchanged()) throw new Error('Local records or settings changed during review. Nothing was replaced; sync or review the backup again.');
+    const bases = structuredClone(WebWrites.bases);
     const previousSettings = localStorage.getItem('bd.settings');
     const previousFallback = Store.db ? null : Object.fromEntries(Object.keys(COLLECTIONS).map(k => [k, localStorage.getItem('bd.data.' + k)]));
     try {
-      localStorage.setItem('bd.settings', JSON.stringify(plan.settings));
+      if(!Store.db)localStorage.setItem('bd.settings', JSON.stringify(plan.settings));
       if (Store.db) await new Promise((resolve, reject) => {
         const stores = [...(plan.photos !== null ? ['kv', 'photos'] : ['kv']), 'local'], tx = Store.db.transaction(stores, 'readwrite'), kv = tx.objectStore('kv'), local = tx.objectStore('local');
         let reason = 'Backup restoration could not be saved.', left = Object.keys(plan.data).length;
@@ -3979,8 +3993,18 @@ async function commitBackupImport(plan) {
         const write = () => {
           try {
             for (const [key, value] of Object.entries(plan.data)) kv.put(value, key);
+            local.put({ version:1,previousRaw:expected.settingsRaw,settings:plan.settings },'sync.settings-checkpoint');
             if (plan.photos !== null) { const photos = tx.objectStore('photos'); if (plan.mode === 'replace') photos.clear(); plan.photos.forEach(([id, blob]) => photos.put(blob, id)); }
             const putMetadata = () => { if (plan.webEntries) for (const [key, value] of plan.webEntries) local.put(value, key); };
+            if (plan.syncAgreement) {
+              if (!sameJson(plan.data, expected.data)) { const { fdcKey, ...settings } = expected.settings,q=local.get('sync.recovery');q.onsuccess=()=>{if(!q.result)local.put({version:1,at:new Date().toISOString(),data:expected.data,settings},'sync.recovery');}; }
+              local.put(plan.syncAgreement.snapshot, SYNC_BASE);
+              local.put(plan.syncAgreement.receipt, 'sync.verified');
+              local.delete('sync.restore-review');
+            } else {
+              local.delete('sync.verified');
+              local.put({ at: new Date().toISOString() }, 'sync.restore-review');
+            }
             if (plan.mode === 'replace') {
               const q = local.getAllKeys(); q.onsuccess = () => { try { q.result.filter(key => typeof key === 'string' && key.startsWith('bd.web.')).forEach(key => local.delete(key)); putMetadata(); } catch (e) { reason = e.message; tx.abort(); } };
             } else putMetadata();
@@ -3988,18 +4012,31 @@ async function commitBackupImport(plan) {
         };
         for (const key of Object.keys(plan.data)) {
           const q = kv.get(key); q.onsuccess = () => {
-            if (webJSON(q.result) !== webJSON(WebWrites.bases[key])) { reason = 'Another tab changed saved records. Reload and review the backup again.'; tx.abort(); return; }
+            if (!unchanged() || webJSON(q.result) !== webJSON(bases[key])) { reason = 'Another tab or local edit changed saved records. Nothing was replaced; reload and review again.'; tx.abort(); return; }
             if (--left === 0) write();
           };
         }
       });
       else for (const [key, value] of Object.entries(plan.data)) localStorage.setItem('bd.data.' + key, JSON.stringify(value));
     } catch (e) {
-      if (previousSettings === null) localStorage.removeItem('bd.settings'); else localStorage.setItem('bd.settings', previousSettings);
+      if (localStorage.getItem('bd.settings') === JSON.stringify(plan.settings)) { if (previousSettings === null) localStorage.removeItem('bd.settings'); else localStorage.setItem('bd.settings', previousSettings); }
       if (previousFallback) for (const [key, value] of Object.entries(previousFallback)) { if (value === null) localStorage.removeItem('bd.data.' + key); else localStorage.setItem('bd.data.' + key, value); }
       throw e;
     }
-    Store.data = plan.data; S = plan.settings; await WebWrites.init();
+    if(!sameJson(Store.data,expected.data)){
+      WebWrites.blocked='New input arrived as records were committed. Your input is retained. Download the retained input copy, then reload saved records before continuing.';
+      for(const key of Store.dirty)Store.failed.add(key);
+      const {fdcKey,...settings}=S;
+      await LocalDb.put('sync.late-input',{version:1,at:new Date().toISOString(),data:structuredClone(Store.data),settings});
+      throw new Error(WebWrites.blocked);
+    }
+    Store.data = plan.data;
+    if (plan.syncAgreement) for (const [key, value] of Object.entries(plan.data)) WebWrites.bases[key] = structuredClone(value);
+    else await WebWrites.init();
+    if(Store.db){
+      await syncRecoverSettings();
+      if(await LocalDb.get('sync.settings-checkpoint'))throw Object.assign(new Error('Records were saved, but settings need review before sync can be verified.'),{settingsReview:true,recordsCommitted:true});
+    }else S=plan.settings;
     Photos.clearURLs(); applyTheme(); drawSaveRecovery();
   });
 }
@@ -5037,6 +5074,11 @@ const A_SHARE = {
 // would notice; each device shows the newest one once, as a card on the dashboard. A slide can show
 // a picture from assets/whatsnew/ (give it alt text) and a `go` shortcut: [view, ui key, tab, label].
 const RELEASES = [
+  {id:'2026-11-09-sync-verification',title:'Review and verify device sync',slides:[
+    {title:'Review before replacing or resolving conflicts',body:'<p>Compare workout, routine and food-log totals before using a Drive copy. Conflicting edits pause for your choice. A changed record or review must be checked again before applying it.</p>'},
+    {title:'Records verified, photos tracked separately',body:'<p>Sync reads the saved Drive records back before confirming them. Local changes made during sync stay protected. Photo transfers and missing photos have separate status; a connection alone is not a verified backup.</p>'},
+    {title:'Keep a recovery copy',body:'<p>Before incoming sync changes replace local records, the app keeps the prior records and settings on this device. Download that recovery copy from Settings &amp; Sync. It does not include photos; keep full records-and-photos backups too.</p>'}
+  ]},
   {id:'2026-11-08-program-editor',title:'Edit your program before training',slides:[
     {title:'Plan changes without starting a workout',body:'<p>Open a training program and choose Edit program, or use Edit on one of its routine cards. Change exercises, order, rest, notes and the selected week’s set targets before training.</p>'},
     {title:'Keep your recorded work',body:'<p>Program edits are saved separately from the imported source. Training maxes, record IDs, active sessions and completed workouts stay intact. Changes affect future starts. Full backups include your edited program.</p>'},
@@ -5188,9 +5230,8 @@ const DRIVE = { clientId: '58449826957-8r9b5297qv0n5cce9hindlmepd124okf.apps.goo
 const SYNC_SETTINGS = ['name', 'hiddenTabs', 'tabsV', 'hiddenCards', 'cardOrder', 'bar', 'unit', 'restSeconds', 'timerSound', 'targets', 'bwFallback', 'rpe', 'calBig', 'navOrder'];
 const SYNC_SKIP = []; // photoMeta used to stay on each device; photos sync since 2026-10 (Sync.photos)
 const SYNC_BASE = 'sync.base';
-// A sync that would remove more than this many records (outside the lists that are routinely
-// cleared) stops and asks first, whatever the cause.
-const SYNC_LOSS_LIMIT = 10, SYNC_CLEARED_OFTEN = ['grocery'];
+// Record removals require review, including nested sets. Preserve the retired grocery exception.
+const SYNC_CLEARED_OFTEN = ['grocery'];
 // Each day the first sync also keeps a dated copy (body-dashboard-copy-YYYY-MM-DD.json) in the same folder:
 // one for each of the last SYNC_COPY_DAYS days, then one a week for SYNC_COPY_WEEKS weeks.
 const SYNC_COPY = 'body-dashboard-copy-', SYNC_COPY_DAYS = 7, SYNC_COPY_WEEKS = 8;
@@ -5207,13 +5248,77 @@ function copiesToDrop(copies, today) {
 const syncMeta = () => { try { return JSON.parse(localStorage.getItem('bd.sync') || '{}'); } catch (e) { return {}; } };
 const setSyncMeta = patch => localStorage.setItem('bd.sync', JSON.stringify({ ...syncMeta(), ...patch }));
 const syncAvailable = () => !!DRIVE.clientId && LocalDb.ok() && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname));
-function syncTouch() { if (!syncMeta().on) return; setSyncMeta({ changed: new Date().toISOString() }); Sync.soon(); }
+function syncTouch() { Sync.verifiedStamp=null;if (!syncMeta().on) return; setSyncMeta({ changed: new Date().toISOString() }); Sync.soon(); }
 
 function sameJson(a, b) {
   if (a === b) return true;
   if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null || Array.isArray(a) !== Array.isArray(b)) return false;
   const ka = Object.keys(a), kb = Object.keys(b);
   return ka.length === kb.length && ka.every(k => Object.hasOwn(b, k) && sameJson(a[k], b[k]));
+}
+// Review is scoped to these exact snapshots, never a reusable overwrite permission.
+function syncCapture() { return { data: structuredClone(Store.data), settings: structuredClone(S), settingsRaw: localStorage.getItem('bd.settings') }; }
+function syncStateStamp() { return JSON.stringify({serial:WebWrites.serial||0,revisions:[...Store.revisions],settings:SYNC_SETTINGS.map(k=>S[k])}); }
+async function syncRecoverSettings() {
+  return new Promise((resolve,reject)=>{
+    const tx=Store.db.transaction('local','readwrite'),local=tx.objectStore('local'),q=local.get('sync.settings-checkpoint');let message='Settings recovery could not be completed. Saved records remain intact.';
+    tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(new Error(message));
+    q.onsuccess=()=>{const p=q.result;if(!p)return;try{
+      if(p.version!==1||!plainObject(p.settings)||(p.previousRaw!==null&&typeof p.previousRaw!=='string'))throw new Error('Unsupported settings recovery. Saved records were not reset.');
+      const raw=localStorage.getItem('bd.settings'),target=JSON.stringify(p.settings);
+      if(raw!==p.previousRaw&&raw!==target){S=loadSettings();local.put({at:new Date().toISOString(),settingsConflict:true},'sync.restore-review');setSyncMeta({error:'Settings changed in another tab. Review the saved settings recovery before syncing.'});return;}
+      localStorage.setItem('bd.settings',target);S=loadSettings();local.delete('sync.settings-checkpoint');
+    }catch(e){message=e.message;tx.abort();}};
+  });
+}
+function syncCheckIdentities(value,path='Records') {
+  if(Array.isArray(value)){const ids=new Set();for(const row of value){if(plainObject(row)&&row.id!=null){const id=String(row.id);if(ids.has(id))throw new Error('Sync conflict: duplicate record identities at '+path+'. Both copies were retained for review.');ids.add(id);}syncCheckIdentities(row,path+' / row');}}
+  else if(plainObject(value))for(const [key,child]of Object.entries(value))syncCheckIdentities(child,path+' / '+key);
+}
+function syncInventory(snap) {
+  const d=snap?.data||{},dates=(d.workouts||[]).map(w=>w.date||w.start&&ymd(new Date(w.start))||'').filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)).sort();
+  return { workouts:(d.workouts||[]).length,routines:(d.routines||[]).length,foodEntries:Object.values(d.nutrition||{}).reduce((n,x)=>n+(x.entries||[]).length,0),photos:photoRefs(d).length,first:dates[0]||'',last:dates.at(-1)||'' };
+}
+function syncInventoryText(snap) { const x=syncInventory(snap);return `${x.workouts} workouts · ${x.routines} routines · ${x.foodEntries} food entries · ${x.photos} photo references${x.first?` · History ${x.first}–${x.last}`:''}`; }
+function syncContent(snap) { return { data:snap.data,settings:snap.settings }; }
+// The older pure merge remains available for compatibility. Sync uses this reviewed projection.
+function syncReviewedMerge(base,mine,theirs,choice,conflicts=[],path='Records') {
+  if(sameJson(mine,theirs))return mine;
+  if(base!==undefined&&sameJson(base,mine))return theirs;
+  if(base!==undefined&&sameJson(base,theirs))return mine;
+  const clash=()=>{conflicts.push({path,mine:structuredClone(mine),theirs:structuredClone(theirs)});return choice==='drive'?theirs:mine;};
+  if(Array.isArray(mine)&&Array.isArray(theirs)){
+    const rows=[...mine,...theirs],byId=rows.every(x=>plainObject(x)&&x.id!=null),unique=list=>new Set(list.map(x=>String(x.id))).size===list.length;
+    if(!byId){if(rows.every(x=>x===null||typeof x!=='object'))return syncMerge(base,mine,theirs,true);return clash();}
+    const old=Array.isArray(base)?base:[];
+    if(!unique(mine)||!unique(theirs)||old.some(x=>!plainObject(x)||x.id==null)||!unique(old))return clash();
+    const B=new Map(old.map(x=>[String(x.id),x])),M=new Map(mine.map(x=>[String(x.id),x])),T=new Map(theirs.map(x=>[String(x.id),x])),out=new Map();
+    for(const id of new Set([...M.keys(),...T.keys()])){const m=M.get(id),t=T.get(id),b=B.get(id);let value;
+      if(M.has(id)&&T.has(id))value=syncReviewedMerge(b,m,t,choice,conflicts,path+' / '+id);
+      else if(!B.has(id))value=M.has(id)?m:t;
+      else if(sameJson(b,M.has(id)?m:t))continue;
+      else{conflicts.push({path:path+' / '+id+' (delete / edit)',mine:m,theirs:t});value=choice==='drive'?t:m;}
+      if(value!==undefined)out.set(id,value);
+    }
+    const common=old.map(x=>String(x.id)).filter(id=>M.has(id)&&T.has(id)),order=list=>list.map(x=>String(x.id)).filter(id=>common.includes(id)),bOrder=common,mOrder=order(mine),tOrder=order(theirs);
+    if(!sameJson(mOrder,bOrder)&&!sameJson(tOrder,bOrder)&&!sameJson(mOrder,tOrder)){conflicts.push({path:path+' (order)',mine:mOrder,theirs:tOrder});}
+    const lead=choice==='drive'||sameJson(mOrder,bOrder)&&!sameJson(tOrder,bOrder)?theirs:mine,tail=lead===mine?theirs:mine;
+    const ids=lead.map(x=>String(x.id)).filter(id=>out.has(id));let at=-1;
+    for(const row of tail){const id=String(row.id),found=ids.indexOf(id);if(found>=0)at=found;else if(out.has(id))ids.splice(++at,0,id);}
+    return ids.map(id=>out.get(id));
+  }
+  if(plainObject(mine)&&plainObject(theirs)){
+    const b=plainObject(base)?base:{},out={};
+    for(const key of new Set([...Object.keys(mine),...Object.keys(theirs)])){
+      const m=Object.hasOwn(mine,key),t=Object.hasOwn(theirs,key),had=Object.hasOwn(b,key);let value;
+      if(m&&t)value=syncReviewedMerge(had?b[key]:undefined,mine[key],theirs[key],choice,conflicts,path+' / '+key);
+      else if(!had)value=m?mine[key]:theirs[key];
+      else if(sameJson(b[key],m?mine[key]:theirs[key]))continue;
+      else{conflicts.push({path:path+' / '+key+' (delete / edit)',mine:mine[key],theirs:theirs[key]});value=choice==='drive'?theirs[key]:mine[key];}
+      if(value!==undefined)out[key]=value;
+    }return out;
+  }
+  return clash();
 }
 // Three-way merge of JSON values. A side that still matches the base gives way to the side that
 // changed. Lists of records merge by id and objects by key; anything else changed on both sides
@@ -5259,6 +5364,18 @@ function syncLosses(before, after) {
     if (Array.isArray(b)) { const kept = new Set((Array.isArray(a) ? a : []).map(key)); n = b.filter(x => !kept.has(key(x))).length; }
     else if (plainObject(b)) n = Object.keys(b).filter(x => !plainObject(a) || !Object.hasOwn(a, x)).length;
     if (n) out[k] = n;
+    // Inspect retained records too: losing one set is still a removal, even if its workout remains.
+    const nested=(old,next,path)=>{
+      if(Array.isArray(old)&&Array.isArray(next)){
+        const byId=old.every(x=>plainObject(x)&&x.id!=null)&&next.every(x=>plainObject(x)&&x.id!=null);
+        if(byId){const ids=new Map(next.map(x=>[String(x.id),x]));for(const row of old)if(ids.has(String(row.id)))nested(row,ids.get(String(row.id)),path+' / rows');}
+        else if(old.some(x=>plainObject(x))){const lost=Math.max(0,old.length-next.length);if(lost)out[path+' / rows']=(out[path+' / rows']||0)+lost;for(let i=0;i<Math.min(old.length,next.length);i++)nested(old[i],next[i],path+' / rows');}
+      }else if(plainObject(old)&&plainObject(next))for(const key of Object.keys(old)){
+        if(Array.isArray(old[key])){const a=old[key],b=Array.isArray(next[key])?next[key]:[];if(a.every(x=>plainObject(x)&&x.id!=null)){const kept=new Set(b.filter(x=>plainObject(x)&&x.id!=null).map(x=>String(x.id))),lost=a.filter(x=>!kept.has(String(x.id))).length;if(lost)out[path+' / '+key]=(out[path+' / '+key]||0)+lost;}nested(a,b,path+' / '+key);}
+        else if(plainObject(old[key])&&plainObject(next[key]))nested(old[key],next[key],path+' / '+key);
+      }
+    };
+    nested(b,a,k);
   }
   return out;
 }
@@ -5362,6 +5479,7 @@ async function driveList() {
     const q = new URLSearchParams({ spaces: 'appDataFolder', q: 'trashed=false', fields: 'nextPageToken,files(id,name,size,createdTime)', pageSize: '1000', ...(page ? { pageToken: page } : {}) });
     const d = await (await driveFetch('/drive/v3/files?' + q)).json(); out.push(...(d.files || [])); page = d.nextPageToken || '';
   } while (page && out.length < 20000);
+  if(page)throw new Error('The Drive file listing is incomplete. Photo sync paused; no files were assumed missing.');
   return out;
 }
 // The dated copies in the app folder, newest first.
@@ -5416,7 +5534,7 @@ async function driveSave(id, snap, name = DRIVE.file, etag = null) {
 // Drive v2 documents etag in JSON; do not depend on v3 or CORS exposing an HTTP header.
 async function driveMarker(id){const m=await(await driveFetch(`/drive/v2/files/${encodeURIComponent(id)}?fields=id,title,version,etag`)).json();return{id:m.id,name:m.title,version:m.version,etag:typeof m.etag==='string'&&/^"[\x21\x23-\x7e]+"$/.test(m.etag)?m.etag:null};}
 const Sync = {
-  busy: false, timer: null, first: '', allowLoss: false,
+  busy: false, timer: null, first: '', allowLoss: false, review: null, approval: null, verifiedStamp:null, bookkeepingError:'',
   connected() { return !!syncMeta().on; },
   async checkWrites(){
     if(syncMeta().writeSafetyClient===DRIVE.clientId&&syncMeta().writeSafetyProtocol===DRIVE.writeProtocol)return;
@@ -5439,10 +5557,15 @@ const Sync = {
   async adopt() {
     if (WebWrites.pending.size) throw new Error('Recover pending changes before adopting saved data.');
     await Store.flushDirty();
-    const keys = Object.keys(COLLECTIONS), saved = await Store.readMany(keys); let changed = false;
-    keys.forEach((k, i) => { WebWrites.bases[k] = structuredClone(saved[i]); });
-    keys.forEach((k, i) => { if (saved[i] !== undefined && !Store.dirty.has(k) && !sameJson(saved[i], Store.data[k])) { Store.data[k] = saved[i]; changed = true; } });
-    return changed;
+    return WebWrites.run(async()=>{
+      if(Store.dirty.size||WebWrites.pending.size)throw new Error('Local changes are pending. Save or recover them, then sync again.');
+      await syncRecoverSettings();
+      const before=syncCapture(),keys=Object.keys(COLLECTIONS),saved=await Store.readMany(keys);let changed=false;
+      if(Store.dirty.size||!sameJson(Store.data,before.data)||!sameJson(S,before.settings))throw new Error('Local records changed during sync. Your edits were retained; sync again.');
+      keys.forEach((k,i)=>{WebWrites.bases[k]=structuredClone(saved[i]);const value=saved[i]===undefined?structuredClone(COLLECTIONS[k]):saved[i];if(!sameJson(value,Store.data[k])){Store.data[k]=value;changed=true;}});
+      const raw=localStorage.getItem('bd.settings');if(raw!==null){const settings=loadSettings();if(!sameJson(S,settings)){S=settings;changed=true;}}
+      if(changed)this.verifiedStamp=null;return changed;
+    });
   },
   soon() { clearTimeout(this.timer); this.timer = setTimeout(() => this.auto(), 30000); },
   // Background runs wait while something is being edited, so open forms never lose their record.
@@ -5456,7 +5579,7 @@ const Sync = {
     if (!this.signedIn() && !(await gauthRenew(syncMeta(), setSyncMeta))) { if (signIn) {try{await syncSignIn();}catch(e){setSyncMeta({error:e.message});toast(e.message,'error');this.draw();}} else this.draw(); return; }
     if (navigator.onLine === false) { if (announce) toast('You are offline. Sync will run when you reconnect.', 'error'); return; }
     this.busy = true; this.draw();
-    let paused = '', photosChanged = false;
+    let paused = '', photosChanged = false, lossReview = null;
     try {
       await this.checkWrites();
       const changed = await this.exchange();
@@ -5467,56 +5590,73 @@ const Sync = {
         try { if (await this.photos(files)) photosChanged = true; } catch (e) { setSyncMeta({ photoError: e.message }); }
       }
       if (changed || photosChanged) { ensureSeeds(); sortWorkouts(); render(); }
-      if (announce) toast(changed ? 'Synced. This device was updated.' : 'Synced');
+      if (announce) toast(syncMeta().photoError||syncMeta().photosLeft?'Records verified. Photos need attention.':'Records verified with Drive.');
     } catch (e) {
       if (e.losses) {
         const part = (n, by, where) => n ? `remove ${n} record${n === 1 ? '' : 's'} from ${where} (${syncLossText(by)})` : '';
         paused = [part(e.here, e.hereBy, 'this device'), part(e.away, e.awayBy, 'Google Drive and your other devices')].filter(Boolean).join(' and ');
         setSyncMeta({ error: 'Sync is paused because it would ' + paused + '. Tap the sync button to review.' });
+        lossReview=e.review;
       }
-      else if (e.message === 'first') { if (announce) syncAskFirst(); else setSyncMeta({ error: 'Open Settings & Sync to finish setting up sync on this device.' }); }
+      else if (e.message === 'first') { setSyncMeta({error:'Review the records on this device and in Drive before connecting.'});if (announce) syncAskFirst(); }
+      else if(e.settingsReview){setSyncMeta({error:e.message});if(announce)await syncAskSettings();}
+      else if(e.review){this.review=e.review;setSyncMeta({error:e.message});if(announce)syncAskReview();}
       else { setSyncMeta({ error: e.message }); if (announce) toast('Sync stopped: ' + e.message, 'error'); }
     } finally { this.busy = false; this.allowLoss = false; this.draw(); }
-    if (paused && announce && confirm('This sync would ' + paused + '.\n\nChoose OK only if you removed these on purpose. Choose Cancel to leave everything as it is.')) { this.allowLoss = true; return this.run({ announce }); }
+    if (paused && announce && confirm('This sync would ' + paused + '.\n\nChoose OK only if you removed these on purpose. Choose Cancel to leave everything as it is.')) { this.approval={...(this.approval?.signature===lossReview.signature?this.approval:{}),signature:lossReview.signature,loss:true};return this.run({ announce }); }
   },
-  // Returns true when this device's records changed.
+  async readRemote(file) {
+    const before=await driveMarker(file.id);
+    if(before.id!==file.id||before.name!==DRIVE.file||!before.etag)throw new Error('Drive could not verify the sync file identity and safe update marker. Nothing was replaced.');
+    const snap=await driveLoad(file.id),after=await driveMarker(file.id);
+    if(after.id!==file.id||after.name!==DRIVE.file||after.version!==before.version||after.etag!==before.etag)throw new Error('Drive changed during verification. Your local records were retained; sync again.');
+    return {snap,marker:after};
+  },
+  // Publish remotely first, verify the complete readback, then atomically adopt locally + base.
   async exchange() {
-    let changed = false;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (await this.adopt()) changed = true;
-      const file = await driveFind(), saved = await LocalDb.get(SYNC_BASE);
-      if (!file) { const mine = this.local(), made = await driveSave(null, mine); await LocalDb.put(SYNC_BASE, mine); setSyncMeta({ ver: made.version || '' }); return changed; }
-      if (!saved && !this.first) throw new Error('first');
-      const marker=await driveMarker(file.id),etag=marker.etag;if(marker.name!==DRIVE.file)throw new Error('The Drive sync file changed identity. Nothing was replaced.');if(marker.version!==file.version)continue;
-      const theirs = saved && file.version === syncMeta().ver ? saved : await driveLoad(file.id);
-      const mine = this.local(), base = saved || (this.first === 'theirs' ? mine : undefined);
-      const localActive=mine.data.activeWorkout,remoteActive=theirs.data.activeWorkout;if(localActive&&remoteActive&&localActive.id!==remoteActive.id&&!sameJson(base?.data.activeWorkout,localActive)&&!sameJson(base?.data.activeWorkout,remoteActive))throw new Error('Different workouts are active on these devices. Keep a backup and finish or discard one before combining; neither active workout was replaced.');
-      const preferMine = (syncMeta().changed || '') > (theirs.exportedAt || '');
-      const merged = { data: {}, settings: syncMerge(base?.settings, mine.settings, theirs.settings, preferMine) };
-      for (const k of Object.keys(mine.data)) merged.data[k] = Object.hasOwn(theirs.data, k) ? syncMerge(base?.data[k], mine.data[k], theirs.data[k], preferMine) : mine.data[k];
+    let changed=false;
+    for(let attempt=0;attempt<3;attempt++){
+      if(await this.adopt())changed=true;
+      if(await LocalDb.get('sync.settings-checkpoint'))throw Object.assign(new Error('Review the settings retained after the interrupted sync before continuing.'),{settingsReview:true});
+      const expected=syncCapture(),mine=this.local(),file=await driveFind(),saved=await LocalDb.get(SYNC_BASE),restored=await LocalDb.get('sync.restore-review');
+      let remote=file?await this.readRemote(file):null;
+      const theirs=remote?.snap,signature=await webDigest({base:saved,mine,theirs:theirs&&syncContent(theirs),file:file?.id,version:remote?.marker.version,restored}),approval=this.approval?.signature===signature?this.approval:null;
+      syncCheckIdentities(mine);if(theirs)syncCheckIdentities(theirs);
+      if(!file&&saved)throw new Error('The previously agreed Drive file is missing. Your local records are retained. Restore or review the Drive files before reconnecting.');
+      if(file&&!saved&&!approval?.first){this.review={kind:'first',signature,mine,theirs};throw new Error('first');}
+      const base=saved||(approval?.choice==='theirs'?mine:undefined),conflicts=[];
+      if(file){
+        const localActive=mine.data.activeWorkout,remoteActive=theirs.data.activeWorkout;
+        if(localActive&&remoteActive&&localActive.id!==remoteActive.id&&!sameJson(base?.data.activeWorkout,localActive)&&!sameJson(base?.data.activeWorkout,remoteActive))throw new Error('Different workouts are active on these devices. Keep a backup and finish or discard one before combining; neither active workout was replaced.');
+      }
+      const choice=approval?.choice==='drive'?'drive':'mine';
+      const merged=file?{data:{},settings:syncReviewedMerge(base?.settings,mine.settings,theirs.settings,choice,conflicts,'Settings')}:structuredClone(mine);
+      if(file)for(const k of Object.keys(mine.data))merged.data[k]=Object.hasOwn(theirs.data,k)?syncReviewedMerge(base?.data[k],mine.data[k],theirs.data[k],choice,conflicts,k):mine.data[k];
       if(merged.data.activeWorkout&&merged.data.workouts.some(w=>w.id===merged.data.activeWorkout.id))throw new Error('This workout was finished on another device while this draft changed. Your local draft is retained; export a backup before resolving it.');
-      validateBackup({ app: 'body-dashboard', version: 1, data: merged.data, settings: merged.settings });
-      if (!this.allowLoss) {
-        const hereBy = syncLosses(mine.data, merged.data), awayBy = syncLosses(Object.fromEntries(Object.keys(merged.data).map(k => [k, theirs.data[k]])), merged.data), here = sum(Object.values(hereBy)), away = sum(Object.values(awayBy));
-        if (here > SYNC_LOSS_LIMIT || away > SYNC_LOSS_LIMIT) throw Object.assign(new Error('loss'), { losses: true, here, away, hereBy, awayBy });
+      if(conflicts.length&&!approval?.conflicts)throw Object.assign(new Error('Sync conflict: both devices changed the same information. Review the conflicting versions; nothing was replaced.'),{review:{kind:'conflict',signature,mine,theirs,conflicts}});
+      if(restored&&!approval?.restore)throw Object.assign(new Error('A backup was restored on this device. Review its sync effects before continuing.'),{review:{kind:'restore',signature,mine,theirs:theirs||mine}});
+      validateBackup({app:'body-dashboard',version:1,data:merged.data,settings:merged.settings});
+      if(file&&!approval?.loss&&!approval?.first){
+        const hereBy=syncLosses(mine.data,merged.data),awayBy=syncLosses(Object.fromEntries(Object.keys(merged.data).map(k=>[k,theirs.data[k]])),merged.data),here=sum(Object.values(hereBy)),away=sum(Object.values(awayBy));
+        if(here||away)throw Object.assign(new Error('loss'),{losses:true,here,away,hereBy,awayBy,review:{signature}});
       }
-      if (!sameJson(merged, mine)) {
-        await commitBackupImport({ data: { ...Store.data, ...structuredClone(merged.data) }, photos: null, settings: { ...S, ...structuredClone(merged.settings) }, mode: 'merge' });
-        changed = true;
-      }
-      // Collections this version of the app does not know (saved by a newer one) pass through untouched.
-      const unknown = Object.fromEntries(Object.entries(theirs.data).filter(([k]) => !Object.hasOwn(merged.data, k)));
-      const agreed = { data: { ...unknown, ...merged.data }, settings: merged.settings, exportedAt: new Date().toISOString() };
-      let ver = file.version;
-      if (!sameJson(agreed.data, theirs.data) || !sameJson(agreed.settings, theirs.settings)) {
-        if ((await (await driveFetch(`/drive/v3/files/${encodeURIComponent(file.id)}?fields=version`)).json()).version !== file.version) continue; // another device saved meanwhile: merge again
-        try{ver=(await driveSave(file.id,agreed,DRIVE.file,etag)).version||'';}catch(e){if(e.status===412)continue;throw e;}
-      }
-      await LocalDb.put(SYNC_BASE, agreed);
-      setSyncMeta({ ver }); this.first = '';
+      const unknown=file?Object.fromEntries(Object.entries(theirs.data).filter(([k])=>!Object.hasOwn(merged.data,k))):{};
+      const agreed={data:{...unknown,...merged.data},settings:merged.settings,exportedAt:new Date().toISOString()};
+      if(Store.dirty.size||WebWrites.pending.size||!sameJson(Store.data,expected.data)||!sameJson(S,expected.settings)||localStorage.getItem('bd.settings')!==expected.settingsRaw)throw new Error('Local records changed during sync. Your edits were retained; sync again.');
+      let canonical=file;
+      if(!file){const made=await driveSave(null,agreed);canonical=await driveFind();if(!canonical||canonical.id!==made.id)throw new Error('Drive creation could not be verified. Keep your local backup and sync again.');}
+      else if(!sameJson(syncContent(agreed),syncContent(theirs))){try{await driveSave(file.id,agreed,DRIVE.file,remote.marker.etag);}catch(e){if(e.status===412)continue;throw e;}}
+      remote=await this.readRemote(canonical);
+      if(!sameJson(syncContent(remote.snap),syncContent(agreed)))throw new Error('Drive verification did not match the records sent. Your local records and previous agreement were retained; review and retry sync.');
+      const confirmed=await driveFind();if(!confirmed||confirmed.id!==canonical.id||confirmed.version!==remote.marker.version)throw new Error('Drive changed during verification. Your local records were retained; sync again.');
+      const receipt={version:1,fileId:canonical.id,remoteVersion:remote.marker.version,at:new Date().toISOString(),digest:await webDigest(syncContent(agreed)),inventory:syncInventory(agreed)};
+      const localData={...expected.data,...structuredClone(merged.data)},localSettings={...expected.settings,...structuredClone(merged.settings)};
+      await commitBackupImport({data:localData,photos:null,settings:localSettings,mode:'merge',expected,syncAgreement:{snapshot:agreed,receipt}});
+      if(!sameJson(syncContent(mine),syncContent(merged)))changed=true;
+      setSyncMeta({ver:remote.marker.version,verifiedAt:receipt.at,inventory:receipt.inventory});this.verifiedStamp=syncStateStamp();this.bookkeepingError='';this.first='';this.approval=null;this.review=null;
       return changed;
     }
-    throw new Error('Another device kept saving at the same time. Try again in a moment.');
+    throw new Error('Another device kept saving at the same time. Your local records were retained; try again in a moment.');
   },
   // Once a day: keep a dated copy of the records this sync agreed on, then thin out old copies.
   async keepCopy() {
@@ -5532,8 +5672,9 @@ const Sync = {
   async photos(list = null) {
     if (!Photos.ok()) return false;
     const want = photoRefs(Store.data), have = new Set(await photoKeys()), files = list || await driveList(), inDrive = new Map();
-    for (const f of files) if (f.name && f.name.startsWith(PHOTO_FILE)) inDrive.set(f.name.slice(PHOTO_FILE.length), f.id);
+    for (const f of files) if (f.name && f.name.startsWith(PHOTO_FILE)) {const id=f.name.slice(PHOTO_FILE.length);if(inDrive.has(id))throw new Error('Duplicate photo copies in Drive need review. No photo was replaced.');inDrive.set(id,f.id);}
     const up = want.filter(id => have.has(id) && !inDrive.has(id)), down = want.filter(id => !have.has(id) && inDrive.has(id));
+    const missing=want.filter(id=>!have.has(id)&&!inDrive.has(id));
     let sent = 0, got = 0;
     for (const id of up.slice(0, PHOTO_BATCH)) { const blob = await Photos.get(id); if (blob) { await driveUploadBlob(PHOTO_FILE + id, blob); sent++; } }
     for (const id of down.slice(0, PHOTO_BATCH)) {
@@ -5541,7 +5682,7 @@ const Sync = {
       if (blob.size) { await Photos.put(id, blob); got++; }
     }
     const left = Math.max(0, up.length - sent) + Math.max(0, down.length - got);
-    setSyncMeta({ photosLeft: left, photoError: '' });
+    setSyncMeta({ photosLeft: left+missing.length, photosMissing:missing.length, photoError: missing.length?`${missing.length} referenced photo${missing.length===1?' is':'s are'} missing on this device and in Drive. Restore a full photo backup on the device that has it.`:'' });
     if (left) this.soon(); // the rest go in the next syncs
     return got > 0;
   },
@@ -5549,14 +5690,20 @@ const Sync = {
   status() {
     const m = syncMeta();
     if (this.busy) return 'Syncing…';
+    if(Store.dirty.size||WebWrites.pending.size||Store.failed.size)return 'Local changes need saving or recovery before sync.';
+    if(navigator.onLine===false)return 'Offline · local records available; sync when online.';
     if (!this.canSync()) return 'Sign in to Google to sync this device.';
     if (m.error) return m.error;
-    return m.last ? 'Last synced ' + fmtDateTime(m.last) : 'Not synced yet';
+    if(this.bookkeepingError)return this.bookkeepingError;
+    if(m.verifiedAt&&this.verifiedStamp!==syncStateStamp())return 'Local records or settings need verification. Last checked '+fmtDateTime(m.verifiedAt)+'.';
+    if(m.photoError)return 'Records checked; photo issue: '+m.photoError;
+    if(m.photosLeft)return `Records checked; ${m.photosLeft} photo${m.photosLeft===1?'':'s'} still to sync.`;
+    return m.verifiedAt ? 'Records verified ' + fmtDateTime(m.verifiedAt) : 'Records have not been verified with this version yet.';
   },
   draw() {
     const on = syncAvailable() && this.connected(), btn = $('#sync-btn'), box = $('#sync-box');
     if (btn) {
-      const alert = on && !this.busy && (!this.canSync() || !!syncMeta().error);
+      const alert = on && !this.busy && (!this.canSync() || !!syncMeta().error || !!syncMeta().photoError || !!syncMeta().photosLeft);
       btn.classList.toggle('hidden', !on); btn.disabled = this.busy;
       btn.title = this.status(); btn.setAttribute('aria-label', 'Sync now. ' + this.status());
       btn.innerHTML = icon(alert ? 'cloud-alert' : 'refresh-cw', 'w-4 h-4' + (alert ? ' text-amber-600 dark:text-amber-400' : '')) + '<span class="hidden sm:inline">Sync</span>';
@@ -5569,27 +5716,52 @@ function syncBox() {
   if (!syncAvailable()) return `<p class="text-xs muted">${DRIVE.clientId ? 'Syncing between devices works in the hosted copy of the app (its web address), not in a copy opened as a file.' : 'Syncing between devices is not set up yet.'}</p>`;
   if (!Sync.connected()) return `<p class="text-sm">Keep this device and your others in step through a private app folder in your Google Drive.</p>
     <p class="text-xs muted">Workouts, cycles, training maxes, nutrition, photos and basic settings sync. API keys stay on each device. Log an active workout on one device at a time; use Sync now before changing devices. This personal beta may ask you to sign in again weekly.</p>
-    <button type="button" class="btn btn-sm" data-action="syncConnect">${icon('cloud', 'w-3.5 h-3.5')} Connect Google Drive</button>`;
+    <div class="flex flex-wrap gap-2"><button type="button" class="btn btn-sm" data-action="syncConnect">${icon('cloud', 'w-3.5 h-3.5')} Connect Google Drive</button><button type="button" class="btn btn-sm" data-action="syncRecovery">Download retained local records</button></div>`;
   const m = syncMeta();
   return `<p class="text-sm" role="status">${icon('cloud', 'w-4 h-4 inline')} Google Drive sync is ${m.error?'paused':'on'} · ${esc(Sync.status())}</p>
-    <p class="text-xs muted">Records, photos and basic settings sync. API keys and downloaded libraries stay on each device.${m.photosLeft ? ` ${m.photosLeft} photo${m.photosLeft === 1 ? '' : 's'} still to sync; they follow over the next few syncs.` : ''}${m.photoError ? ` Photos stopped: ${esc(m.photoError)}` : ''}</p>
+    <p class="text-xs muted">Records, photos and basic settings sync. API keys and downloaded libraries stay on each device.${m.inventory?` Last verified inventory: ${m.inventory.workouts} workouts, ${m.inventory.routines} routines, ${m.inventory.foodEntries} food entries.`:''}${m.photosLeft ? ` ${m.photosLeft} photo${m.photosLeft === 1 ? '' : 's'} still to sync.` : ''}${m.photoError ? ` Photos stopped: ${esc(m.photoError)}` : ''} Photo availability is checked separately; records verification is not a full photo backup.</p>
     ${m.refresh ? '<p class="text-xs muted">This personal beta may ask you to sign in again weekly. Stop syncing signs this device out.</p>' : ''}
     <p class="text-xs muted">${m.copied ? `A dated copy of your records is kept in Drive each day (latest: ${fmtDate(m.copied)}).` : 'Each day, the first sync also keeps a dated copy of your records in Drive.'} Copies cover the last 7 days, then one a week for 8 weeks.${m.copyError ? ` The last copy could not be made: ${esc(m.copyError)}` : ''}</p>
-    <div class="flex flex-wrap gap-2"><button type="button" class="btn btn-sm" data-action="syncNow" ${Sync.busy ? 'disabled' : ''}>${icon('refresh-cw', 'w-3.5 h-3.5')} Sync now</button><button type="button" class="btn btn-sm" data-action="syncCopies">${icon('history', 'w-3.5 h-3.5')} Restore from a copy…</button><button type="button" class="btn btn-sm" data-action="syncDisconnect">${icon('cloud-off', 'w-3.5 h-3.5')} Stop syncing this device</button></div>
+    <div class="flex flex-wrap gap-2"><button type="button" class="btn btn-sm" data-action="syncNow" ${Sync.busy ? 'disabled' : ''}>${icon('refresh-cw', 'w-3.5 h-3.5')} Sync now</button><button type="button" class="btn btn-sm" data-action="syncCopies">${icon('history', 'w-3.5 h-3.5')} Restore from a copy…</button><button type="button" class="btn btn-sm" data-action="syncRecovery">Download retained local records</button><button type="button" class="btn btn-sm" data-action="syncDisconnect">${icon('cloud-off', 'w-3.5 h-3.5')} Stop syncing this device</button></div>
 `;
 }
 function syncAskFirst() {
-  Modal.open(modalShell('Start syncing this device', `<p class="text-sm">Your Google Drive already holds Body Dashboard records from another device.</p>
-    <p class="text-sm muted"><strong>Combine</strong> keeps everything on this device and adds what is in Drive. <strong>Use the Drive copy</strong> replaces this device’s records with the Drive copy. Photos on this device are kept either way.</p>`,
-    `<button type="button" class="btn" data-action="closeModal">Not now</button><button type="button" class="btn" data-action="syncFirst" data-mode="theirs">Use the Drive copy</button><button type="button" class="btn btn-primary" data-action="syncFirst" data-mode="merge">Combine</button>`));
+  const r=Sync.review;if(!r)return;
+  Modal.open(modalShell('Start syncing this device', `<p class="text-sm">Compare these records before connecting. No records change until you choose.</p>
+    <dl class="my-3 space-y-3"><div><dt class="font-semibold">This device</dt><dd class="text-sm break-words">${esc(syncInventoryText(r.mine))}</dd></div><div><dt class="font-semibold">Google Drive</dt><dd class="text-sm break-words">${esc(syncInventoryText(r.theirs))}</dd></div></dl>
+    <p class="text-sm muted"><strong>Combine</strong> combines independent changes and asks about conflicts. <strong>Use the Drive copy</strong> replaces the matching record collections on this device, including history. Keep a full records-and-photos backup first. The first pre-adoption local records copy is retained until you replace or clear app data; it may not be the latest copy. Existing photo blobs are retained.</p>`,
+    `<button type="button" class="btn" data-action="closeModal">Not now</button><button type="button" class="btn" data-action="syncFirst" data-mode="theirs">Use the Drive copy</button><button type="button" class="btn btn-primary" data-action="syncFirst" data-mode="merge">Combine</button>`,'',{flow:true}));
+}
+function syncAskReview(){
+  const r=Sync.review;if(!r)return;
+  const value=x=>x===undefined?'Deleted / absent':JSON.stringify(x,null,2);
+  const title=c=>{const parts=c.path.split(' / '),key=parts[0],id=parts[1],rows=r.mine.data[key]||r.theirs.data[key],record=Array.isArray(rows)?rows.find(x=>String(x.id)===id):null;return record?`${key==='routines'?'Routine':key==='workouts'?'Workout':key}: ${record.name||record.title||record.date||id} · ${parts.slice(2).join(' / ')||'record'}`:c.path;};
+  Modal.open(modalShell(r.kind==='restore'?'Review restored records':'Review sync conflicts',`<p class="text-sm">Both saved versions stay in place until you choose. Independent changes combine. ${r.conflicts?.length?`One choice below applies to all ${r.conflicts.length} conflicting values shown here.`:''} A changed snapshot requires another review.</p><p class="text-sm mt-3"><strong>This device:</strong> ${esc(syncInventoryText(r.mine))}</p><p class="text-sm"><strong>Drive:</strong> ${esc(syncInventoryText(r.theirs))}</p>${(r.conflicts||[]).map(c=>`<section class="stat mt-3 text-sm"><h3 class="font-semibold break-words">${esc(title(c))}</h3><details><summary class="min-h-11 flex items-center cursor-pointer">View both complete values</summary><p class="font-semibold">This device</p><pre class="whitespace-pre-wrap break-words text-sm" style="overflow-wrap:anywhere">${esc(value(c.mine))}</pre><p class="font-semibold mt-2">Drive</p><pre class="whitespace-pre-wrap break-words text-sm" style="overflow-wrap:anywhere">${esc(value(c.theirs))}</pre></details></section>`).join('')}${r.kind==='restore'?'<p class="text-sm mt-3">Continuing combines this restored copy with Drive. Any removals require a separate review. Download a full backup first.</p>':''}`,`<button type="button" class="btn" data-action="closeModal">Keep paused</button>${r.kind==='restore'?'':`<button type="button" class="btn" data-action="syncReview" data-choice="drive">Use Drive conflicting values</button>`}<button type="button" class="btn btn-primary" data-action="syncReview" data-choice="mine">${r.kind==='restore'?'Review and continue':'Use this device conflicting values'}</button>`,'',{flow:true}));
+}
+async function syncAskSettings(){
+  const pending=await LocalDb.get('sync.settings-checkpoint');if(!pending)return;
+  Sync.settingsReview={pending,raw:localStorage.getItem('bd.settings')};
+  const summary=s=>JSON.stringify(Object.fromEntries(SYNC_SETTINGS.filter(k=>s[k]!=null).map(k=>[k,s[k]])),null,2);
+  Modal.open(modalShell('Review interrupted settings',`<p class="text-sm">Your saved records are intact. A newer settings change was found while restoring settings after an interrupted save. Choose which settings to keep; records and photos are unchanged by this choice.</p><h3 class="font-semibold mt-3">Current device settings</h3><pre class="whitespace-pre-wrap break-words text-sm" style="overflow-wrap:anywhere">${esc(summary(loadSettings()))}</pre><h3 class="font-semibold mt-3">Settings from the saved operation</h3><pre class="whitespace-pre-wrap break-words text-sm" style="overflow-wrap:anywhere">${esc(summary(pending.settings))}</pre>`,`<button type="button" class="btn" data-action="closeModal">Keep paused</button><button type="button" class="btn" data-action="syncSettingsResolve" data-choice="saved">Use saved operation settings</button><button type="button" class="btn btn-primary" data-action="syncSettingsResolve" data-choice="current">Keep current settings</button>`,'',{flow:true}));
 }
 const A_SYNC = {
   syncConnect: () => { setSyncMeta({ on: true }); Sync.run({ signIn: true, announce: true }); },
   syncNow: () => Sync.run({ signIn: true, announce: true }),
   syncFirst: el => {
-    if (el.dataset.mode === 'theirs' && !confirm('Replace the records on this device with the copy in Google Drive? This cannot be undone.')) return;
-    Sync.first = el.dataset.mode; Sync.allowLoss = el.dataset.mode === 'theirs'; Modal.close(); Sync.run({ announce: true });
+    if(!Sync.review)return;
+    if (el.dataset.mode === 'theirs' && !confirm('Use the reviewed Drive records on this device, replacing its matching collections and history? The prior local records copy is kept, but export a full backup with photos first.')) return;
+    Sync.approval={signature:Sync.review.signature,first:true,choice:el.dataset.mode,loss:el.dataset.mode==='theirs'};Sync.first=el.dataset.mode;Modal.close();Sync.run({announce:true});
   },
+  syncReview: el=>{const r=Sync.review;if(!r)return;const prior=Sync.approval?.signature===r.signature?Sync.approval:{};Sync.approval={...prior,signature:r.signature,choice:r.kind==='restore'&&prior.choice?prior.choice:el.dataset.choice,conflicts:prior.conflicts||r.kind==='conflict',restore:prior.restore||r.kind==='restore'};Modal.close();Sync.run({announce:true});},
+  syncSettingsResolve: async el=>{
+    const r=Sync.settingsReview;if(!r)return;
+    await new Promise((resolve,reject)=>{const tx=Store.db.transaction('local','readwrite'),local=tx.objectStore('local'),q=local.get('sync.settings-checkpoint');let reason='Settings could not be saved; the recovery copy was retained.';tx.oncomplete=resolve;tx.onerror=tx.onabort=()=>reject(new Error(reason));q.onsuccess=()=>{try{
+      if(!sameJson(q.result,r.pending)||localStorage.getItem('bd.settings')!==r.raw)throw new Error('Settings changed during review. Open Sync now to review them again.');
+      const current=loadSettings(),next=el.dataset.choice==='saved'?{...current,...Object.fromEntries(SYNC_SETTINGS.filter(k=>r.pending.settings[k]!=null).map(k=>[k,r.pending.settings[k]]))}:current;localStorage.setItem('bd.settings',JSON.stringify(next));S=next;local.delete('sync.settings-checkpoint');local.put({at:new Date().toISOString()},'sync.restore-review');
+    }catch(e){reason=e.message;tx.abort();}};});
+    Sync.settingsReview=null;Sync.verifiedStamp=null;await WebWrites.init();Modal.close();applyTheme();Sync.run({announce:true});
+  },
+  syncRecovery: async()=>{const late=await LocalDb.get('sync.late-input'),r=late||await LocalDb.get('sync.recovery');if(!r)return toast('No retained local records copy is available yet. Export a full backup before connecting.');if(!confirm('Download '+(late?'the input retained during an interrupted save':'the first retained pre-adoption records copy')+' from '+fmtDateTime(r.at)+'? '+syncInventoryText(r)+'. Photos are not included. Review before importing; this download does not change saved records.'))return;const{fdcKey,...settings}=r.settings;download(`body-dashboard-retained-records-${ymd()}.json`,JSON.stringify({app:'body-dashboard',version:1,exportedAt:r.at,data:r.data,settings},null,2));toast('Retained records downloaded. Photos are not included; review before importing.');},
   // The dated copies in Drive, newest first; choosing one opens the restore choices.
   syncCopies: async () => {
     if (!Sync.signedIn() && !(await gauthRenew(syncMeta(), setSyncMeta))) return toast('Sign in to Google first: tap Sync now, then try again.', 'error');
@@ -5607,6 +5779,7 @@ const A_SYNC = {
   },
   syncDisconnect: async () => { if (!confirm('Stop syncing this device? Your records stay on this device and in Google Drive.')) return; await Sync.disconnect(); toast('Sync is off on this device'); }
 };
+settingsSyncReady=true;
 
 /* =====================================================================
    ACTIONS (event-delegated)
@@ -5779,7 +5952,7 @@ const A = {
     if (mode === 'replace' && !(fromLifeDashboard(d) && !hasOwnRecords()) && !confirm('Replace current personal records and included photos with this backup? This cannot be undone.')) return;
     ui.importing = true;
     try { await commitBackupImport(plan); }
-    catch (e) { return toast('Import was not saved: ' + e.message, 'error'); }
+    catch (e) { if(e.recordsCommitted){ui.pendingImport=null;await syncAskSettings();render();return toast(e.message,'error');}return toast('Import was not saved: ' + e.message, 'error'); }
     finally { ui.importing = false; }
     ensureSeeds(); sortWorkouts(); ui.pendingImport = null; Modal.close(); syncTouch(); // restored records reach the other devices on the next sync
     toast(mode === 'replace' ? 'Backup restored' : mode === 'missing' ? `Added back ${plan.added} item${plan.added === 1 ? '' : 's'}` : 'Backup merged'); render();

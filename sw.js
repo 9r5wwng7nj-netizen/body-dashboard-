@@ -1,6 +1,6 @@
 // Body Dashboard shell only. Bump GENERATION whenever shell HTML/CSS/assets change.
 // No skipWaiting: an update waits until all controlled Body pages close. Logging is never reloaded.
-const GENERATION = 'beta-d9fb1dd54686';
+const GENERATION = 'beta-ac7c6a3c4ad9';
 const SCOPE = new URL('./', self.location).href, INDEX = SCOPE + 'index.html';
 const PREFIX = 'bd-shell-' + encodeURIComponent(new URL(SCOPE).pathname) + '-';
 const CACHE = PREFIX + GENERATION;
