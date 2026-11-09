@@ -586,4 +586,3 @@ test('late settings changes withhold verification and are explicitly reconciled 
     expect(await phone.page.evaluate(async()=>({unit:S.unit,theme:S.theme,pending:await LocalDb.get('sync.settings-checkpoint')}))).toEqual({unit:'kg',theme:'dark',pending:undefined});
   }finally{await desktop.context.close();await phone.context.close();}
 });
-
